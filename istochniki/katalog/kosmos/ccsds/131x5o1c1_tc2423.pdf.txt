@@ -1,0 +1,56 @@
+
+=====PAGE 1=====
+ 
+Distribution Control Number:  TC 24-23 
+ 
+Reference Number:  CCSDS 131.5-O-1 Cor. 1 
+ 
+NOTE 
+– 
+Current versions of CCSDS documents are maintained at the CCSDS Web site: 
+ 
+https://public.ccsds.org/ 
+ 
+Correspondence regarding CCSDS documents should be addressed to 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+ 
+ 
+ 
+Erasure Correcting Codes for Use in Near-Earth and Deep-
+Space Communications 
+ 
+TECHNICAL CORRIGENDUM 1 
+ 
+The Management Council of the Consultative Committee for Space Data Systems (CCSDS) has 
+authorized the publication of technical corrigendum 1 to CCSDS 131.5-O-1, issued November 
+2014. 
+ 
+Page 4-12 
+Add row at end of table 4-9: 
+ 
+63 
+66 
+73 
+93 
+155 
+168 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Recommended Standard CCSDS 131.5-O-1 
+TECHNICAL CORRIGENDUM 1 
+ 
+Issue Date: December 2024 

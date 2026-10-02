@@ -1,0 +1,6 @@
+kitai/GY_T_338-2020.pdf 9734412 PDF document, version 1.6 https://gdj.beijing.gov.cn/zwxx/tzgg2/202012/P020201208354808929125.pdf
+kitai/CN101150730B.pdf 4627351 PDF https://patentimages.storage.googleapis.com/38/75/5d/5c439ddbb0d812/CN101150730B.pdf
+kitai/US8689092.pdf 894875 PDF https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/8689092
+kitai/CN101150730B_google.html html https://patents.google.com/patent/CN101150730B/zh
+kitai/CN101150730B_opis.txt txt https://patents.google.com/patent/CN101150730B/zh
+kitai/GY_T_338-2020_prilDE_ocr.txt txt https://gdj.beijing.gov.cn/zwxx/tzgg2/202012/P020201208354808929125.pdf

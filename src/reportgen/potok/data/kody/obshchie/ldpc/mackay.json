@@ -1,0 +1,5519 @@
+[
+ {
+  "номер": 1,
+  "заголовок": "96.3.963 (N=96,K=48,M=48,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "96"
+   ],
+   "M": [
+    "48"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=963 N=96 GH/spec3  > GHC/96.3.963"
+   ],
+   "comment": [
+    "Notes in READEN"
+   ]
+  },
+  "строка_html": 356,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.3.963",
+  "N": 96,
+  "M": 48,
+  "ранг": 46,
+  "K": 50,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 2,
+  "заголовок": "96.33.964 (N=96,K=48,M=48,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "96"
+   ],
+   "M": [
+    "48"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=964 N=96 GH/spec33 > GHC/96.33.964"
+   ]
+  },
+  "строка_html": 369,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.33.964",
+  "N": 96,
+  "M": 48,
+  "ранг": 48,
+  "K": 48,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 3,
+  "заголовок": "96.3.965 (N=96,K=48,M=48,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "96"
+   ],
+   "M": [
+    "48"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=965 N=96 GH/spec3  > GHC/96.3.965"
+   ]
+  },
+  "строка_html": 381,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.3.965",
+  "N": 96,
+  "M": 48,
+  "ранг": 46,
+  "K": 50,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 4,
+  "заголовок": "96.33.966 (N=96,K=48,M=48,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "96"
+   ],
+   "M": [
+    "48"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=966 N=96 GH/spec33 > GHC/96.33.966"
+   ]
+  },
+  "строка_html": 393,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.33.966",
+  "N": 96,
+  "M": 48,
+  "ранг": 48,
+  "K": 48,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 5,
+  "заголовок": "96.3.967 (N=96,K=48,M=48,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "96"
+   ],
+   "M": [
+    "48"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=967 N=96 GH/spec3  > GHC/96.3.967"
+   ]
+  },
+  "строка_html": 405,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.3.967",
+  "N": 96,
+  "M": 48,
+  "ранг": 46,
+  "K": 50,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 6,
+  "заголовок": "96.33.968 (N=96,K=48,M=48,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "96"
+   ],
+   "M": [
+    "48"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ]
+  },
+  "строка_html": 417,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.33.968",
+  "N": 96,
+  "M": 48,
+  "ранг": 48,
+  "K": 48,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 7,
+  "заголовок": "EN/C/204.3.483 (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=483 N=204 GH/spec3  > GHC/204.3.483"
+   ]
+  },
+  "строка_html": 429,
+  "alist": null
+ },
+ {
+  "номер": 8,
+  "заголовок": "204.33.484 (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=484 N=204 GH/spec33 > GHC/204.33.484"
+   ]
+  },
+  "строка_html": 440,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/204.33.484",
+  "N": 204,
+  "M": 102,
+  "ранг": 102,
+  "K": 102,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 612,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 9,
+  "заголовок": "204.3.485 (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=485 N=204 GH/spec3  > GHC/204.3.485"
+   ]
+  },
+  "строка_html": 452,
+  "alist": null
+ },
+ {
+  "номер": 10,
+  "заголовок": "204.33.486 (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=486 N=204 GH/spec33 > GHC/204.33.486"
+   ]
+  },
+  "строка_html": 463,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/204.33.486",
+  "N": 204,
+  "M": 102,
+  "ранг": 102,
+  "K": 102,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 612,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 11,
+  "заголовок": "204.3.487 (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=487 N=204 GH/spec3  > GHC/204.3.487"
+   ]
+  },
+  "строка_html": 475,
+  "alist": null
+ },
+ {
+  "номер": 12,
+  "заголовок": "204.33.488 (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=488 N=204 GH/spec33 > GHC/204.33.488"
+   ]
+  },
+  "строка_html": 486,
+  "alist": null
+ },
+ {
+  "номер": 13,
+  "заголовок": "408.3.834 (N=408,K=204,M=204,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "408"
+   ],
+   "M": [
+    "204"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=834 N=408 GH/spec3  > GHC/408.3.834"
+   ]
+  },
+  "строка_html": 498,
+  "alist": null
+ },
+ {
+  "номер": 14,
+  "заголовок": "408.33.844 (N=408,K=204,M=204,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "408"
+   ],
+   "M": [
+    "204"
+   ],
+   "author": [
+    "D.J.C. MacKay (recreated March 2009)"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=844 N=408 GH/spec33 > GHC/408.33.844"
+   ]
+  },
+  "строка_html": 509,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/408.33.844",
+  "N": 408,
+  "M": 204,
+  "ранг": 204,
+  "K": 204,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 1224,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 15,
+  "заголовок": "408.3.854 (N=408,K=204,M=204,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "408"
+   ],
+   "M": [
+    "204"
+   ],
+   "author": [
+    "D.J.C. MacKay (recreated March 2009)"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=854 N=408 GH/spec3  > GHC/408.3.854"
+   ]
+  },
+  "строка_html": 521,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/408.3.854",
+  "N": 408,
+  "M": 204,
+  "ранг": 202,
+  "K": 206,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 1224,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 16,
+  "заголовок": "408.33.864 (N=408,K=204,M=204,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "408"
+   ],
+   "M": [
+    "204"
+   ],
+   "author": [
+    "D.J.C. MacKay (recreated March 2009)"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=864 N=408 GH/spec33 > GHC/408.33.864"
+   ]
+  },
+  "строка_html": 533,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/408.33.864",
+  "N": 408,
+  "M": 204,
+  "ранг": 204,
+  "K": 204,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 1224,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 17,
+  "заголовок": "408.3.874 (N=408,K=204,M=204,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "408"
+   ],
+   "M": [
+    "204"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=874 N=408 GH/spec3  > GHC/408.3.874"
+   ]
+  },
+  "строка_html": 545,
+  "alist": null
+ },
+ {
+  "номер": 18,
+  "заголовок": "408.33.884 (N=408,K=204,M=204,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "408"
+   ],
+   "M": [
+    "204"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=884 N=408 GH/spec33 > GHC/408.33.884"
+   ]
+  },
+  "строка_html": 556,
+  "alist": null
+ },
+ {
+  "номер": 19,
+  "заголовок": "816.3.134 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=134 N=816 GH/spec3  >  GHC/816.3.134"
+   ]
+  },
+  "строка_html": 567,
+  "alist": null
+ },
+ {
+  "номер": 20,
+  "заголовок": "816.33.144 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=144 N=816 GH/spec33 > GHC/816.33.144"
+   ]
+  },
+  "строка_html": 578,
+  "alist": null
+ },
+ {
+  "номер": 21,
+  "заголовок": "816.3.154 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=154 N=816 GH/spec3  >  GHC/816.3.154"
+   ]
+  },
+  "строка_html": 589,
+  "alist": null
+ },
+ {
+  "номер": 22,
+  "заголовок": "816.33.164 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=164 N=816 GH/spec33 > GHC/816.33.164"
+   ]
+  },
+  "строка_html": 600,
+  "alist": null
+ },
+ {
+  "номер": 23,
+  "заголовок": "816.3.174 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=174 N=816 GH/spec3  >  GHC/816.3.174"
+   ]
+  },
+  "строка_html": 611,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/816.3.174",
+  "N": 816,
+  "M": 408,
+  "ранг": 406,
+  "K": 410,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 2448,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 24,
+  "заголовок": "816.33.184 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=184 N=816 GH/spec33 > GHC/816.33.184"
+   ]
+  },
+  "строка_html": 623,
+  "alist": null
+ },
+ {
+  "номер": 25,
+  "заголовок": "252.252.3.252 (N=504,K=252,M=252,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "504"
+   ],
+   "M": [
+    "252"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "code4r -cheap 1 -n 252 -t1 3 -v 0 -rho 1 -hd 3 -seed 252"
+   ]
+  },
+  "строка_html": 634,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/252.252.3.252",
+  "N": 504,
+  "M": 252,
+  "ранг": 252,
+  "K": 252,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 1512,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 26,
+  "заголовок": "504.504.3.504 (N=1008,K=504,M=504,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "1008"
+   ],
+   "M": [
+    "504"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "t": [
+    "3"
+   ],
+   "created": [
+    "code4r -cheap 1 -n 504 -t1 3 -v 0 -rho 1 -hd 3 -seed 504"
+   ]
+  },
+  "строка_html": 644,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/504.504.3.504",
+  "N": 1008,
+  "M": 504,
+  "ранг": 504,
+  "K": 504,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 3024,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 27,
+  "заголовок": "Margulis2640.1320.3 (N=2640,K=1320,M=1320,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "2640"
+   ],
+   "M": [
+    "1320"
+   ],
+   "t": [
+    "3"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "author": [
+    "Mike Postol + David MacKay"
+   ],
+   "created": [
+    "This is Margulis's Cayley graph construction with p=11. It has distance <= 220. It has a (12,4) near-codeword."
+   ]
+  },
+  "строка_html": 655,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/Margulis2640.1320.3",
+  "N": 2640,
+  "M": 1320,
+  "ранг": 1320,
+  "K": 1320,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 7920,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 28,
+  "заголовок": "ram17.5 (N=4896,K=2448,M=2448,R=   0.5053)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "4896"
+   ],
+   "M": [
+    "2448"
+   ],
+   "Mtrue": [
+    "2422"
+   ],
+   "Ktrue": [
+    "2474"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "Pascal Vontobel and Joachim Rosenthal."
+   ],
+   "created": [
+    "Constructed using Ramanujan graphs and ideas from Margulis. (q=17, p=5) (Allerton 2000)"
+   ]
+  },
+  "строка_html": 668,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/ram17.5",
+  "N": 4896,
+  "M": 2448,
+  "ранг": 2422,
+  "K": 2474,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 14688,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 29,
+  "заголовок": "ram13.11.5 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {},
+  "строка_html": 680,
+  "alist": null
+ },
+ {
+  "номер": 30,
+  "заголовок": "4000.2000.3.243 (N=4000,K=2000,M=2000,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "4000"
+   ],
+   "M": [
+    "2000"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "t": [
+    "3"
+   ],
+   "created": [
+    "code6 -n1 0 -n 4000 -t2 3 -t1 3 -v 0 -m 2000 -seed 243 -o GHC/4000.2000.3.243"
+   ]
+  },
+  "строка_html": 684,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4000.2000.3.243.gz",
+  "N": 4000,
+  "M": 2000,
+  "ранг": 2000,
+  "K": 2000,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 12000,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 31,
+  "заголовок": "8000.4000.3.483 (N=8000,K=4000,M=4000,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "8000"
+   ],
+   "M": [
+    "4000"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "t": [
+    "3"
+   ],
+   "created": [
+    "code6 -n1 0 -n 8000 -t2 3 -t1 3 -v 0 -m 4000 -seed 483 -o GHC/8000.4000.3.483"
+   ]
+  },
+  "строка_html": 697,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/8000.4000.3.483.gz",
+  "N": 8000,
+  "M": 4000,
+  "ранг": 4000,
+  "K": 4000,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 24000,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 32,
+  "заголовок": "10000.10000.3.631 (N=20000,K=10000,M=10000,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "20000"
+   ],
+   "M": [
+    "10000"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "t": [
+    "3"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 710,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/10000.10000.3.631/A",
+  "N": 20000,
+  "M": 10000,
+  "ранг": 10000,
+  "K": 10000,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 60000,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 33,
+  "заголовок": "816.4.383 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=383 N=816 GH/spec4  >  GHC/816.4.383"
+   ]
+  },
+  "строка_html": 721,
+  "alist": null
+ },
+ {
+  "номер": 34,
+  "заголовок": "816.44.434 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=434 N=816 GH/spec44 > GHC/816.44.434"
+   ]
+  },
+  "строка_html": 732,
+  "alist": null
+ },
+ {
+  "номер": 35,
+  "заголовок": "816.4.545 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=545 N=816 GH/spec4  >  GHC/816.4.545"
+   ]
+  },
+  "строка_html": 743,
+  "alist": null
+ },
+ {
+  "номер": 36,
+  "заголовок": "816.44.656 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=656 N=816 GH/spec44 > GHC/816.44.656"
+   ]
+  },
+  "строка_html": 754,
+  "alist": null
+ },
+ {
+  "номер": 37,
+  "заголовок": "816.4.767 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=767 N=816 GH/spec4  >  GHC/816.4.767"
+   ]
+  },
+  "строка_html": 765,
+  "alist": null
+ },
+ {
+  "номер": 38,
+  "заголовок": "816.44.878 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=878 N=816 GH/spec44 > GHC/816.44.878"
+   ]
+  },
+  "строка_html": 776,
+  "alist": null
+ },
+ {
+  "номер": 39,
+  "заголовок": "4000.2000.4.244 (N=4000,K=2000,M=2000,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "4000"
+   ],
+   "M": [
+    "2000"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "t": [
+    "4"
+   ],
+   "created": [
+    "code6 -n1 0 -n 4000 -t2 4 -t1 4 -v 0 -m 2000 -seed 244 -o GHC/4000.2000.4.244"
+   ]
+  },
+  "строка_html": 788,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4000.2000.4.244.gz",
+  "N": 4000,
+  "M": 2000,
+  "ранг": 1999,
+  "K": 2001,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   8
+  ],
+  "единиц": 16000,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 40,
+  "заголовок": "8000.4000.4.484 (N=8000,K=4000,M=4000,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "8000"
+   ],
+   "M": [
+    "4000"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "t": [
+    "4"
+   ],
+   "created": [
+    "code6 -n1 0 -n 8000 -t2 4 -t1 4 -v 0 -m 4000 -seed 484 -o GHC/8000.4000.4.484"
+   ]
+  },
+  "строка_html": 801,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/8000.4000.4.484.gz",
+  "N": 8000,
+  "M": 4000,
+  "ранг": 3999,
+  "K": 4001,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   8
+  ],
+  "единиц": 32000,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 41,
+  "заголовок": "96.44.443 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=548 N=96 GH/spec44 > GHC/96.44.443"
+   ]
+  },
+  "строка_html": 814,
+  "alist": null
+ },
+ {
+  "номер": 42,
+  "заголовок": "96.44.665 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=665 N=96 GH/spec44 > GHC/96.44.665"
+   ]
+  },
+  "строка_html": 826,
+  "alist": null
+ },
+ {
+  "номер": 43,
+  "заголовок": "96.44.887 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=887 N=96 GH/spec44 > GHC/96.44.887"
+   ]
+  },
+  "строка_html": 838,
+  "alist": null
+ },
+ {
+  "номер": 44,
+  "заголовок": "60.44.246 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=548 N=60 GH/spec44 > GHC/60.44.246"
+   ]
+  },
+  "строка_html": 850,
+  "alist": null
+ },
+ {
+  "номер": 45,
+  "заголовок": "816.55.134 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=5",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=434 N=816 GH/spec55 > GHC/816.55.134"
+   ]
+  },
+  "строка_html": 861,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/816.55.134",
+  "N": 816,
+  "M": 408,
+  "ранг": 408,
+  "K": 408,
+  "веса_столбцов": [
+   5
+  ],
+  "веса_строк": [
+   10
+  ],
+  "единиц": 4080,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 46,
+  "заголовок": "816.55.156 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=5",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=656 N=816 GH/spec55 > GHC/816.55.156"
+   ]
+  },
+  "строка_html": 873,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/816.55.156",
+  "N": 816,
+  "M": 408,
+  "ранг": 408,
+  "K": 408,
+  "веса_столбцов": [
+   5
+  ],
+  "веса_строк": [
+   10
+  ],
+  "единиц": 4080,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 47,
+  "заголовок": "816.55.178  (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=5",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=878 N=816 GH/spec55 > GHC/816.55.178"
+   ]
+  },
+  "строка_html": 885,
+  "alist": null
+ },
+ {
+  "номер": 48,
+  "заголовок": "204.55.187  (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=5",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=837    N=204 GH/spec55 > GHC/204.55.187"
+   ]
+  },
+  "строка_html": 897,
+  "alist": null
+ },
+ {
+  "номер": 49,
+  "заголовок": "204.55.165  (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=5",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=521679 N=204 GH/spec55 > GHC/204.55.165"
+   ]
+  },
+  "строка_html": 909,
+  "alist": null
+ },
+ {
+  "номер": 50,
+  "заголовок": "204.55.153   (N=204,K=102,M=102,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=5",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "204"
+   ],
+   "M": [
+    "102"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=41627  N=204 GH/spec55 > GHC/204.55.153"
+   ]
+  },
+  "строка_html": 921,
+  "alist": null
+ },
+ {
+  "номер": 51,
+  "заголовок": "816.66.634 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=6",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=434 N=816 GH/spec66 > GHC/816.66.634"
+   ]
+  },
+  "строка_html": 933,
+  "alist": null
+ },
+ {
+  "номер": 52,
+  "заголовок": "816.66.656 (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=6",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=656 N=816 GH/spec66 > GHC/816.66.656"
+   ]
+  },
+  "строка_html": 944,
+  "alist": null
+ },
+ {
+  "номер": 53,
+  "заголовок": "816.66.678  (N=816,K=408,M=408,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Column weight t=6",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "408"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "created": [
+    "GHG.p seed=878 N=816 GH/spec66 > GHC/816.66.678"
+   ]
+  },
+  "строка_html": 955,
+  "alist": null
+ },
+ {
+  "номер": 54,
+  "заголовок": "4986.93xb.329 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3,9"
+   ],
+   "comment": [
+    "\"Super Poisson\" code labelled '93x'. Simulations reported in \"Comparison of Construction of Irregular Gallager Codes\" in Trans. on Comm. vol 47, oct. 1999 used up to a maximum of 200 iterations."
+   ],
+   "created": [
+    "GH.p file=GH93xb.p spec93xb   \tGH93xb.p seed=329 M=4986 > ../GHC/4986.93xb.329"
+   ]
+  },
+  "строка_html": 966,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.93xb.329.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4986,
+  "K": 4986,
+  "веса_столбцов": [
+   3,
+   9
+  ],
+  "веса_строк": [
+   7
+  ],
+  "единиц": 34902,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 55,
+  "заголовок": "4986.93y.654 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3,9"
+   ],
+   "comment": [
+    "\"Super Poisson code\" labelled '93y'. Simulations reported in \"Comparison of Construction of Irregular Gallager Codes\" in Trans. on Comm. vol 47, oct. 1999 used up to a maximum of 200 iterations."
+   ],
+   "created": [
+    "GH.p file=GH93y.p spec93y \tGH93y.p seed=654 M=4986 > ../GHC/4986.93y.654"
+   ]
+  },
+  "строка_html": 977,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.93y.654.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4986,
+  "K": 4986,
+  "веса_столбцов": [
+   3,
+   9
+  ],
+  "веса_строк": [
+   7
+  ],
+  "единиц": 34902,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 56,
+  "заголовок": "4986.l3u.306 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3,9"
+   ],
+   "comment": [
+    "4986.l3u.306  Linear-time encodeable 'l3'"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 988,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.l3u.306.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4986,
+  "K": 4986,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 29916,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 57,
+  "заголовок": "4986.l93.193 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3,9"
+   ],
+   "comment": [
+    "4986.l93.193  Linear-time encodeable  'l93y'. Note this file name contains                    the characters l(L) and 1(one)."
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 999,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.l93.193.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4986,
+  "K": 4986,
+  "веса_столбцов": [
+   3,
+   9
+  ],
+  "веса_строк": [
+   7
+  ],
+  "единиц": 34902,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 58,
+  "заголовок": "4986.93.128 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3,9"
+   ],
+   "comment": [
+    "4986.93.128   \"Sub-Poisson code\" is labelled '93a'"
+   ],
+   "created": [
+    "GH93b.p seed=128 M=4986 > ../GHC/4986.93.128"
+   ]
+  },
+  "строка_html": 1010,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.93.128.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4984,
+  "K": 4988,
+  "веса_столбцов": [
+   3,
+   9
+  ],
+  "веса_строк": [
+   7
+  ],
+  "единиц": 34902,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 59,
+  "заголовок": "4986.93i.939 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3,9"
+   ],
+   "comment": [
+    "4986.93i.939  \"Poisson\" code, is labelled '93p'"
+   ],
+   "created": [
+    "Using Matthew Davey's \"irreg\" software:\t irreg -i ispec/93 -c > ../GHC/4986.93i.939"
+   ]
+  },
+  "строка_html": 1021,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.93i.939.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4986,
+  "K": 4986,
+  "веса_столбцов": [
+   3,
+   5,
+   9
+  ],
+  "веса_строк": [
+   6,
+   7
+  ],
+  "единиц": 34900,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 60,
+  "заголовок": "4986.3.333 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3"
+   ],
+   "comment": [
+    "4986.3.333    Regular weight 3 code is labelled '3'"
+   ],
+   "created": [
+    "GH3.p seed=333 M=4986 > ../GHC/4986.3.333"
+   ]
+  },
+  "строка_html": 1032,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.3.333.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4984,
+  "K": 4988,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 29916,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 61,
+  "заголовок": "4986.33.330 (N=9972 ,K=4986,M=4986,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Irregular codes with rate 1/2",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "9972"
+   ],
+   "M": [
+    "4986"
+   ],
+   "t": [
+    "3"
+   ],
+   "comment": [
+    "4986.33.330   Regular weight 3 code is labelled '33'"
+   ],
+   "created": [
+    "GH33.p seed=330 M=4986 > ../GHC/4986.33.330"
+   ]
+  },
+  "строка_html": 1043,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4986.33.330.gz",
+  "N": 9972,
+  "M": 4986,
+  "ранг": 4986,
+  "K": 4986,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 29916,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 62,
+  "заголовок": "PEGReg252x504 (N=504 ,K=252,M=252,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Regular and Irregular codes with rate 1/2, Progressive Edge Growth (PEG) construction",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "Xiao-Yu Hu, IBM Zurich research labs"
+   ],
+   "N": [
+    "504"
+   ],
+   "M": [
+    "252"
+   ],
+   "t": [
+    "3"
+   ],
+   "comment": [
+    "Progressive Edge Growth construction attempts to maximize girth, and empirically gives very good codes.  This is the best known regular Gallager code with these parameters (M,N,t) [Best in the sense of perfromance on AWGN, Wed 11/5/05]. The code is not quite regular in row-degree."
+   ],
+   "created": [
+    "MainPEG"
+   ]
+  },
+  "строка_html": 1054,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/PEGReg252x504.gz",
+  "N": 504,
+  "M": 252,
+  "ранг": 252,
+  "K": 252,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   5,
+   6,
+   7
+  ],
+  "единиц": 1512,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 63,
+  "заголовок": "PEGReg504x1008 (N=1008 ,K=504,M=504,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Regular and Irregular codes with rate 1/2, Progressive Edge Growth (PEG) construction",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "Xiao-Yu Hu, IBM Zurich research labs"
+   ],
+   "N": [
+    "1008"
+   ],
+   "M": [
+    "504"
+   ],
+   "t": [
+    "3"
+   ],
+   "comment": [
+    "Progressive Edge Growth construction attempts to maximize girth, and empirically gives very good codes. This is the best known regular Gallager code with these parameters (M,N,t) [Best in the sense of perfromance on AWGN, Wed 11/5/05]. The code is not quite regular in row-degree."
+   ],
+   "created": [
+    "MainPEG"
+   ]
+  },
+  "строка_html": 1065,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/PEGReg504x1008.gz",
+  "N": 1008,
+  "M": 504,
+  "ранг": 504,
+  "K": 504,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   5,
+   6,
+   7,
+   8
+  ],
+  "единиц": 3024,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 64,
+  "заголовок": "PEGirReg252x504 (N=504 ,K=252,M=252,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Regular and Irregular codes with rate 1/2, Progressive Edge Growth (PEG) construction",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "Xiao-Yu Hu, IBM Zurich research labs"
+   ],
+   "N": [
+    "504"
+   ],
+   "M": [
+    "252"
+   ],
+   "comment": [
+    "Progressive Edge Growth construction attempts to maximize girth, and empirically gives very good codes. This is the best known code with these parameters (N,M).  [Best in the sense of perfromance on AWGN, Wed 11/5/05]"
+   ],
+   "created": [
+    "MainPEG"
+   ]
+  },
+  "строка_html": 1076,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/PEGirReg252x504.gz",
+  "N": 504,
+  "M": 252,
+  "ранг": 252,
+  "K": 252,
+  "веса_столбцов": [
+   2,
+   3,
+   4,
+   5,
+   7,
+   14,
+   15
+  ],
+  "веса_строк": [
+   7,
+   8,
+   9
+  ],
+  "единиц": 2014,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 65,
+  "заголовок": "PEGirReg504x1008 (N=1008 ,K=504,M=504,R=      0.5)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Regular and Irregular codes with rate 1/2, Progressive Edge Growth (PEG) construction",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "Xiao-Yu Hu, IBM Zurich research labs"
+   ],
+   "N": [
+    "1008"
+   ],
+   "M": [
+    "504"
+   ],
+   "comment": [
+    "Progressive Edge Growth construction attempts to maximize girth, and empirically gives very good codes. The best known code with these parameters (N,M).  [Best in the sense of perfromance on AWGN, Wed 11/5/05]"
+   ],
+   "created": [
+    "MainPEG"
+   ]
+  },
+  "строка_html": 1086,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/PEGirReg504x1008.gz",
+  "N": 1008,
+  "M": 504,
+  "ранг": 504,
+  "K": 504,
+  "веса_столбцов": [
+   2,
+   3,
+   4,
+   5,
+   7,
+   14,
+   15
+  ],
+  "веса_строк": [
+   7,
+   8,
+   9
+  ],
+  "единиц": 4033,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 66,
+  "заголовок": "PEGirUppTriang1030x2048 (N=2048 ,K=1018,M=1030,R=   0.4971)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Regular and Irregular codes with rate 1/2, Progressive Edge Growth (PEG) construction",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "Xiao-Yu Hu, IBM Zurich research labs"
+   ],
+   "N": [
+    "2048"
+   ],
+   "M": [
+    "1030"
+   ],
+   "comment": [
+    "Progressive Edge Growth construction attempts to maximize girth, and empirically gives very good codes.  This code is upper triangular, so fast-encodeable."
+   ],
+   "created": [
+    "MainPEG"
+   ]
+  },
+  "строка_html": 1096,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/PEGirUppTriang1030x2048.gz",
+  "N": 2048,
+  "M": 1030,
+  "ранг": 1030,
+  "K": 1018,
+  "веса_столбцов": [
+   1,
+   2,
+   3,
+   6,
+   7,
+   14,
+   15
+  ],
+  "веса_строк": [
+   7,
+   8,
+   9
+  ],
+  "единиц": 7636,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 67,
+  "заголовок": "PEGirUppTriang518x1024 (N=1024 ,K=506,M=518,R=   0.4941)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/2 > Regular and Irregular codes with rate 1/2, Progressive Edge Growth (PEG) construction",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "Xiao-Yu Hu, IBM Zurich research labs"
+   ],
+   "N": [
+    "1024"
+   ],
+   "M": [
+    "518"
+   ],
+   "comment": [
+    "Progressive Edge Growth construction attempts to maximize girth, and empirically gives very good codes. This code is upper triangular, so fast-encodeable."
+   ],
+   "created": [
+    "MainPEG"
+   ]
+  },
+  "строка_html": 1106,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/PEGirUppTriang518x1024.gz",
+  "N": 1024,
+  "M": 518,
+  "ранг": 518,
+  "K": 506,
+  "веса_столбцов": [
+   1,
+   2,
+   3,
+   6,
+   7,
+   14,
+   15
+  ],
+  "веса_строк": [
+   7,
+   8
+  ],
+  "единиц": 3815,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 68,
+  "заголовок": "1920.1280.3.303 (N=1920,K=640,M=1280,R=   0.3333)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "N": [
+    "1920"
+   ],
+   "M": [
+    "1280"
+   ],
+   "t": [
+    "3"
+   ],
+   "comment": [
+    "For proposed international standard for cellular telephones"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1116,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1920.1280.3.303.gz",
+  "N": 1920,
+  "M": 1280,
+  "ранг": 1280,
+  "K": 640,
+  "веса_столбцов": [
+   2,
+   3
+  ],
+  "веса_строк": [
+   4
+  ],
+  "единиц": 5120,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 69,
+  "заголовок": "816.1A3.833 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=833 N=816 GH/spec1A3 >  GHC/816.1A3.833"
+   ]
+  },
+  "строка_html": 1127,
+  "alist": null
+ },
+ {
+  "номер": 70,
+  "заголовок": "816.2A3.344 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=344 N=816 GH/spec2A3 >  GHC/816.2A3.344"
+   ]
+  },
+  "строка_html": 1138,
+  "alist": null
+ },
+ {
+  "номер": 71,
+  "заголовок": "816.1A3.455 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=455 N=816 GH/spec1A3 >  GHC/816.1A3.455"
+   ]
+  },
+  "строка_html": 1149,
+  "alist": null
+ },
+ {
+  "номер": 72,
+  "заголовок": "816.2A3.566 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=566 N=816 GH/spec2A3 >  GHC/816.2A3.566"
+   ]
+  },
+  "строка_html": 1160,
+  "alist": null
+ },
+ {
+  "номер": 73,
+  "заголовок": "816.1A3.677 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=677 N=816 GH/spec1A3 >  GHC/816.1A3.677"
+   ]
+  },
+  "строка_html": 1171,
+  "alist": null
+ },
+ {
+  "номер": 74,
+  "заголовок": "816.2A3.788  (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=788 N=816 GH/spec2A3 >  GHC/816.2A3.788"
+   ]
+  },
+  "строка_html": 1182,
+  "alist": null
+ },
+ {
+  "номер": 75,
+  "заголовок": "408.1A3.832 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=832 N=408 GH/spec1A3 >  GHC/408.1A3.832"
+   ]
+  },
+  "строка_html": 1193,
+  "alist": null
+ },
+ {
+  "номер": 76,
+  "заголовок": "408.2A3.342 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=342 N=408 GH/spec2A3 >  GHC/408.2A3.342"
+   ]
+  },
+  "строка_html": 1204,
+  "alist": null
+ },
+ {
+  "номер": 77,
+  "заголовок": "408.1A3.452 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=452 N=408 GH/spec1A3 >  GHC/408.1A3.452"
+   ]
+  },
+  "строка_html": 1215,
+  "alist": null
+ },
+ {
+  "номер": 78,
+  "заголовок": "408.2A3.564 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=564 N=408 GH/spec2A3 >  GHC/408.2A3.564"
+   ]
+  },
+  "строка_html": 1226,
+  "alist": null
+ },
+ {
+  "номер": 79,
+  "заголовок": "408.1A3.675 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=675 N=408 GH/spec1A3 >  GHC/408.1A3.675"
+   ]
+  },
+  "строка_html": 1237,
+  "alist": null
+ },
+ {
+  "номер": 80,
+  "заголовок": "408.2A3.786  (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=2,3 or 3",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=786 N=408 GH/spec2A3 >  GHC/408.2A3.786"
+   ]
+  },
+  "строка_html": 1248,
+  "alist": null
+ },
+ {
+  "номер": 81,
+  "заголовок": "408.1A4.482 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=482 N=408 GH/spec1A4 >  GHC/408.1A4.482"
+   ]
+  },
+  "строка_html": 1259,
+  "alist": null
+ },
+ {
+  "номер": 82,
+  "заголовок": "408.1A4.483 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=483 N=408 GH/spec1A4 >  GHC/408.1A4.483"
+   ]
+  },
+  "строка_html": 1270,
+  "alist": null
+ },
+ {
+  "номер": 83,
+  "заголовок": "408.1A4.485 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=485 N=408 GH/spec1A4 >  GHC/408.1A4.485"
+   ]
+  },
+  "строка_html": 1281,
+  "alist": null
+ },
+ {
+  "номер": 84,
+  "заголовок": "816.1A4.842 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=842 N=816 GH/spec1A4 >  GHC/816.1A4.842"
+   ]
+  },
+  "строка_html": 1292,
+  "alist": null
+ },
+ {
+  "номер": 85,
+  "заголовок": "816.1A4.843 (N=816 ,K=272,M=544,R=   0.3346)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=4",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "544"
+   ],
+   "Mtrue": [
+    "543"
+   ],
+   "Ktrue": [
+    "273"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "comment": [
+    "Obviously, since this code has all columns           of even weight, it must have not-full rank."
+   ],
+   "created": [
+    "GHG.p seed=843 N=816 GH/spec1A4 >  GHC/816.1A4.843"
+   ]
+  },
+  "строка_html": 1303,
+  "alist": null
+ },
+ {
+  "номер": 86,
+  "заголовок": "816.1A4.845 (N=816,K=272,M=544,R=   0.3333)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=4",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "816"
+   ],
+   "M": [
+    "544"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=845 N=816 GH/spec1A4 >  GHC/816.1A4.845"
+   ]
+  },
+  "строка_html": 1317,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/816.1A4.843",
+  "N": 816,
+  "M": 544,
+  "ранг": 543,
+  "K": 273,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   6
+  ],
+  "единиц": 3264,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 87,
+  "заголовок": "60.1A4.246 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight 4, tiny block length",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=548 N=60 GH/spec1A4 > GHC/60.1A4.246"
+   ]
+  },
+  "строка_html": 1329,
+  "alist": null
+ },
+ {
+  "номер": 88,
+  "заголовок": "60.1A4.245 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight 4, tiny block length",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=545 N=60 GH/spec1A4 > GHC/60.1A4.245"
+   ],
+   "comment": [
+    "has a weight 9 codeword (and none smaller)"
+   ]
+  },
+  "строка_html": 1340,
+  "alist": null
+ },
+ {
+  "номер": 89,
+  "заголовок": "54.1A4.254  (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight 4, tiny block length",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=142 N=54 GH/spec1A4 > GHC/54.1A4.254"
+   ]
+  },
+  "строка_html": 1352,
+  "alist": null
+ },
+ {
+  "номер": 90,
+  "заголовок": "54.1A4.253  (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight 4, tiny block length",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=140 N=54 GH/spec1A4 > GHC/54.1A4.253"
+   ]
+  },
+  "строка_html": 1363,
+  "alist": null
+ },
+ {
+  "номер": 91,
+  "заголовок": "48.1A4.153 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight 4, tiny block length",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=1153 N=48 GH/spec1A4 > GHC/48.1A4.153"
+   ],
+   "comment": [
+    "has distance 8.\tThis is an example of a code with (rate,distance) beyond the \tGilbert bound: R_GV(8) =  1.0 - H(8.0/48.0) = 0.34997."
+   ],
+   "Ktrue": [
+    "17"
+   ]
+  },
+  "строка_html": 1374,
+  "alist": null
+ },
+ {
+  "номер": 92,
+  "заголовок": "48.1A4.154 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight 4, tiny block length",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "Ktrue": [
+    "17"
+   ],
+   "created": [
+    "GHG.p seed=1163 N=48 tries=1000  GH/spec1A4 > GHC/48.1A4.154"
+   ],
+   "comment": [
+    "has distance 8\tThis is an example of a code with (rate,distance) beyond the \tGilbert bound: R_GV(8) =  1.0 - H(8.0/48.0) = 0.34997."
+   ]
+  },
+  "строка_html": 1387,
+  "alist": null
+ },
+ {
+  "номер": 93,
+  "заголовок": "48.1A4.158  (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight 4, tiny block length",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "Ktrue": [
+    "17"
+   ],
+   "created": [
+    "GHG.p seed=1400 N=48 tries=1000  GH/spec1A4 > GHC/48.1A4.158"
+   ],
+   "comment": [
+    "has distance greater than 8\tThis is an example of a code with (rate,distance) beyond the \tGilbert bound: R_GV(8) =  1.0 - H(8.0/48.0) = 0.34997."
+   ]
+  },
+  "строка_html": 1400,
+  "alist": null
+ },
+ {
+  "номер": 94,
+  "заголовок": "204.1A6.138  (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=6245399 N=204 GH/spec1A6 > GHC/204.1A6.138"
+   ]
+  },
+  "строка_html": 1413,
+  "alist": null
+ },
+ {
+  "номер": 95,
+  "заголовок": "204.1A6.139 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=46245399 N=204 GH/spec1A6 > GHC/204.1A6.139"
+   ]
+  },
+  "строка_html": 1424,
+  "alist": null
+ },
+ {
+  "номер": 96,
+  "заголовок": "204.1A6.338  (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=263438 N=204 GH/spec1A6 >  GHC/204.1A6.338"
+   ]
+  },
+  "строка_html": 1435,
+  "alist": null
+ },
+ {
+  "номер": 97,
+  "заголовок": "96.1A3.838 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=838 N=96 GH/spec1A3 >  GHC/96.1A3.838"
+   ]
+  },
+  "строка_html": 1446,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.1A3.838",
+  "N": 96,
+  "M": 64,
+  "ранг": 64,
+  "K": 32,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   4,
+   5
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 98,
+  "заголовок": "96.2A3.343 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=343 N=96 GH/spec2A3 >  GHC/96.2A3.343"
+   ]
+  },
+  "строка_html": 1458,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.2A3.343",
+  "N": 96,
+  "M": 64,
+  "ранг": 64,
+  "K": 32,
+  "веса_столбцов": [
+   2,
+   3
+  ],
+  "веса_строк": [
+   4
+  ],
+  "единиц": 256,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 99,
+  "заголовок": "96.1A3.454 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=454 N=96 GH/spec1A3 >  GHC/96.1A3.454"
+   ]
+  },
+  "строка_html": 1470,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.1A3.454",
+  "N": 96,
+  "M": 64,
+  "ранг": 64,
+  "K": 32,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   4,
+   5
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 100,
+  "заголовок": "96.2A3.565 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=565 N=96 GH/spec2A3 >  GHC/96.2A3.565"
+   ]
+  },
+  "строка_html": 1482,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.2A3.565",
+  "N": 96,
+  "M": 64,
+  "ранг": 64,
+  "K": 32,
+  "веса_столбцов": [
+   2,
+   3
+  ],
+  "веса_строк": [
+   4
+  ],
+  "единиц": 256,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 101,
+  "заголовок": "96.1A3.676 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=676 N=96 GH/spec1A3 >  GHC/96.1A3.676"
+   ]
+  },
+  "строка_html": 1494,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.1A3.676",
+  "N": 96,
+  "M": 64,
+  "ранг": 64,
+  "K": 32,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   4,
+   5
+  ],
+  "единиц": 288,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 102,
+  "заголовок": "96.2A3.787 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > Gallager codes with rate 1/3 > Column weight t=6",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "GHG.p seed=787 N=96 GH/spec2A3 >  GHC/96.2A3.787"
+   ]
+  },
+  "строка_html": 1506,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/96.2A3.787",
+  "N": 96,
+  "M": 64,
+  "ранг": 64,
+  "K": 32,
+  "веса_столбцов": [
+   2,
+   3
+  ],
+  "веса_строк": [
+   4
+  ],
+  "единиц": 256,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 103,
+  "заголовок": "120.64.3.109 (N=120,K=56,M=64,R=   0.4667)",
+  "раздел": "Gallager codes > Assorted Regular Gallager codes",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "120"
+   ],
+   "M": [
+    "64"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 120 -t1 3 -v 0 -m 64 -hd 3 -seed 1912 -o GHC/120.64.3.109"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1518,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/120.64.3.109",
+  "N": 120,
+  "M": 64,
+  "ранг": 64,
+  "K": 56,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   5,
+   6
+  ],
+  "единиц": 360,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 104,
+  "заголовок": "120.64.3.110 (N=120,K=56,M=64,R=   0.4667)",
+  "раздел": "Gallager codes > Assorted Regular Gallager codes",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "120"
+   ],
+   "M": [
+    "64"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 120 -t1 3 -v 0 -m 64 -hd 3 -seed 1091 -o GHC/120.64.3.110"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1529,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/120.64.3.110",
+  "N": 120,
+  "M": 64,
+  "ранг": 64,
+  "K": 56,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   5,
+   6
+  ],
+  "единиц": 360,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 105,
+  "заголовок": "120.64.3.111 (N=120,K=56,M=64,R=   0.4667)",
+  "раздел": "Gallager codes > Assorted Regular Gallager codes",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "120"
+   ],
+   "M": [
+    "64"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 120 -t1 3 -v 0 -m 64 -hd 3 -seed 1093 -o GHC/120.64.3.111"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1540,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/120.64.3.111",
+  "N": 120,
+  "M": 64,
+  "ранг": 64,
+  "K": 56,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   5,
+   6
+  ],
+  "единиц": 360,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 106,
+  "заголовок": "271.127.3.112 (N=271,K=144,M=127,R=   0.5314)",
+  "раздел": "Gallager codes > Assorted Regular Gallager codes",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "271"
+   ],
+   "M": [
+    "127"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 271 -t1 3 -v 0 -m 127 -hd 3 -seed 1094 -o GHC/271.127.3.112"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1551,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/271.127.3.112",
+  "N": 271,
+  "M": 127,
+  "ранг": 127,
+  "K": 144,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6,
+   7
+  ],
+  "единиц": 813,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 107,
+  "заголовок": "271.127.3.113 (N=271,K=144,M=127,R=   0.5314)",
+  "раздел": "Gallager codes > Assorted Regular Gallager codes",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "271"
+   ],
+   "M": [
+    "127"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 271 -t1 3 -v 0 -m 127 -hd 3 -seed 1095 -o GHC/271.127.3.113"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1562,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/271.127.3.113",
+  "N": 271,
+  "M": 127,
+  "ранг": 127,
+  "K": 144,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6,
+   7
+  ],
+  "единиц": 813,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 108,
+  "заголовок": "271.127.3.114 (N=271,K=144,M=127,R=   0.5314)",
+  "раздел": "Gallager codes > Assorted Regular Gallager codes",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "271"
+   ],
+   "M": [
+    "127"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 271 -t1 3 -v 0 -m 127 -hd 3 -seed 10916 -o GHC/271.127.3.114"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1573,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/271.127.3.114",
+  "N": 271,
+  "M": 127,
+  "ранг": 127,
+  "K": 144,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   6,
+   7
+  ],
+  "единиц": 813,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 109,
+  "заголовок": "10002.3.333e (N=13298,K=3296,M=10002,R=0.5)",
+  "раздел": "Gallager codes > Gallager codes with Rate 1/4",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "13298"
+   ],
+   "M": [
+    "10002"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    "0.5"
+   ],
+   "t": [
+    "3"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1584,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/10002.3.333e/A",
+  "N": 13298,
+  "M": 10002,
+  "ранг": 10002,
+  "K": 3296,
+  "веса_столбцов": [
+   3,
+   4
+  ],
+  "веса_строк": [
+   3,
+   4,
+   5
+  ],
+  "единиц": 39896,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 110,
+  "заголовок": "273.82.3.353 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (273,191) (R~0.7)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=3 N=273 M=82 verbose=1 docodemod=0 T=3000 s0=50"
+   ]
+  },
+  "строка_html": 1595,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/273.82.3.353",
+  "N": 273,
+  "M": 82,
+  "ранг": 82,
+  "K": 191,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   9,
+   10
+  ],
+  "единиц": 819,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 111,
+  "заголовок": "273.82.3.364 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (273,191) (R~0.7)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=3 N=273 M=82 verbose=1 docodemod=0 T=3000 s0=50"
+   ]
+  },
+  "строка_html": 1607,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/273.82.3.364",
+  "N": 273,
+  "M": 82,
+  "ранг": 82,
+  "K": 191,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   9,
+   10
+  ],
+  "единиц": 819,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 112,
+  "заголовок": "273.82.3.378 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (273,191) (R~0.7)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=3 N=273 M=82 verbose=1 docodemod=0 T=3000 s0=50"
+   ]
+  },
+  "строка_html": 1619,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/273.82.3.378",
+  "N": 273,
+  "M": 82,
+  "ранг": 82,
+  "K": 191,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   9,
+   10
+  ],
+  "единиц": 819,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 113,
+  "заголовок": "273.82.4.556 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (273,191) (R~0.7)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=4 N=273 M=82 verbose=1 docodemod=0 T=3000 s0=50"
+   ]
+  },
+  "строка_html": 1631,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/273.82.4.556",
+  "N": 273,
+  "M": 82,
+  "ранг": 81,
+  "K": 192,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   13,
+   14
+  ],
+  "единиц": 1092,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 114,
+  "заголовок": "273.82.4.2763 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (273,191) (R~0.7)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=4 N=273 M=82 verbose=1 docodemod=0 T=3000 s0=50"
+   ]
+  },
+  "строка_html": 1643,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/273.82.4.2763",
+  "N": 273,
+  "M": 82,
+  "ранг": 81,
+  "K": 192,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   13,
+   14
+  ],
+  "единиц": 1092,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 115,
+  "заголовок": "273.82.4.3065 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (273,191) (R~0.7)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=4 N=273 M=82 verbose=1 docodemod=0 T=3000 s0=50"
+   ]
+  },
+  "строка_html": 1655,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/273.82.4.3065",
+  "N": 273,
+  "M": 82,
+  "ранг": 81,
+  "K": 192,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   13,
+   14
+  ],
+  "единиц": 1092,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 116,
+  "заголовок": "1057.244.3.352 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (1057,813) (R~0.77)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=3 N=1057 M=244 verbose=1 docodemod=0 T=200 s0=50"
+   ]
+  },
+  "строка_html": 1667,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1057.244.3.352",
+  "N": 1057,
+  "M": 244,
+  "ранг": 244,
+  "K": 813,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   12,
+   13
+  ],
+  "единиц": 3171,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 117,
+  "заголовок": "1057.244.3.353 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (1057,813) (R~0.77)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=3 N=1057 M=244 verbose=1 docodemod=0 T=200 s0=50"
+   ]
+  },
+  "строка_html": 1679,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1057.244.3.353",
+  "N": 1057,
+  "M": 244,
+  "ранг": 244,
+  "K": 813,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   12,
+   13
+  ],
+  "единиц": 3171,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 118,
+  "заголовок": "1057.244.3.457 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (1057,813) (R~0.77)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=3 N=1057 M=244 verbose=1 docodemod=0 T=200 s0=50"
+   ]
+  },
+  "строка_html": 1691,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1057.244.3.457",
+  "N": 1057,
+  "M": 244,
+  "ранг": 244,
+  "K": 813,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   12,
+   13
+  ],
+  "единиц": 3171,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 119,
+  "заголовок": "1057.244.4.360 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (1057,813) (R~0.77)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=4 N=1057 M=244 verbose=1 docodemod=0 T=200 s0=50"
+   ]
+  },
+  "строка_html": 1703,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1057.244.4.360",
+  "N": 1057,
+  "M": 244,
+  "ранг": 243,
+  "K": 814,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   17,
+   18
+  ],
+  "единиц": 4228,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 120,
+  "заголовок": "1057.244.4.364 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (1057,813) (R~0.77)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=4 N=1057 M=244 verbose=1 docodemod=0 T=200 s0=50"
+   ]
+  },
+  "строка_html": 1715,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1057.244.4.364",
+  "N": 1057,
+  "M": 244,
+  "ранг": 243,
+  "K": 814,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   17,
+   18
+  ],
+  "единиц": 4228,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 121,
+  "заголовок": "1057.244.4.389 (N=,K=,M=,R=)",
+  "раздел": "Gallager codes > High rate Gallager codes (R=0.7,0.77) > (1057,813) (R~0.77)",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    ""
+   ],
+   "M": [
+    ""
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "R": [
+    ""
+   ],
+   "created": [
+    "beckmann.p w=4 N=1057 M=244 verbose=1 docodemod=0 T=200 s0=50"
+   ]
+  },
+  "строка_html": 1727,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1057.244.4.389",
+  "N": 1057,
+  "M": 244,
+  "ранг": 243,
+  "K": 814,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   17,
+   18
+  ],
+  "единиц": 4228,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 122,
+  "заголовок": "495.62.3.2915 (N=495,K=433,M=62,R=   0.8747)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 3, N=495, Rate=0.87",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "495"
+   ],
+   "M": [
+    "62"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "comment": [
+    "has one 4-cycle"
+   ],
+   "created": [
+    "see code/IBM."
+   ]
+  },
+  "строка_html": 1739,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/495.62.3.2915.gz",
+  "N": 495,
+  "M": 62,
+  "ранг": 62,
+  "K": 433,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   23,
+   24
+  ],
+  "единиц": 1485,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 123,
+  "заголовок": "999.111.3.5543 (N=999,K=888,M=111,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 3, N=999, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "999"
+   ],
+   "M": [
+    "111"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1750,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/999.111.3.5543.gz",
+  "N": 999,
+  "M": 111,
+  "ранг": 111,
+  "K": 888,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   27
+  ],
+  "единиц": 2997,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 124,
+  "заголовок": "999.111.3.5555 (N=999,K=888,M=111,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 3, N=999, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "999"
+   ],
+   "M": [
+    "111"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1760,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/999.111.3.5555.gz",
+  "N": 999,
+  "M": 111,
+  "ранг": 111,
+  "K": 888,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   27
+  ],
+  "единиц": 2997,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 125,
+  "заголовок": "999.111.3.5565 (N=999,K=888,M=111,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 3, N=999, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "999"
+   ],
+   "M": [
+    "111"
+   ],
+   "t": [
+    "3"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1770,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/999.111.3.5565.gz",
+  "N": 999,
+  "M": 111,
+  "ранг": 111,
+  "K": 888,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   27
+  ],
+  "единиц": 2997,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 126,
+  "заголовок": "1908.212.4.1383 (N=1908,K=1696,M=212,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=1998, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "1908"
+   ],
+   "M": [
+    "212"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "comment": [
+    "has no 4-cycles"
+   ],
+   "created": [
+    "see code/IBM. Used beckmann.p."
+   ]
+  },
+  "строка_html": 1780,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1908.212.4.1383.gz",
+  "N": 1908,
+  "M": 212,
+  "ранг": 211,
+  "K": 1697,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   36
+  ],
+  "единиц": 7632,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 127,
+  "заголовок": "1998.5.3.2665 (N=1998,K=1776,M=222,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=1998, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "1998"
+   ],
+   "M": [
+    "222"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1791,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1998.5.3.2665.gz",
+  "N": 1998,
+  "M": 222,
+  "ранг": 221,
+  "K": 1777,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   36
+  ],
+  "единиц": 7992,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 128,
+  "заголовок": "1998.5.3.1392 (N=1998,K=1776,M=222,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=1998, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "1998"
+   ],
+   "M": [
+    "222"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1803,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/1998.5.3.1392.gz",
+  "N": 1998,
+  "M": 222,
+  "ранг": 221,
+  "K": 1777,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   36
+  ],
+  "единиц": 7992,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 129,
+  "заголовок": "1998.5.3.1500 (N=1998,K=1776,M=222,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=1998, Rate=0.89",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "1998"
+   ],
+   "M": [
+    "222"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    "READGHG has details of how this file was created.\t\tThe code's been deleted in the move from SF."
+   ]
+  },
+  "строка_html": 1815,
+  "alist": null
+ },
+ {
+  "номер": 130,
+  "заголовок": "s2.94.594 (N=1998,K=1776,M=222,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=1998, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "1998"
+   ],
+   "M": [
+    "222"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1826,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/s2.94.594.gz",
+  "N": 1998,
+  "M": 222,
+  "ранг": 221,
+  "K": 1777,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   36
+  ],
+  "единиц": 7992,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 131,
+  "заголовок": "s2.94.494 (N=1998,K=1776,M=222,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=1998, Rate=0.89",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "1998"
+   ],
+   "M": [
+    "222"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1838,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/s2.94.494.gz",
+  "N": 1998,
+  "M": 222,
+  "ранг": 221,
+  "K": 1777,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   36
+  ],
+  "единиц": 7992,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 132,
+  "заголовок": "4376.282.4.9598 (N=4376,K=4094,M=282,R=   0.9356)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=4000, Rate~=0.9",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "4376"
+   ],
+   "M": [
+    "282"
+   ],
+   "t": [
+    "4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "comment": [
+    "This code was found by an intensive search using construction method 1A\tfollowed by manual pruning of two columns to remove the \tremaining overlaps greater than 1. It is the highest rate code\tI was able to make with column weight 4 and blocklength near 4376.\tIt may be that this code is sailing too close to the wind, i.e.,\tthat its asymptotic performance for high snr is not as good\tas other Gallager codes. Nevertheless, in experiments so far\tthis code competes well with RS and BCH codes."
+   ]
+  },
+  "строка_html": 1850,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4376.282.4.9598.gz",
+  "N": 4376,
+  "M": 282,
+  "ранг": 281,
+  "K": 4095,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   61,
+   62,
+   63
+  ],
+  "единиц": 17504,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 133,
+  "заголовок": "3584.5.3.4326 (N=3584,K=3140,M=444,R=0.876)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weight 4, N~=4000, Rate~=0.9",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "3584"
+   ],
+   "K": [
+    "3140"
+   ],
+   "R": [
+    "0.876"
+   ],
+   "t": [
+    "4"
+   ],
+   "comment": [
+    "Construction 1A was used."
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ]
+  },
+  "строка_html": 1862,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/3584.5.3.4326.gz",
+  "N": 3584,
+  "M": 444,
+  "ранг": 443,
+  "K": 3141,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   32,
+   33
+  ],
+  "единиц": 14336,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 134,
+  "заголовок": "s2.943.349 (N=1998,K=1776,M=222,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weights less than 4, N=1998, Rate=0.89",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "1998"
+   ],
+   "M": [
+    "222"
+   ],
+   "t": [
+    "3-4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ],
+   "comment": [
+    "This code has a few weight 3 columns and they spoil its performance"
+   ]
+  },
+  "строка_html": 1876,
+  "alist": null
+ },
+ {
+  "номер": 135,
+  "заголовок": "s2.94c.194 (N=1998,K=1776,M=222,R=   0.8889)",
+  "раздел": "Gallager codes > Very high rate Gallager codes (R~=0.89,0.94) > Column Weights less than 4, N=1998, Rate=0.89",
+  "поля": {
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "N": [
+    "1998"
+   ],
+   "M": [
+    "222"
+   ],
+   "t": [
+    "3-4"
+   ],
+   "author": [
+    "D.J.C. MacKay"
+   ],
+   "created": [
+    ""
+   ],
+   "comment": [
+    "This code has a few weight 3 columns and they spoil its performance"
+   ]
+  },
+  "строка_html": 1888,
+  "alist": null
+ },
+ {
+  "номер": 136,
+  "заголовок": "4095.737.3.101 (N=4095,K=3358,M=737,R=     0.82)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 4095 with Rate=0.82",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "4095"
+   ],
+   "M": [
+    "737"
+   ],
+   "t": [
+    "3"
+   ],
+   "Mtrue": [
+    "<= 737"
+   ],
+   "Ktrue": [
+    "3358"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 4095 -t1 3 -v 0 -m 737 -hd 3 -seed 101 -o GHC/4095.737.3.101"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1900,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4095.737.3.101",
+  "N": 4095,
+  "M": 737,
+  "ранг": 737,
+  "K": 3358,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   16,
+   17
+  ],
+  "единиц": 12285,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 137,
+  "заголовок": "4095.738.4.102 (N=4095,K=3357,M=738,R=     0.82)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 4095 with Rate=0.82",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "4095"
+   ],
+   "M": [
+    "738"
+   ],
+   "t": [
+    "4"
+   ],
+   "Mtrue": [
+    "<= 737"
+   ],
+   "Ktrue": [
+    "3358"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 4095 -t1 4 -v 0 -m 738 -hd 3 -seed 104 -o GHC/4095.738.4.102"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1913,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/4095.738.4.102",
+  "N": 4095,
+  "M": 738,
+  "ранг": 737,
+  "K": 3358,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   22,
+   23
+  ],
+  "единиц": 16380,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 138,
+  "заголовок": "4161.731.4.352 (N=4095,K=3364,M=731,R=   0.8215)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 4095 with Rate=0.82",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "4095"
+   ],
+   "M": [
+    "731"
+   ],
+   "t": [
+    "4"
+   ],
+   "comment": [
+    "Alist file is gzipped"
+   ]
+  },
+  "строка_html": 1926,
+  "расхождение": [
+   "в заголовке N=4095, в alist N=4161"
+  ],
+  "alist": "istochniki/ldpc/mackay/EN/C/4161.731.4.352.gz",
+  "N": 4161,
+  "M": 731,
+  "ранг": 730,
+  "K": 3431,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   22,
+   23
+  ],
+  "единиц": 16644,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 139,
+  "заголовок": "4161.731.4.356 (N=4095,K=3364,M=731,R=   0.8215)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 4095 with Rate=0.82",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "4095"
+   ],
+   "M": [
+    "731"
+   ],
+   "t": [
+    "4"
+   ],
+   "comment": [
+    "Alist file is gzipped"
+   ]
+  },
+  "строка_html": 1935,
+  "расхождение": [
+   "в заголовке N=4095, в alist N=4161"
+  ],
+  "alist": "istochniki/ldpc/mackay/EN/C/4161.731.4.356.gz",
+  "N": 4161,
+  "M": 731,
+  "ранг": 730,
+  "K": 3431,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   22,
+   23
+  ],
+  "единиц": 16644,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 140,
+  "заголовок": "16383.2130.3.103 (N=16383,K=14253,M=2130,R=     0.87)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 16383 with rate=0.87",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "16383"
+   ],
+   "M": [
+    "2130"
+   ],
+   "t": [
+    "3"
+   ],
+   "Mtrue": [
+    "<= 2130"
+   ],
+   "Ktrue": [
+    "14253"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 16383 -t1 3 -v 0 -m 2130 -hd 3 -seed 101 -o GHC/16383.2130.3.103"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1944,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/16383.2130.3.103",
+  "N": 16383,
+  "M": 2130,
+  "ранг": 2130,
+  "K": 14253,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   23,
+   24
+  ],
+  "единиц": 49149,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 141,
+  "заголовок": "16383.2131.4.104 (N=16383,K=14252,M=2131,R=     0.87)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 16383 with rate=0.87",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "16383"
+   ],
+   "M": [
+    "2131"
+   ],
+   "t": [
+    "4"
+   ],
+   "Mtrue": [
+    "<= 2130"
+   ],
+   "Ktrue": [
+    "14253"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 16383 -t1 4 -v 0 -m 2131 -hd 3 -seed 104 -o GHC/16383.2131.4.104"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1957,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/16383.2131.4.104",
+  "N": 16383,
+  "M": 2131,
+  "ранг": 2130,
+  "K": 14253,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   30,
+   31
+  ],
+  "единиц": 65532,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 142,
+  "заголовок": "32000.2240.3.105 (N=32000,K=29760,M=2240,R=     0.93)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 32000 with rate=0.93.",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "32000"
+   ],
+   "M": [
+    "2240"
+   ],
+   "t": [
+    "3"
+   ],
+   "Mtrue": [
+    "<= 2240"
+   ],
+   "Ktrue": [
+    "29760"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 32000 -t1 3 -v 0 -m 2240 -hd 3 -seed 101 -o GHC/32000.2240.3.105"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1970,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/32000.2240.3.105",
+  "N": 32000,
+  "M": 2240,
+  "ранг": null,
+  "K": null,
+  "веса_столбцов": [
+   3
+  ],
+  "веса_строк": [
+   42,
+   43
+  ],
+  "единиц": 96000,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 143,
+  "заголовок": "32000.2241.4.106 (N=32000,K=29759,M=2241,R=     0.93)",
+  "раздел": "Gallager codes > More high rate codes (R=.82-.93) > Length 32000 with rate=0.93.",
+  "поля": {
+   "Alist file": [
+    "parity check matrix"
+   ],
+   "N": [
+    "32000"
+   ],
+   "M": [
+    "2241"
+   ],
+   "t": [
+    "4"
+   ],
+   "Mtrue": [
+    "<= 2240"
+   ],
+   "Ktrue": [
+    "29760"
+   ],
+   "author": [
+    "D J C MacKay"
+   ],
+   "created": [
+    "code5 -n 32000 -t1 4 -v 0 -m 2241 -hd 3 -seed 108 -o GHC/32000.2241.4.106"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph."
+   ]
+  },
+  "строка_html": 1983,
+  "расхождение": [],
+  "alist": "istochniki/ldpc/mackay/EN/C/32000.2241.4.106",
+  "N": 32000,
+  "M": 2241,
+  "ранг": null,
+  "K": null,
+  "веса_столбцов": [
+   4
+  ],
+  "веса_строк": [
+   57,
+   58
+  ],
+  "единиц": 128000,
+  "формат": "с дополнением нулями"
+ },
+ {
+  "номер": 144,
+  "заголовок": "algebraic/monodec10.3 (N=15,K=5,M=10,R=      0.4)",
+  "раздел": "Gallager-like codes and Algebraically constructed codes > Tiny regular codes",
+  "поля": {
+   "N": [
+    "15"
+   ],
+   "M": [
+    "10"
+   ],
+   "tr": [
+    "3"
+   ],
+   "Mtrue": [
+    "9"
+   ],
+   "Ktrue": [
+    "6"
+   ],
+   "d": [
+    "5"
+   ],
+   "Gaussian channel": [
+    "postscript",
+    "ascii"
+   ],
+   "author": [
+    "David MacKay"
+   ],
+   "comment": [
+    "This code is presented on page 221 of D J C MacKay (2003), and\teq 13.41.\tI call it the pentagonful low-density parity-check code. The graph\tis called the Petersen graph, so maybe a good name for this code\twould be the (15,6) Petersen code. \tIt has 12 words of weight 5."
+   ]
+  },
+  "строка_html": 1996,
+  "alist": null
+ },
+ {
+  "номер": 145,
+  "заголовок": "DSC.273.82.A (N=273,K=0,M=273,R=   0.6996)",
+  "раздел": "Gallager-like codes and Algebraically constructed codes > DSC codes",
+  "поля": {
+   "N": [
+    "273"
+   ],
+   "M": [
+    "273"
+   ],
+   "tr": [
+    "17"
+   ],
+   "Mtrue": [
+    "82"
+   ],
+   "Ktrue": [
+    "191"
+   ],
+   "d": [
+    "18"
+   ],
+   "author": [
+    "Rainer Lucas and Marc Fossorier"
+   ],
+   "comment": [
+    "This code has no 4-cycles in its graph. It has many \t6-cycles (as does any cyclic code).\tIts true value of M is 3.3 times smaller than its \tapparent value of M.\tHas distance 18."
+   ]
+  },
+  "строка_html": 2010,
+  "alist": null
+ }
+]

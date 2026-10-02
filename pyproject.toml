@@ -61,8 +61,10 @@ include = ["reportgen*"]
 # Файлы, без которых пакет неработоспособен после установки.
 "reportgen.store" = ["schema.sql"]
 "reportgen.web" = ["static/*", "static/**/*"]
-# Таблицы встроенных кодов LDPC (5G NR, DVB-S2/S2X/T2 и др.) — из открытых исходников, сверены.
-"reportgen.potok" = ["data/*.json"]
+# Таблицы встроенных кодов LDPC (5G NR, DVB-S2/S2X/T2 и др.) — из открытых исходников, сверены;
+# каталог кодов (kody_katalog.json) и его таблицы (data/kody/<область>/…). Первоисточники
+# istochniki/ в пакет не входят: они вне src/ и не перечислены здесь.
+"reportgen.potok" = ["data/*.json", "data/kody/**/*"]
 
 [tool.ruff]
 line-length = 100

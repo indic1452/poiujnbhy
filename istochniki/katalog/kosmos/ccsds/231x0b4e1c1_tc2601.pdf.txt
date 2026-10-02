@@ -1,0 +1,72 @@
+
+=====PAGE 1=====
+Page 1 of 2 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 231.0-B-4  
+ 
+ 
+ 
+Distribution Control Number: TC 26-01  
+ 
+Reference Number: CCSDS 231.0-B-4 Cor. 1 
+ 
+ 
+CCSDS RECORD CCSDS 231.0-B-4 
+CORRIGENDUM 1 
+Issue Date: July 2026 
+ 
+CORRIGENDUM 1 
+The Management Council of the Consultative Committee for Space Data Systems (CCSDS) has 
+authorized the publication of technical corrigendum 1 to CCSDS 231.0-B-4, issued July 2021. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Resulting in the update as shown below: 
+ 
+ 
+ 
+Section 5.2.4.2 
+ 
+• Add sentence “with probability ≳1 −10−4” at end of first paragraph. 
+• Replace first line of binary sequence with  
+01100011 10100001 11101101 01110010 11000110 10101100 01111001 
+11100010 
+ 
+• Replace first part of HEX pattern with 63A1 ED72 C6AC 79E2 
+• Replace “fail to decode” with “decode with probability ≲10−4” 
+• Add NOTE 3 
+“If the tail sequence is detected with the LDPC decoder, it will attempt, and fail, to 
+decode the derandomized version of the tail sequence.  In hexadecimal, that is 
+9C987328 AE457F17 39DC7AF4 640B5D95.” 
+ 
+
+=====PAGE 2=====
+Page 2 of 2 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 231.0-B-4  
+ 
+ 
+ 
+Distribution Control Number: TC 26-01  
+ 
+Reference Number: CCSDS 231.0-B-4 Cor. 1 
+ 
+ 

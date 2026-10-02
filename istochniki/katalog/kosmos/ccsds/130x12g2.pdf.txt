@@ -1,0 +1,3200 @@
+
+=====PAGE 1=====
+Report Concerning Space Data System Standards 
+CCSDS PROTOCOLS OVER 
+DVB-S2—SUMMARY OF 
+DEFINITION,
+IMPLEMENTATION, AND 
+PERFORMANCE
+INFORMATIONAL REPORT 
+CCSDS 130.12-G-2 
+GREEN BOOK 
+June 2023
+
+=====PAGE 2=====
+ 
+Report Concerning Space Data System Standards 
+CCSDS PROTOCOLS OVER 
+DVB-S2—SUMMARY OF 
+DEFINITION, 
+IMPLEMENTATION, AND 
+PERFORMANCE 
+INFORMATIONAL REPORT 
+CCSDS 130.12-G-2 
+GREEN BOOK 
+June 2023
+
+=====PAGE 3=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page i 
+June 2023 
+AUTHORITY 
+ 
+ 
+ 
+Issue: 
+Informational Report, Issue 2 
+ 
+ 
+Date: 
+June 2023 
+ 
+ 
+Location: 
+Washington, DC, USA 
+ 
+ 
+This document has been approved for publication by the Management Council of the 
+Consultative Committee for Space Data Systems (CCSDS) and reflects the consensus of 
+technical panel experts from CCSDS Member Agencies.  The procedure for review and 
+authorization of CCSDS Reports is detailed in Organization and Processes for the 
+Consultative Committee for Space Data Systems (CCSDS A02.1-Y-4). 
+ 
+This document is published and maintained by: 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+
+=====PAGE 4=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page ii 
+June 2023 
+FOREWORD 
+This document is a CCSDS Informational Report that contains background and explanatory 
+material to support the CCSDS Recommended Standard for CCSDS Space Link Protocols 
+over ETSI DVB-S2 Standard (reference [1]). 
+Through the process of normal evolution, it is expected that expansion, deletion, or 
+modification of this document may occur.  This Report is therefore subject to CCSDS 
+document management and change control procedures, which are defined in Organization 
+and Processes for the Consultative Committee for Space Data Systems (CCSDS A02.1-Y-4).  
+Current versions of CCSDS documents are maintained at the CCSDS Web site: 
+http://www.ccsds.org/ 
+Questions relating to the contents or status of this document should be sent to the CCSDS 
+Secretariat at the email address indicated on page i. 
+
+=====PAGE 5=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page iii 
+June 2023 
+At time of publication, the active Member and Observer Agencies of the CCSDS were: 
+Member Agencies 
+– Agenzia Spaziale Italiana (ASI)/Italy. 
+– Canadian Space Agency (CSA)/Canada. 
+– Centre National d’Etudes Spatiales (CNES)/France. 
+– China National Space Administration (CNSA)/People’s Republic of China. 
+– Deutsches Zentrum für Luft- und Raumfahrt (DLR)/Germany. 
+– European Space Agency (ESA)/Europe. 
+– Federal Space Agency (FSA)/Russian Federation. 
+– Instituto Nacional de Pesquisas Espaciais (INPE)/Brazil. 
+– Japan Aerospace Exploration Agency (JAXA)/Japan. 
+– National Aeronautics and Space Administration (NASA)/USA. 
+– UK Space Agency/United Kingdom. 
+Observer Agencies 
+– 
+Austrian Space Agency (ASA)/Austria. 
+– 
+Belgian Science Policy Office (BELSPO)/Belgium. 
+– 
+Central Research Institute of Machine Building (TsNIIMash)/Russian Federation. 
+– 
+China Satellite Launch and Tracking Control General, Beijing Institute of Tracking and 
+Telecommunications Technology (CLTC/BITTT)/China. 
+– 
+Chinese Academy of Sciences (CAS)/China. 
+– 
+China Academy of Space Technology (CAST)/China. 
+– 
+Commonwealth Scientific and Industrial Research Organization (CSIRO)/Australia. 
+– 
+Danish National Space Center (DNSC)/Denmark. 
+– 
+Departamento de Ciência e Tecnologia Aeroespacial (DCTA)/Brazil. 
+– 
+Electronics and Telecommunications Research Institute (ETRI)/Korea. 
+– 
+European Organization for the Exploitation of Meteorological Satellites (EUMETSAT)/Europe. 
+– 
+European Telecommunications Satellite Organization (EUTELSAT)/Europe. 
+– 
+Geo-Informatics and Space Technology Development Agency (GISTDA)/Thailand. 
+– 
+Hellenic National Space Committee (HNSC)/Greece. 
+– 
+Hellenic Space Agency (HSA)/Greece. 
+– 
+Indian Space Research Organization (ISRO)/India. 
+– 
+Institute of Space Research (IKI)/Russian Federation. 
+– 
+Korea Aerospace Research Institute (KARI)/Korea. 
+– 
+Ministry of Communications (MOC)/Israel. 
+– 
+Mohammed Bin Rashid Space Centre (MBRSC)/United Arab Emirates. 
+– 
+National Institute of Information and Communications Technology (NICT)/Japan. 
+– 
+National Oceanic and Atmospheric Administration (NOAA)/USA. 
+– 
+National Space Agency of the Republic of Kazakhstan (NSARK)/Kazakhstan. 
+– 
+National Space Organization (NSPO)/Chinese Taipei. 
+– 
+Naval Center for Space Technology (NCST)/USA. 
+– 
+Netherlands Space Office (NSO)/The Netherlands. 
+– 
+Research Institute for Particle & Nuclear Physics (KFKI)/Hungary. 
+– 
+Scientific and Technological Research Council of Turkey (TUBITAK)/Turkey. 
+– 
+South African National Space Agency (SANSA)/Republic of South Africa. 
+– 
+Space and Upper Atmosphere Research Commission (SUPARCO)/Pakistan. 
+– 
+Swedish Space Corporation (SSC)/Sweden. 
+– 
+Swiss Space Office (SSO)/Switzerland. 
+– 
+United States Geological Survey (USGS)/USA. 
+
+=====PAGE 6=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page iv 
+June 2023 
+DOCUMENT CONTROL 
+ 
+Document 
+Title 
+Date 
+Status 
+CCSDS 
+130.12-G-1 
+CCSDS Protocols over DVB-S2—
+Summary of Definition, 
+Implementation, and Performance, 
+Informational Report, Issue 1 
+November 
+2016 
+Original issue, 
+superseded 
+CCSDS 
+130.12-G-2 
+CCSDS Protocols over DVB-S2—
+Summary of Definition, 
+Implementation, and Performance, 
+Informational Report, Issue 2 
+June 2023 
+Current issue 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 7=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page v 
+June 2023 
+CONTENTS 
+Section 
+Page 
+1 
+INTRODUCTION ........................................................................................................ 1-1 
+1.1 
+BACKGROUND .................................................................................................... 1-1 
+1.2 
+PURPOSE ............................................................................................................... 1-1 
+1.3 
+SCOPE .................................................................................................................... 1-1 
+1.4 
+ORGANIZATION ................................................................................................. 1-1 
+1.5 
+REFERENCES ....................................................................................................... 1-1 
+2 RELATIVE ROLES OF CCSDS RECOMMENDED STANDARDS 
+ AND ETSI DVB-S2 STANDARDS ............................................................................. 2-1 
+2.1 
+RATIONALE OF CCSDS PROTOCOLS OVER DVB-S2 .................................... 2-1 
+2.2 
+CCSDS AND ETSI DVB-S2 VERSIONS ............................................................... 2-1 
+2.3 
+ETSI DVB-S2 USER GUIDELINES ...................................................................... 2-2 
+2.4 
+CCSDS AND ETSI VCM / ACM MODE .............................................................. 2-3 
+3 DVB-S2 TERMINOLOGY AND PROTOCOL MANAGEMENT 
+CONSIDERATIONS ..................................................................................................... 3-1 
+3.1 
+INTRODUCTION .................................................................................................. 3-1 
+3.2 
+MODCOD AND TYPE .......................................................................................... 3-3 
+3.3 
+TYPICAL SIMPLIFIED CONFIGURATION ....................................................... 3-5 
+3.4 
+DUMMY PLFRAME ............................................................................................... 3-7 
+3.5 
+TRANSMISSION CLOSING ................................................................................. 3-8 
+3.6 
+FRAME VALIDATION AND SLE-RAF SERVICE .............................................. 3-9 
+4 IMPLEMENTATION AT THE INTERFACE BETWEEN CCSDS  
+PROTOCOLS AND DVB-S2 ........................................................................................ 4-1 
+4.1 
+INTRODUCTION .................................................................................................. 4-1 
+4.2 
+DVB-S2 BASEBAND HEADER SIMPLIFIED PROCESSING ........................... 4-1 
+4.3 
+EXAMPLE OF DATA INTERFACE AT THE TRANSMITTER INPUT TO 
+WORK WITH DVB-S2 VCM/ACM ....................................................................... 4-2 
+5 PERFORMANCE OF DVB-S2 ..................................................................................... 5-1 
+5.1 
+INTRODUCTION .................................................................................................. 5-1 
+5.2 
+PERFORMANCE OVER AWGN CHANNEL...................................................... 5-1 
+5.3 
+EXAMPLE OF PERFORMANCE WITH NON-LINEAR CHANNEL 
+IMPAIRMENT ........................................................................................................ 5-3 
+
+=====PAGE 8=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page vi 
+June 2023 
+CONTENTS (continued) 
+Section 
+Page 
+5.4 
+EXAMPLE OF PERFORMANCE WITH STATIC PREDISTORTION OF 
+POWER AMPLIFIER NON-LINEARITY ............................................................ 5-9 
+5.5 
+EXAMPLE OF DEMODULATION LOSS MEASURED ON AN HDRT 
+RECEIVER ........................................................................................................... 5-18 
+ 
+ANNEX A ACRONYMS AND ABBREVIATIONS ...................................................... A-1 
+ANNEX B EXAMPLE OF SYSTEM PERFORMANCE WHEN USING  
+DVB-S2 VCM AND ACM .............................................................................. B-1 
+ANNEX C POINTERS TO ETSI DVB-S2 USER GUIDELINES  
+(REFERENCE [3]) SECTIONS OF INTEREST FOR  
+TELEMETRY APPLICATIONS, AND TO OTHER  
+TECHNICAL REPORTS OF INTEREST FOR RECEIVER 
+IMPLEMENTATION ................................................................................... C-1 
+Figure 
+3-1 Illustration of Variable Conditions of Propagation ......................................................... 3-1 
+3-2 Illustration of Variable Conditions of Propagation with ACM ........................................ 3-2 
+3-3 Functional Diagram of a Typical DVB-S2 Receiver ........................................................ 3-5 
+3-4 DVB-S2 Typical Receiver Performance with and without Pilot Insertion  
+(16APSK 3/4, Short FECFRAME) ................................................................................ 3-6 
+3-5 DVB-S2 Performance with Normal and Short FECFRAME .......................................... 3-6 
+3-6 
+Stream Format while Transmitting CCSDS Transfer Frames Using DVB-S2  
+(Extract from reference [1]) ............................................................................................. 3-8 
+4-1 Data-Pull Interface with Parallel LVDS Wires ................................................................ 4-3 
+4-2 Onboard Downloading Subsystem Functional Diagram with Data-Pull Interface........... 4-3 
+5-1 Performance over AWGN Channel—DVB-S2 Normal FECFRAME— 
+Additional Results to ETSI User Guidelines ................................................................... 5-2 
+5-2 Performance over AWGN Channel—DVB-S2 Short FECFRAME— 
+Additional Results to ETSI User Guidelines ................................................................... 5-2 
+5-3 Demodulation Loss Measurement Principle ................................................................... 5-3 
+5-4 Principle of Amplifier Operating Point Optimization ..................................................... 5-4 
+5-5 26 GHz Power Amplifier AM/AM and AM/PM Responses .......................................... 5-5 
+5-6 Amplifier Operating Point Optimization for 16APSK 8/9 ............................................. 5-6 
+5-7 Performance with Constant IBO = 5.5 dB ..................................................................... 5-7 
+5-8 Amplifier Operating Point Optimization for 32APSK 8/9 ............................................. 5-8 
+5-9 AM/AM and AM/PM Responses of the 8 GHz TWTA ................................................ 5-9 
+5-10 TD for 8PSK ................................................................................................................ 5-12 
+5-11 TD as a Function of Γ and ∆φ for a Fixed IBO ............................................................ 5-12 
+5-12 Optimal TD for 16APSK ............................................................................................. 5-13 
+
+=====PAGE 9=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page vii 
+June 2023 
+CONTENTS (continued) 
+Figure 
+Page 
+5-13 Optimal TD for 32APSK ............................................................................................. 5-14 
+5-14 Illustration of ACPR Measurement .............................................................................. 5-16 
+5-15 PSD at the PA Output for Various IBO ....................................................................... 5-17 
+5-16 ACPR at the PA Output ............................................................................................... 5-18 
+Table 
+3-1 DVB-S2 Spectral Efficiency as a Function of MODCOD and TYPE ............................ 3-4 
+5-1 Optimal Operating Points, 16APSK, Roll-Off α = 0.2 ................................................. 5-13 
+5-2 Optimal Operating Points, 16APSK, Roll-Off α = 0.35 ............................................... 5-14 
+5-3 Optimal Operating Points, 32APSK, Roll-Off α = 0.2 ................................................. 5-15 
+5-4 Optimal Operating Points, 32APSK, Roll-Off α = 0.35 ............................................... 5-15 
+5-5 Example of Demodulation Loss Measured on a Modern Receiver ............................... 5-20 
+ 
+
+=====PAGE 10=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 1-1 
+June 2023 
+1 INTRODUCTION 
+1.1 
+BACKGROUND 
+The CCSDS Recommended Standard CCSDS Space Link Protocols over ETSI DVB-S2 
+Standard (reference [1]) is an adaptation profile describing how to use the ETSI DVB-S2 
+telecom standard (reference [2]) to transmit CCSDS Transfer Frames (references [5] and [6]) 
+for telemetry purposes. 
+1.2 
+PURPOSE 
+This report has been developed to help missions interested in using the CCSDS 
+Recommended Standard. It provides some useful material for engineers defining systems, or 
+equipment manufacturers developing products, according to the CCSDS Recommended 
+Standard. 
+1.3 
+SCOPE 
+This document provides supporting and descriptive material only; it is not part of the CCSDS 
+Recommended Standard. In the event of any conflict between the CCSDS Recommended 
+Standard and the material presented herein, the CCSDS Recommended Standard is the 
+prevailing specification. 
+1.4 
+ORGANIZATION 
+Section 2 presents the relative roles of the CCSDS Recommended Standard and the ETSI 
+DVB-S2 standards. 
+Section 3 provides an introduction to DVB-S2 terminology and some protocol management 
+considerations when using the CCSDS Recommended Standard. 
+Section 4 deals with implementation of the interface between CCSDS protocols and DVB-S2 
+when using the CCSDS Recommended Standard. 
+Section 5 provides some DVB-S2 performance material. 
+1.5 
+REFERENCES 
+The following publications are referenced in this document.  At the time of publication, the 
+editions indicated were valid.  All publications are subject to revision, and users of this 
+document are encouraged to investigate the possibility of applying the most recent editions of 
+the publications indicated below.  The CCSDS Secretariat maintains a register of currently 
+valid CCSDS publications. 
+
+=====PAGE 11=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 1-2 
+June 2023 
+[1] 
+CCSDS Space Link Protocols over ETSI DVB-S2 Standard. Issue 2. Recommendation 
+for Space Data System Standards (Blue Book), CCSDS 131.3-B-2. Washington, D.C.: 
+CCSDS, April 2022. 
+[2] 
+Digital Video Broadcasting (DVB); Second Generation Framing Structure, Channel 
+Coding and Modulation Systems for Broadcasting, Interactive Services, News 
+Gathering and other Broadband Satellite Applications. ETSI EN 302 307 V1.2.1 
+(2009-08). Sophia-Antipolis: ETSI, 2009. 
+[3] 
+User Guidelines for the Second-Generation System for Broadcasting, Interactive 
+Services, News Gathering and Other Broadband Satellite Applications (DVB-S2). ETSI 
+TR 102 376 V1.1.1 (2005-02). Sophia-Antipolis: ETSI, 2005. 
+NOTE – ETSI standards are available for free download at http://www.etsi.org. 
+[4] 
+TM Synchronization and Channel Coding. Issue 4. Recommendation for Space Data 
+System Standards (Blue Book), CCSDS 131.0-B-4. Washington, D.C.: CCSDS, April 
+2022. 
+[5] 
+TM Space Data Link Protocol. Issue 3. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 132.0-B-3. Washington, D.C.: CCSDS, October 2021. 
+[6] 
+AOS Space Data Link Protocol. Issue 4. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 732.0-B-4. Washington, D.C.: CCSDS, October 2021. 
+[7] 
+Unified Space Data Link Protocol. Issue 2. Recommendation for Space Data System 
+Standards (Blue Book), CCSDS 732.1-B-2. Washington, D.C.: CCSDS, October 2021. 
+[8] 
+Space Link Extension—Return All Frames Service Specification. Issue 4. 
+Recommendation for Space Data System Standards (Blue Book), CCSDS 911.1-B-4. 
+Washington, D.C.: CCSDS, August 2016. 
+[9] 
+J.-P. Millerioux, et al. “DVB-S2 Performance under Realistic Channel Conditions: 
+CNES Simulations.” Presented at CCSDS Radio Frequency and Modulation Working 
+Group meeting (October 2012, Cleveland, Ohio). SLS-RFM_12-11. 2012. 
+[10] J.-P. Millerioux, et al. “CNES VCM in Lab Experiment for DVB-S2 High Data Rate 
+Telemetry.” Presented at CCSDS Radio Frequency and Modulation Working Group 
+meeting (April 2013, Bordeaux, France). SLS-CS_13-06. 2013. 
+[11] J.-L. Issler and J.-P. Millerioux. “Use Cases of DVB-S2 for Telemetry.” Presented at 
+CCSDS Radio Frequency and Modulation Working Group meeting (April 2014, 
+Noordwijkerhout, The Netherlands). SLS RFM_14-04. 2014. 
+[12] 8 Hints for Making and Interpreting EVM Measurements. Application Note. Palo Alto, 
+California: Agilent Technologies, 2005. 
+
+=====PAGE 12=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 1-3 
+June 2023 
+[13] Handbook of the Space Frequency Coordination Group. Rev 7. Noordwijk, The 
+Netherlands: SFCG, 2014. 
+[14] G. Caire, G. Taricco, and E. Biglieri. “Bit-Interleaved Coded Modulation.” In 
+Proceedings of the 1997 IEEE International Symposium on Information Theory, 96. 
+New York: IEEE Conference Publications, 1997. 
+[15] A. Fàbregas, A. Martinez, and G. Caire. “Bit-Interleaved Coded Modulation.” 
+Foundations and Trends in Communications and Information Theory 5, no. 1–2 
+(January 2008): 1–153. 
+[16] M. Bertinelli, et al. “ESA Advanced Coding and Modulation Performance under 
+Realistic Channel Conditions.” Presented at CCSDS Radio Frequency and Modulation 
+Working Group meeting (October 2009, Noordwijk, The Netherlands). SLS-RFM_09-
+09. 2009. 
+[17] M. Alvarez-Diaz, R. Lopez-Valcarce, and C. Mosquera. “SNR Estimation for 
+Multilevel Constellations Using Higher-Order Moments.” IEEE Transactions on Signal 
+Processing 58, no. 3 (2010): 1515–1526. 
+[18] S. Kim, et al. “SNR Estimation for DVB-S2 System.” In Proceedings of the 25th AIAA 
+International Communications Satellite Systems Conference (organized by APSCC) 
+(10–13 April 2007, Seoul, South Korea). Reston, Virginia: AIAA, 2007. 
+[19] S. Muller, et al. “A Novel LDPC Decoder for DVB-S2 IP.” In Proceedings of the 2009 
+Design, Automation & Test in Europe Conference & Exhibition, 1308–1313. 
+Piscataway, New Jersey: IEEE Conference Publications, 2009. 
+[20] A. Barre, et al. “A Polar-Based Demapper of 8PSK Demodulation for DVB-S2 
+Systems.” In Proceedings of SiPS 2013, 13–17. Piscataway, New Jersey: IEEE 
+Conference Publications, 2013. 
+[21] J. Lee and D. Yoon. “Soft-Decision Demapping Algorithm with Low Computational 
+Complexity for Coded 4 + 12 APSK.” International Journal of Satellite 
+Communications and Networking 31, no. 4 (July/August 2013): 103–109. 
+[22] Jon Hamkins. “Performance of Low-Density Parity-Check Coded Modulation.” IPN 
+Progress Report 42-184, February 2011 (February 15, 2011). 
+[23] R. Pedone, et al. “Frame Synchronization in Frequency Uncertainty.” IEEE 
+Transactions on Communications 58, no. 4 (2010): 1235–1246. 
+[24] M. M. Mansour and N. R. Shanbhag. “High-Throughput LDPC Decoders.” IEEE 
+Transactions on Very Large Scale Integration (VLSI) Systems 11, no. 6 (2003): 976–
+996. 
+
+=====PAGE 13=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 1-4 
+June 2023 
+[25] M. Gomes, et al. “Flexible Parallel Architecture for DVB-S2 LDPC Decoders.” In 
+Proceedings of the IEEE Global Telecommunications, 3265–3269. Piscataway, New 
+Jersey: IEEE Conference Publications, 2007. 
+[26] J. B. Sombrin. “Optimization Criteria for Power Amplifiers.” International Journal of 
+Microwave and Wireless Technologies 3, no. 1 (February 2011): 35–45. 
+[27] J. B. Sombrin. “On the Formal Identity of EVM and NPR Measurement Methods: 
+Conditions for Identity of Error Vector Magnitude and Noise Power Ratio.” In 
+Proceedings of the 41st European Microwave Conference (EuMC), 337–340. 
+Piscataway, New Jersey: IEEE Conference Publications, 2011. 
+ 
+
+=====PAGE 14=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 2-1 
+June 2023 
+2 RELATIVE ROLES OF CCSDS RECOMMENDED STANDARDS 
+AND ETSI DVB-S2 STANDARDS 
+2.1 
+RATIONALE OF CCSDS PROTOCOLS OVER DVB-S2 
+The ETSI DVB-S2 (reference [2]) telecom standard was developed with the views of 
+achieving high power efficiency and bandwidth efficiency, both criteria also being of very 
+high value for telemetry applications. 
+The use of the ETSI DVB-S2 telecom standard for telemetry makes possible the use of 
+generic Very High Scale Integrated Circuits (VHSIC) Hardware Description Language 
+(VHDL) Intellectual Property (IP) cores, initially dedicated to the telecom market, for the 
+development of telemetry equipment. The use of an already widely implemented standard 
+simplifies the task of finding a transmitter or receiver for early compatibility tests. Regarding 
+the ground part, some DVB-S2 receivers or Application Specific Integrated Circuits (ASICs) 
+developed for the telecom mass market (and consequently with very competitive costs) could 
+be reused for telemetry. 
+The DVB-S2 standard is consequently a technically efficient and cost-effective solution in 
+particular for High Data Rate Telemetry (HDRT) applications, such as Earth Exploration 
+Satellite Services (EESS) payload telemetry. 
+This standard is compatible with all upper layer protocols (TM [5], AOS [6], or USLP [7]) 
+while providing support for maintaining synchronization during transition from one 
+modulation and coding format to another. 
+It is worth noting that the DVB-S2 standard is already used for many telemetry applications 
+(reference [11]), and the added value of the CCSDS Recommended Standard is mainly to 
+provide a formalization of the interface between CCSDS and DVB-S2 for interoperability 
+issues. 
+2.2 
+CCSDS AND ETSI DVB-S2 VERSIONS 
+As the CCSDS Recommended Standard is an adaptation profile of the ETSI DVB-S2 
+telecom standard, it is worthwhile to consider the relationship between the CCSDS 
+Recommended Standard and the different versions of the ETSI DVB-S2 telecom standard. 
+The different versions of the ETSI EN 302307 DVB-S2 standard are the following: 
+– V1.1.1, March 2005; 
+– V1.2.1, August 2009; 
+– V1.3.1, March 2013. 
+In 2014, the ETSI EN 302307 was split in two parts: 
+
+=====PAGE 15=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 2-2 
+June 2023 
+– Part 1: DVB-S2, reference ETSI EN 302307-1 V1.4.1 (July 2014); 
+– Part 2: DVB-S2 Extensions (DVB-S2X), reference ETSI EN 302307-2V1.1.1 
+(October 2014). 
+The CCSDS Recommended Standard (March 2013) is an adaptation profile referring to ETSI 
+EN 302307 V1.2.1 (August 2009) (reference [2]). Because of the backward compatibility of 
+the ETSI EN 302307 standard versions, the CCSDS Recommended Standard (March 2013) is 
+also compatible with ETSI EN 302307 V1.3.1 (March 2013) and ETSI EN 302307-1 V1.4.1 
+(July 2014). In fact, all new versions of ETSI EN 302307 include the previous version with 
+new options. Possible new versions of ETSI EN 302307 after 2014 are beyond the scope of 
+this document. 
+2.3 
+ETSI DVB-S2 USER GUIDELINES 
+Since the CCSDS Recommended Standard is an adaptation profile of the ETSI DVB-S2 
+telecom standard (reference [2]), it is worth noting that some ETSI user guidelines 
+(reference [3]) are available. The first release of these user guidelines is ETSI TR 102376 
+V1.1.1 (February 2005). An update to these guidelines with ETSI EN 302307-1 was proposed 
+in 2015 (DVB Document A171-1, DVB-S2 Implementation Guidelines, March 2015), 
+simultaneously with user guidelines for ETSI EN 302307-2 (DVB Document A171-2, DVB-
+S2X Implementation Guidelines, March 2015).1 
+The technical content of these user guidelines is significant. They include in particular DVB-
+S2 reference performance over Additive White Gaussian Noise (AWGN) channel (see 5.2.2 
+of this document) and some results with power amplifier non-linearity. Moreover, these user 
+guidelines include substantial material concerning DVB-S2 VCM/ACM receivers and 
+constitute an essential basis for people interested in detailed implementation of DVB-S2 
+receivers. 
+NOTE – For simplicity and consistency with DVB-S2 technical literature, the word 
+‘symbol’ is used throughout this document to indicate ‘channel symbol’, and Es is 
+used to indicate the energy-per-channel symbol. 
+References to guidelines sections that are possibly useful for the CCSDS Recommended 
+Standard are listed in annex C of this document. 
+                                                 
+1 This document refers to the first (2005) release of ETSI User Guidelines (reference [3]). 
+
+=====PAGE 16=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 2-3 
+June 2023 
+2.4 
+CCSDS AND ETSI VCM / ACM MODE 
+The ETSI DVB-S2 telecom standard includes a Constant Coding and Modulation (CCM) 
+mode as well as Variable Coding and Modulation (VCM) mode and an Adaptive Coding and 
+Modulation (ACM) mode. As an adaptation profile of the ETSI DVB-S2 telecom standard, 
+the CCSDS Recommended Standard can accommodate DVB-S2 CCM as well as VCM and 
+ACM modes. 
+Throughout this document, VCM and ACM should be understood as DVB-S2 VCM and 
+DVB-S2 ACM. 
+
+=====PAGE 17=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-1 
+June 2023 
+3 DVB-S2 TERMINOLOGY AND PROTOCOL MANAGEMENT 
+CONSIDERATIONS 
+3.1 
+INTRODUCTION 
+3.1.1 DVB-S2 VCM PRINCIPLE 
+It is well known that propagation conditions change during a Low Earth Orbit (LEO) satellite 
+pass above an Earth station. Figure 3-1 shows the two main parameters that greatly influence 
+the link budget and consequently the signal-to-noise ratio at the receiver input: 
+– the distance between the satellite and the Earth station (d1, d2, and d3), depending on 
+the elevation; 
+– the tropospheric propagation conditions (clouds, rain, …). 
+d1
+Elevation 5°
+d2
+Elevation 90°
+Earth station
+Satellite
+d3
+Elevation 60°
+Satellite trajectory
+ 
+Figure 3-1:  Illustration of Variable Conditions of Propagation 
+When the distance decreases with higher elevation (d2 < d1), the free-space loss also 
+decreases, and the link budget is improved. The achievable gain is significant: typically, 12 
+dB for a satellite with 700 km orbit altitude. The better signal-to-noise ratio at the receiver 
+allows for the use of more spectrally efficient modulation and/or coding rates. 
+This is when the benefit of the VCM mode, available when using the DVB-S2 standard, is 
+fully realized. The distance change can be predicted for each pass, and the transmission can 
+be planned to change the modulation and the coding rate when the link budget is more 
+favorable to increasing the useful bit rate. Thus the VCM mode allows maximizing the 
+HDRT downloading throughput, keeping the same onboard power consumption. 
+As an example, following values of table 13 in reference [2], a gain of 12 dB on the link 
+budget allows going from Quaternary Phase Shift Keying (QPSK) with coding rate 3/4 
+(Es/No = 4 dB) at 5-degree elevation to 32-ary Amplitude and Phase Shift Keying (32APSK) 
+with coding rate 9/10 (Es/No = 16 dB) at 90-degree elevation. The spectral efficiency of 
+32APSK 9/10 (4.45 bits/symbol) is three times the spectral efficiency of that from QPSK 3/4 
+(1.48 bits/symbol). 
+
+=====PAGE 18=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-2 
+June 2023 
+In practice, VCM will be used taking into account the change of the free-space loss 
+(depending on the elevation) and also the change of the margin to cope with tropospheric 
+propagation (also depending on the elevation). 
+3.1.2 DVB-S2 ACM PRINCIPLE 
+If the distance can be easily anticipated, some tropospheric propagation events may be more 
+difficult to predict. The impact of these events on the link budget may be very significant, in 
+particular when using the highest frequencies (such as Ka-band EESS). To cope with these 
+events at the highest frequencies, the ACM mode can be considered. 
+This ACM mode consists in updating in quasi-real time the modulation and the coding rate to 
+the best operating tuning, based on the received signal-to-noise ratio measurement by the 
+receiver. Consequently, a quasi-real-time telecommand link to the satellite is required. The 
+principle is illustrated in figure 3-2. 
+d3
+Elevation 60°
+Earth station
+Satellite
+d3
+Elevation 60°
+8PSK 3/4
+QPSK 1/2
+ 
+Figure 3-2:  Illustration of Variable Conditions of Propagation with ACM 
+3.1.3 ABOUT THE USE OF DVB-S2 VCM AND ACM 
+Both VCM and ACM modes allow optimizing the onboard resources to offer the highest 
+available useful bit rate according to the propagation conditions, thus maximizing the HDRT 
+throughput. 
+The VCM mode can be typically considered with X-band EESS (8.025-8.4 GHz) 
+transmissions, where the tropospheric losses remain low in the link budget. 
+The ACM mode can be typically considered for Ka-band EESS (25.5-27 GHz) transmissions 
+because the atmospheric losses are highly variable with time. 
+Some examples of achievable system performance using DVB-S2 VCM or ACM are 
+proposed in annex B. 
+
+=====PAGE 19=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-3 
+June 2023 
+In the ETSI DVB-S2 telecom standard (reference [2]), and consequently in the CCSDS 
+Recommended Standard (reference [1]), the protocol is identical for VCM or ACM. 
+The difference between VCM and ACM is related to operation of the HDRT (which is 
+beyond the scope of this document or of the scope of the CCSDS Recommended Standard). 
+3.1.4 OBJECTIVES OF SECTION 3 
+The objectives of section 3 are: 
+– to introduce the terminology used in the ETSI DVB-S2 telecom standard 
+(reference [2]), in particular for VCM and ACM management (3.2); 
+– to present some technical material in support to the selection of CCSDS managed 
+parameters in the CCSDS Recommended Standard (3.3); 
+– to present possible solutions to properly use the CCSDS Recommended Standard 
+(3.4, 3.5, and 3.6). 
+3.2 
+MODCOD AND TYPE 
+The combination of a modulation and a coding rate is called a MODCOD as per DVB-S2 
+terminology. A MODCOD field can thus be coded using a decimal value between 0 and 28 
+(see reference [2] section 5.5.2.2), or 5 bits. 
+A TYPE field is added to the MODCOD field. This TYPE field is constituted of two bits. 
+One bit indicates the Forward Error Correction Frame (FECFRAME) size (normal or short). 
+The other bit indicates the pilot insertion status (ON or OFF). 
+When using DVB-S2 VCM or ACM modes, the MODCOD and TYPE can be changed by the 
+transmitter on a frame-by-frame basis. Consequently, the MODCOD, the FECFRAME size, 
+and the pilot insertion status are variable managed parameters provided in the CCSDS 
+recommended standard (see reference [1], subsection 5.3. Seven bits are required to encode 
+these variable managed parameters. 
+These variable managed parameters are indicated in the Physical Layer Frame Header 
+(PLHEADER, see section 5.5.2 of reference [2]) of the transmitted signal; it is consequently 
+not necessary to provide them to the receiver working in VCM/ACM mode. 
+The useful data rate (defined as the data rate at the Synch-Marked Transfer Frame [SMTF] 
+level) depends on the MODCOD and the TYPE. It is equal to the product of the selected 
+spectral efficiency listed in table 3-1 by the symbol rate used on the physical link. 
+
+=====PAGE 20=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-4 
+June 2023 
+Table 3-1:  DVB-S2 Spectral Efficiency as a Function of MODCOD and TYPE 
+MODCOD modulation 
+LDPC 
+code 
+identifier 
+spectral efficiency [bits/symbol] 
+short 
+FECFRAME 
+with pilots 
+short 
+FECFRAME 
+without 
+pilots 
+normal 
+FECFRAME 
+with pilots 
+normal 
+FECFRAME 
+without 
+pilots 
+1 
+QPSK 
+1/4 
+0.3575 
+0.3653 
+0.4786 
+0.4902 
+2 
+QPSK 
+1/3 
+0.6155 
+0.6291 
+0.6408 
+0.6564 
+3 
+QPSK 
+2/5 
+0.7446 
+0.7609 
+0.7706 
+0.7894 
+4 
+QPSK 
+1/2 
+0.8306 
+0.8488 
+0.9653 
+0.9889 
+5 
+QPSK 
+3/5 
+1.1317 
+1.1565 
+1.1600 
+1.1883 
+6 
+QPSK 
+2/3 
+1.2607 
+1.2884 
+1.2908 
+1.3223 
+7 
+QPSK 
+3/4 
+1.3897 
+1.4203 
+1.4521 
+1.4875 
+8 
+QPSK 
+4/5 
+1.4757 
+1.5082 
+1.5494 
+1.5872 
+9 
+QPSK 
+5/6 
+1.5618 
+1.5961 
+1.6153 
+1.6547 
+10 
+QPSK 
+8/9 
+1.6908 
+1.7280 
+1.7244 
+1.7665 
+11 
+QPSK 
+9/10 
+ N/D 
+ N/D 
+1.7460 
+1.7886 
+12 
+8PSK 
+3/5 
+1.6920 
+1.7253 
+1.7396 
+1.7800 
+13 
+8PSK 
+2/3 
+1.8850 
+1.9220 
+1.9357 
+1.9806 
+14 
+8PSK 
+3/4 
+2.0779 
+2.1188 
+2.1775 
+2.2281 
+15 
+8PSK 
+5/6 
+2.3351 
+2.3811 
+2.4223 
+2.4786 
+16 
+8PSK 
+8/9 
+2.5280 
+2.5778 
+2.5859 
+2.6460 
+17 
+8PSK 
+9/10 
+N/D 
+N/D 
+2.6184 
+2.6792 
+18 
+16APSK 
+2/3 
+2.5052 
+2.5488 
+2.5746 
+2.6372 
+19 
+16APSK 
+3/4 
+2.7616 
+2.8097 
+2.8963 
+2.9667 
+20 
+16APSK 
+4/5 
+2.9326 
+2.9836 
+3.0905 
+3.1656 
+21 
+16APSK 
+5/6 
+3.1035 
+3.1575 
+3.2219 
+3.3002 
+22 
+16APSK 
+8/9 
+3.3599 
+3.4184 
+3.4395 
+3.5231 
+23 
+16APSK 
+9/10 
+N/D 
+N/D 
+3.4827 
+3.5673 
+24 
+32APSK 
+3/4 
+3.4192 
+3.4931 
+3.6233 
+3.7033 
+25 
+32APSK 
+4/5 
+3.6308 
+3.7093 
+3.8662 
+3.9516 
+26 
+32APSK 
+5/6 
+3.8424 
+3.9255 
+4.0306 
+4.1195 
+27 
+32APSK 
+8/9 
+4.1599 
+4.2498 
+4.3029 
+4.3979 
+28 
+32APSK 
+9/10 
+N/D 
+N/D 
+4.3569 
+4.4530 
+
+=====PAGE 21=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-5 
+June 2023 
+3.3 
+TYPICAL SIMPLIFIED CONFIGURATION 
+3.3.1 GENERAL 
+For most HDRT applications, there is no need to change the TYPE field. It is consequently 
+suggested that these two bits be set to an unvarying value within a Mission Phase. Actually, 
+this TYPE field is kept as a CCSDS variable managed parameter only for the sake of 
+coherency between the CCSDS Recommended Standard and ETSI DVB-S2 telecom standard 
+(reference [2]). 
+3.3.2 PILOT SYMBOLS INSERTION 
+Pilot symbols insertion in the transmitted signal may be useful to reinforce the robustness of 
+the link. The functional diagram of a typical receiver is shown in figure 3-3. Pilots may be 
+used for carrier phase interpolation by the receiver. 
+SRRC filtering +
+down sampling
+Coarse carrier
+frequency sync.
+Symbol
+clock
+recovery
+Frame
+sync.
+Fine carrier
+frequency
+sync.
+Pilot-based
+carrier
+phase sync.
+AGC
+LLR
+Baseband I/Q
+received
+samples
+PLHeader
+decoding
+if ok
+if pilots
+inserted
+Fine carrier
+phase
+sync.
+LDPC/BCH
+decoding
+ 
+Figure 3-3:  Functional Diagram of a Typical DVB-S2 Receiver 
+In the presence of phase noise, this carrier phase interpolation allows use of a Phase Lock 
+Loop (PLL) for fine carrier phase recovery with a narrower loop bandwidth than without 
+pilots. Hence degradation due to imperfect carrier recovery is reduced when using pilots. An 
+example of comparison of DVB-S2 performance, with and without pilot insertion, and use of 
+the typical DVB-S2 receiver in figure 3-3, is shown in figure 3-4 (where BLT designates the 
+normalized loop bandwidth used for carrier phase recovery, and where reference stands for 
+results with ideal synchronization). 
+Pilot symbols may also be useful to increase the robustness to the Doppler effects. Section B.2 
+of reference [3] points out that the DVB-S2 carrier recovery scheme (and thus the DVB-S2 
+pilot symbols structure) was conceived to cope with a frequency offset up to 5 MHz and with a 
+frequency ramp up to 30 KHz/s (the target being telecom symbol rates, typically from 10 to 30 
+Mbauds). Maximum Doppler shift and Doppler rate values in LEO are typically less than 660 
+KHz and 17 KHz/s (worst case of a satellite with height 300 km and carrier frequency 26 GHz). 
+Moreover, data rates considered for HDRT of LEO satellites are usually higher than those 
+considered for telecoms (typically by a ratio from 5 to 20), so frequency recovery is easier for 
+HDRT applications (thanks to this higher symbol rate). Therefore it appears quite feasible to 
+cope with Doppler effects in the context of the use of references [1] and [2]. 
+Finally, since the cost of pilot symbols in terms of power/bandwidth efficiency is negligible, it 
+is advised to consider the use of pilots, in particular in case of lack of fine technical evaluations. 
+
+=====PAGE 22=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-6 
+June 2023 
+1.E−06
+1.E−05
+1.E−04
+1.E−03
+1.E−02
+1.E−01
+1.E+00
+10.2 10.3
+10.4
+10.5 10.6 10.7
+10.8 10.9
+11
+FER
+Es/No (dB)
+reference
+AWGN with pilots,
+BLT = 6e − 4
+phase noise with pilots,
+BLT = 6e − 4
+phase noise without pilots,
+BLT = 1e − 3
+phase noise without pilots,
+BLT = 6e − 4
+AWGN without pilots,
+BLT = 1e − 3
+ 
+Figure 3-4: DVB-S2 Typical Receiver Performance with and without Pilot Insertion 
+(16APSK 3/4, Short FECFRAME) 
+1.E−06
+1.E−05
+1.E−04
+1.E−03
+1.E−02
+1.E−01
+1.E+00
+8
+9
+10
+11
+12
+13
+FER
+Es/No (dB)
+8PSK-5/6 short
+8PSK-5/6 normal
+16APSK-5/6 short
+16APSK-5/6 normal
+ 
+Figure 3-5:  DVB-S2 Performance with Normal and Short FECFRAME 
+
+=====PAGE 23=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-7 
+June 2023 
+3.3.3 NORMAL FECFRAME 
+The Bits Interleaved Coded Modulation (BICM) scheme used in the DVB-S2 standard is a 
+pragmatic way to achieve performance close to the AWGN channel capacity, even for High 
+Order Modulation (HOM), with dissociation of demodulation step and decoding step (by 
+computing Log-Likelihood Ratio [LLR]) to reduce receiver complexity (see references [14] 
+and [15]). 
+According to information theory, a long frame allows a more efficient Forward Error 
+Correction (FEC). Hence, in the DVB-S2 standard, the normal FECFRAME is more efficient 
+than the short FECFRAME from a power/bandwidth trade-off point of view. A comparison 
+of DVB-S2 performance with normal and short FECFRAME is shown in figure 3-5. It is 
+consequently advised to use the normal FECFRAME whenever possible. 
+3.4 
+DUMMY PLFRAME 
+The DVB-S2 standard allows inserting a so-called Dummy Physical Layer Frame 
+(PLFRAME, see section 5.5 of reference [2]) in the transmitted signal. This Dummy 
+PLFRAME does not convey any information, and is identified and suppressed by all DVB-
+S2 receivers (i.e., it does not appear in the data flow at the receiver output). 
+For some applications or some technical implementation solutions, it can be more convenient 
+to use this Dummy PLFRAME rather than CCSDS Only Idle Data (OID) Transfer Frames 
+encapsulated in DVB-S2. Actually, the reception of a Dummy PLFRAME cannot generate 
+any error or warning at the receiving end (since the Dummy PLFRAME is not decoded), 
+whereas the erroneous reception of an OID Transfer Frame generates errors at the DVB-S2 
+decoder level (BCH code allowing integrity check) and at the Transfer Frame level (CRC). 
+Typical utilizations of the Dummy PLFRAME include: 
+– opening of the link at the beginning of a satellite pass; 
+– maintenance of the link continuity when downloading is stopped for link budget 
+reasons; 
+– maintenance of the link continuity when data are not available at the DVB-S2 
+transmitter input (which is not possible with a system fully following the CCSDS 
+standards, but can happen in practice); 
+– stand-by mode of the transmitter. 
+This Dummy PLFRAME is referenced as the MODCOD 0. The associated spectral 
+efficiency is 0. 
+
+=====PAGE 24=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-8 
+June 2023 
+3.5 
+TRANSMISSION CLOSING 
+As described in reference [1], the encapsulation of CCSDS Transfer Frames in DVB-S2 
+frames is asynchronous (and the DVB-S2 padding is not used). Consequently, the 
+transmission of a non-useful data sequence (by the DVB-S2 transmitter itself, or by the data 
+source feeding the transmitter) is required to flush the data in the DVB-S2 transmitter buffer 
+and properly close the download without loss of useful data. The required minimum length of 
+the data sequence of non-useful bits depends on the current MODCOD and TYPE. The worst 
+case is obtained with the coding rate 9/10 and normal FECFRAME, and is (58192−80) bits. 
+CCSDS OID Transfer Frames can be used for this non-useful data sequence rather than a 
+pseudo-random data sequence. It allows maintaining the flow of the SMTF stream at the 
+receiver side during a temporary interruption of data transmission (see figure 3-6). It is useful 
+when the transmission is not fully predicted on ground (such as when using ACM). The 
+minimum number of required OID Transfer Frames depends on the current MODCOD and 
+TYPE and on the CCSDS Transfer Frame length. A worst case is obtained considering the 
+coding rate 9/10 with normal FECFRAME. The number of OID Transfer Frames required in 
+this worst case is at least (58192−80, CCSDS Transfer Frame Length in bits + 32 bits of 
+Attached Synchronization Marker [ASM]). 
+NOTE – It is suggested to choose the CCSDS Transfer Frame Length equal to (or close to) 
+the maximal value of 2048 octets to minimize the overhead loss. When using this 
+CCSDS Transfer Frame Length and DVB-S2 normal FECFRAME size, 4 OID 
+Transfer Frames are required to close the transmission properly. 
+Input CCSDS Transfer Frames
+SMTF stream
+DVB-S2 DATAFIELD blocks
+ASM
+(32 bits)
+DVB-S2
+slicer
+DVB-S2
+Radio Frequency
+modulated
+signal
+DVB-S2 standard
+M bits
+M bits
+M bits
+M bits
+M bits
+M bits
+DFL bits
+DFL bits
+DFL bits
+ 
+Figure 3-6:  Stream Format while Transmitting CCSDS Transfer Frames Using DVB-S22 
+                                                 
+2 From reference [1]. 
+
+=====PAGE 25=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 3-9 
+June 2023 
+3.6 
+FRAME VALIDATION AND SLE-RAF SERVICE 
+The Space Link Extension Return All Frames (SLE-RAF) service is defined in reference [8]. 
+It allows different possible requested-frame-quality parameter values: ‘good 
+frames only’, ‘erred frames only’, and ‘all frames’ (reference [8] subsection 3.4.2.7). 
+Therefore a delivered-frame-quality (‘good’, ‘erred’, or ‘undetermined’) is 
+established by the receiver on a frame-by-frame basis (reference [8] subsection 3.6.2.6.1) 
+before delivery to the SLE-RAF service. 
+When considering the use of the CCSDS Recommended Standard and SLE-RAF 
+(reference [8]), the Frame Error Control Field (see reference [1], subsection 5.2.1.2) is used 
+for Frame Validation (see reference [1], subsection 2.2.5): a received Transfer Frame can be 
+marked ‘good’ if it passes the CRC, or ‘erred’ if it does not pass the CRC. 
+When the requested-frame-quality parameter value of the SLE-RAF service is set 
+to ‘erred frames only’ or ‘all frames’, following the CCSDS Recommended Standard 
+(including the DVB-S2 receiver, the SMTF synchronization, and Frame Validation), a 
+receiver will deliver an ‘erred’ Transfer Frame with the same length as a ‘good’ Transfer 
+Frame (reference [8] subsection 3.6.2.8.b). 
+It is worth noting that the DVB-S2 receiver checks the reliability of received FECFRAMEs 
+(thanks to the BCH code—reference [2]), and therefore may be set up to either discard or not 
+discard incorrectly decoded FECFRAMEs: 
+– If the DVB-S2 receiver is set up to discard incorrectly decoded FECFRAMEs, the 
+SMTF stream will show some discontinuities, and some ‘erred’ frames will not be 
+deliverable to the SLE-RAF service. 
+– If the DVB-S2 receiver is set up to not discard incorrectly decoded FECFRAMEs, the 
+DVB-S2 receiver may output the assumed content of the DVB-S2 DATAFIELD 
+(reference [2]) even for incorrectly decoded FECFRAMEs. The SMTF stream will 
+not show discontinuity. ‘Erred’ frames will be detected by the CRC, and, if required, 
+delivered to the SLE-RAF service. 
+ 
+
+=====PAGE 26=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 4-1 
+June 2023 
+4 IMPLEMENTATION AT THE INTERFACE BETWEEN CCSDS 
+PROTOCOLS AND DVB-S2 
+4.1 
+INTRODUCTION 
+Since the CCSDS Recommended Standard is an adaptation profile of the ETSI DVB-S2 
+telecom standard (reference [2]), the interface between CCSDS protocols and DVB-S2 is of 
+particular interest. 
+All DVB-S2 telecom development can be considered for application to the CCSDS case 
+(see 2.1), the CCSDS Recommended Standard (reference [1]) ensuring proper and full 
+interface compatibility between the CCSDS layers and the DVB-S2 standard (reference [2]). 
+However, some specific HDRT implementations (possibly not including DVB-S2 options 
+useless for the CCSDS Recommended Standard) may be considered to reduce 
+implementation complexity at the interface between CCSDS protocols and DVB-S2. 
+Subsection 4.2 deals with such a simplified implementation. 
+Considering onboard data interfaces (typically between a mass memory and a transmitter), 
+the classical ‘data-push’ interface, originally conceived for low-data-rate telemetry, does not 
+seem particularly suited to work with variable useful data rates with VCM/ACM. Hence a 
+possible solution for a VCM/ACM interface at the transmitter input is presented in 4.3. 
+4.2 
+DVB-S2 BASEBAND HEADER SIMPLIFIED PROCESSING 
+In the DVB-S2 standard, a BaseBand Header (BBHEADER) of 10 octets length is inserted at 
+the beginning of each BaseBand Frame (BBFRAME). This BBHEADER includes some 
+signaling related to the DVB-S2 standard. The BBHEADER structure is fully described in 
+reference [2], section 5.1.6. 
+Actually, this signaling is not essential for a telemetry transmission. However, this 
+BBHEADER must not be bypassed in a transmitter, according to the CCSDS Recommended 
+Standard (reference [1]), for the sake of full DVB-S2 compatibility (to ensure the possible 
+reuse of commercial telecom receivers). Moreover, the complexity added by this 
+BBHEADER insertion is very limited (for the transmitter and the receiver), as explained 
+below. 
+According to the CCSDS Recommended Standard, most of the BBHEADER content is fixed, 
+in particular during a mission phase.  Indeed, during a mission phase, the potentially variable 
+content is limited to the DVB-S2 DATA FIELD LENGTH (DFL) and the DVB-S2 CRC-8 
+(depending on the DFL value). According to subsection 4.2.3 of the CCSDS Recommended 
+Standard, this DFL depends only on the FECFRAME size (DFL = Kbch − 80 bits) and the 
+coding rate. 
+Actually, these two parameters (FECFRAME size and coding rate) are required by the 
+receiver before FEC decoding, justifying that they are still indicated in the DVB-S2 
+
+=====PAGE 27=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 4-2 
+June 2023 
+PLHEADER. Additional content of the BBHEADER with respect to the PLHEADER is 
+limited to the transmission mode (CCM or VCM/ACM) and the transmitted roll-off. 
+Thus the telemetry receiver, designed according to reference [1], can bypass the 
+BBHEADER interpretation because, on one hand, it knows the transmission roll-off or uses 
+adaptive equalization, and, on the other hand, it knows the transmission mode or always 
+assumes a VCM/ACM mode. 
+Concerning the DVB-S2 transmitter designed according to reference [1]: 
+– the BBHEADER does not change in CCM mode; 
+– the BBHEADER changes only with the FECFRAME size and coding rate during a 
+mission phase with VCM/ACM mode. 
+It can be noted  that the 10th octet of the BBHEADER is a CRC upon the first 9 octets of the 
+BBHEADER. 
+A possible implementation scheme can be based on a tabulated function to compute the 
+BBHEADER: 
+– input parameters—transmission mode (CCM or VCM/ACM), roll-off, FECFRAME 
+size, coding rate; 
+– output parameters—possibly varying octets of the BBHEADER: 
+• 
+octet 1/10 (MATYPE), 
+• 
+octets 5/10 and 6/10 (DFL = Kbch − 80), 
+• 
+octet 10/10 (CRC-8). 
+The other BBHEADER octets can be set to ‘0’. 
+NOTE – This tabulated function can be further simplified for a given mission by 
+considering unvarying transmission mode, roll-off, and FECFRAME size as 
+proposed in 3.3. 
+4.3 
+EXAMPLE OF DATA INTERFACE AT THE TRANSMITTER INPUT TO 
+WORK WITH DVB-S2 VCM/ACM 
+It should be recalled that the DVB-S2 standard, being originally designed for telecom 
+applications, implies a time-unvarying symbol rate. Similarly, in an HDRT context, the 
+symbol rate does not change during a mission phase. When using VCM or ACM 
+transmission mode, the required data rate at the DVB-S2 transmitter input (input SMTF 
+stream data rate) depends on the MODCOD. Required input data rates can be derived from 
+the symbol rate and the spectral efficiencies in table 3-1. 
+
+=====PAGE 28=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 4-3 
+June 2023 
+A convenient solution to cope with this time-varying data rate is to use a ‘data-pull’ 
+interface. A typical implementation of this data interface using parallel Low Voltage 
+Differential Signaling (LVDS) wires, and used in reference [10], is shown in figure 4-1. A 
+functional diagram of the onboard downloading subsystem is shown in figure 4-2. 
+Mass Memory
+(data source)
+Transmitter
+Clock
+Data_valid
+Data_request
+Data (8 or 16 bits)
+ 
+Figure 4-1:  Data-Pull Interface with Parallel LVDS Wires 
+Transmitter
+RTX
+RTX
+RTX
+RTX
+RMM
+Signal with data rate
+proportional to RTX
+Data, Clock, and Data_valid
+proportional to RMM
+Data_request
+Mass memory (data source)
+Filtering
+MODCOD and TYPE
+(from the OBC)
+DVB-S2 coding and
+modulation
+Dummy PLFrame
+Buffer
+Memory reading
+ 
+Figure 4-2: Onboard Downloading Subsystem Functional Diagram with Data-Pull 
+Interface 
+
+=====PAGE 29=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 4-4 
+June 2023 
+In the above example, the data source at the transmitter input is mass memory. The master 
+equipment is the transmitter, and the slave equipment is the data source. The transmitted 
+symbol rate (and consequently, the transmitted data rate) is proportional to the internal clock 
+of the transmitter. The data rate at the interface between the data source and the transmitter is 
+proportional to the internal clock of the data source. The transmitter has an internal buffer at 
+its input to store data before processing (i.e., coding, modulation, and filtering). 
+At the beginning of a download sequence, the transmitter sets the ‘data_request’ signal to ‘1’, 
+and the data source begins to send data to the transmitter. When using VCM/ACM modes, 
+these data must be sent with a data rate higher than the maximum data rate achievable by the 
+transmitter. Consequently, the buffer is filled. When the buffer filling reaches a maximum 
+value, the ‘data_request’ signal is set to ‘0’, the data source stops sending data to the 
+transmitter, and the buffer is dumped. Then, when the buffer filling reaches a minimum 
+value, it sets the ‘data_request’ signal to ‘1’, and so on. A proper choice of the buffer size 
+and of the minimum and maximum filling values (taking into account response times of the 
+data source and the transmitter) is required. This system is then able to cope with any 
+transmitter data-rate change. 
+The ‘data_valid’ signal (equal to ‘1’ when some data are transferred from the data source to 
+the transmitter, otherwise equal to ‘0’) is used by the transmitter to detect when data are 
+received. 
+This ‘data-pull’ interface would allow exchanging an unframed stream of data between the 
+data source and the transmitter. However, it is rather suggested to exchange an entire SMTF 
+at the interface between the data source and the transmitter. 
+The ‘data-pull’ concept can be used with a ‘WizardLink’ or a High Speed Serial Link 
+(HSSL) for the data transfer between the data source and the transmitter. In such cases, the 
+physical electric interface of the ‘data_request’ signal can be different from the data 
+interface. 
+If a device is inserted between the data source and the transmitter (for example, a ciphering 
+device), it may include a buffer at its input and transmit the ‘data_request’ signal from the 
+transmitter to the data source. By doing so, the system is able to work with VCM/ACM. 
+Finally, it can be noted that the use of a stuffing mechanism (for example, using the DVB-S2 
+Dummy PLFRAME of an OID Transfer Frame) appears natural to secure the link continuity 
+when using a ‘data-pull’ interface. 
+ 
+
+=====PAGE 30=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-1 
+June 2023 
+5 PERFORMANCE OF DVB-S2 
+5.1 
+INTRODUCTION 
+The objective of this section is to present a synthesis of DVB-S2 performance useful for 
+HDRT engineers. 
+– Subsection 5.2 provides exhaustive references and results for theoretical DVB-S2 
+performance over AWGN channel. 
+– Subsection 5.3 provides examples of DVB-S2 performance in an HDRT non-linear 
+(due to power amplifier) channel, using software simulations with a fully emulated 
+receiver and FECFRAME Error Rate (FER) measurements. 
+– Subsection 5.4 provides exhaustive DVB-S2 performance in an HDRT non-linear 
+(due to power amplifier) channel, using software simulations with a simplified 
+receiver and Error Vector Magnitude (EVM) measurements (allowing a considerable 
+diminution of the simulation time with respect to 5.3). This subsection also provides 
+results concerning Power Spectrum Density (PSD). 
+– Subsection 5.5 provides some hardware results from recent measurements on HDRT 
+equipment. 
+5.2 
+PERFORMANCE OVER AWGN CHANNEL 
+5.2.1 INTRODUCTION 
+The objective of this subsection is to provide references and results for theoretical 
+performances of DVB-S2 over AWGN channel. 
+5.2.2 NORMAL FECFRAME 
+Some performances can be found in ETSI user guidelines (reference [3]), section A.3, pages 
+66–67, in terms of MPEG Packet Error Rate (PER). Actually, simulations show that FER and 
+PER values are very close. Moreover, since the curve slopes are very steep, the difference in 
+terms of Es/No is negligible (<0.05 dB). 
+Simulation results for MODCOD missing in reference [3] are presented in figure 5-1. 
+5.2.3 SHORT FECFRAME 
+Some performances can be found in reference [3], section A.3, page 68. 
+Simulation results for MODCODs missing in reference [3] are presented in figure 5-2. 
+
+=====PAGE 31=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-2 
+June 2023 
+   
+1.E−06
+1.E−05
+1.E−04
+1.E−03
+1.E−02
+1.E−01
+−3
+−2
+−1
+0
+FER
+Es/No (dB)
+QPSK-1/4
+QPSK-1/3
+QPSK-2/5
+1.E−06
+1.E−05
+1.E−04
+1.E−03
+1.E−02
+1.E−01
+17
+16
+15
+FER
+Es/No (dB)
+32APSK-9/10
+ 
+Figure 5-1:  Performance over AWGN Channel—DVB-S2 Normal FECFRAME—
+Additional Results to ETSI User Guidelines 
+1.0E−06
+1.0E−05
+1.0E−04
+1.0E−03
+1.0E−02
+1.0E−01
+5
+6
+7
+8
+9
+10
+14
+15
+16
+17
+12
+11
+13
+FER
+Es/No (dB)
+ 
+8PSK-3/5
+8PSK-2/3
+8PSK-3/4
+8PSK-5/6
+8PSK-8/9
+16APSK-2/3
+16APSK-3/4
+16APSK-4/5
+16APSK-5/6
+16APSK-8/9
+32APSK-3/4
+32APSK-4/5
+32APSK-5/6
+32APSK-8/9
+1.E−06
+1.E−05
+1.E−04
+1.E−03
+1.E−02
+1.E−01
+−3
+FER
+Es/No (dB)
+QPSK-1/4
+−4
+−3.8
+−3.6
+−3.4
+−3.2
+ 
+Figure 5-2: Performance over AWGN Channel—DVB-S2 Short FECFRAME—
+Additional Results to ETSI User Guidelines 
+
+=====PAGE 32=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-3 
+June 2023 
+5.3 
+EXAMPLE OF PERFORMANCE WITH NON-LINEAR CHANNEL 
+IMPAIRMENT 
+5.3.1 INTRODUCTION 
+The objectives of this subsection are: 
+– to present simulation results illustrating the behavior of DVB-S2 over a non-linear 
+channel; 
+– to point out the interest of adapting the amplifier operating point according to the 
+used MODCOD. 
+Channel impairment is thus limited in this subsection to the non-linear impairment without 
+memory from the power amplifier. 
+5.3.2 PRINCIPLE OF AMPLIFIER OPERATING POINT OPTIMIZATION 
+To optimize the amplifier operating point for a given MODCOD, two effects have to be 
+considered. 
+For a given Output Back-Off (OBO), the available RF power at the amplifier output is 
+reduced with respect to the RF power available at saturation. Thus a back-off implies a loss 
+over the link budget, and it would therefore seem desirable to reduce this OBO. 
+However, the non-linear effect of the power amplifier induces a demodulation loss. This 
+degradation increases when reducing the OBO, as shown in figure 5-3. 
+Eb/No [dB]
+|Demodulation
+loss| [dB]
+Frame Error
+Rate
+Ideal 
+With given amplifier
+operating point (IBO/OBO)
+Target FER
+ 
+Figure 5-3:  Demodulation Loss Measurement Principle 
+
+=====PAGE 33=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-4 
+June 2023 
+Finally, an optimum OBO can be found, for a given MODCOD, as shown in figure 5-4. 
+|OBO| [dB]
+|Total 
+degradation| 
+[dB]
+|Degradation| 
+[dB]
+|OBO loss| 
+[dB]
+|Demodulation loss|
+[dB] (for a given 
+waveform)
+Optimum 
+operating 
+point
+ 
+Figure 5-4:  Principle of Amplifier Operating Point Optimization 
+5.3.3 SIMULATION HYPOTHESES 
+Results are obtained using the simulation tool presented in reference [9], in which the 
+receiver shown in figure 3-3, which is included in the simulation tool, is used. Short 
+FECFRAME is used to limit the simulation time. Pilot symbols are inserted. The roll-off is 
+chosen equal to 0.2. 
+A typical European 26 GHz non-linearized Travelling Wave Tube Amplifier (TWTA) (used 
+in reference [16], and with characteristics somewhat similar to the ones in figure H.12 of 
+reference [2]) is assumed. It is fully characterized by Continuous Wave (CW) AM/AM and 
+AM/PM responses, as shown in figure 5-5. No digital predistortion of the amplifier non-
+linearity is considered here. Other channel impairments are not considered for the sake of 
+interpretability of results. 
+Usually, the relationship between Input Back-Off (IBO) and OBO depends on the waveform. 
+It is, for instance, different for CW and modulated signals. It also depends on the roll-off and 
+the constellation of a modulated signal. 
+
+=====PAGE 34=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-5 
+June 2023 
+−
+OBO (dB)
+IBO (dB)
+ 
+Phase (°)
+IBO (dB)
+−14.00
+−12.00
+−10.00
+−8.00
+−6.00
+−4.00
+−2.00
+0.00
+−20
+−15
+−10
+−5
+0
+5
+−70.00
+−60.00
+−50.00
+−40.00
+−30.00
+−20.00
+−10.00
+0.00
+−20
+−15
+−10
+−5
+0
+5
+Ka−band TWTA − AM/AM
+Ka−band TWTA − AM/PM
+ 
+Figure 5-5:  26 GHz Power Amplifier AM/AM and AM/PM Responses 
+
+=====PAGE 35=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-6 
+June 2023 
+5.3.4 OPTIMUM OPERATING POINT OPTIMIZATION FOR 16APSK 8/9 
+The optimization for 16APSK 8/9 is shown in figure 5-6. 
+The optimal operating point is an IBO of 5.5 dB corresponding to an OBO of 1.75 dB. 
+0
+1
+2
+3
+4
+5
+6
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+|degradation| [dB]
+|OBO| [dB]
+demodulation loss
+OBO
+total degradation
+ 
+Figure 5-6:  Amplifier Operating Point Optimization for 16APSK 8/9 
+5.3.5 RESULTS WITH CONSTANT IBO 
+If a MODCOD change is required, the most straightforward way in some cases, though not 
+optimum, may be to operate at the same IBO operating point over a mission range of 
+MODCODs. 
+Results for different MODCODs from QPSK 1/3 to 16APSK 8/9 with the previous IBO are 
+thus presented in figure 5-7. 
+For a given constellation, the demodulation loss decreases with the coding rate, thanks to the 
+decrease of the required Es/No over AWGN channel. 
+However, if high coding rate 8PSK and low coding rate 16APSK have similar required Es/No 
+over AWGN channel, 16APSK shows a more important demodulation loss with non-
+linearity, because of its higher Peak-to-Average Power Ratio (PAPR). 
+
+=====PAGE 36=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-7 
+June 2023 
+1.00E − 04
+1.00E − 03
+1.00E − 02
+1.00E − 01
+1.00 + 00
+−4
+−2
+0
+2
+4
+6
+FER
+Es/No (dB)
+QPSK- 1/4
+QPSK- 1/3
+QPSK- 2/5
+QPSK- 1/2
+QPSK- 3/5
+QPSK- 2/3
+QPSK- 3/4
+QPSK- 4/5
+1.E − 01
+1.E − 02
+1.E − 03
+1.E − 04
+1.E − 05
+1.E − 06
+1.E + 00
+1.E − 01
+1.E − 02
+1.E − 03
+1.E − 04
+1.E − 05
+1.E − 06
+1.E + 00
+5
+7
+9
+11
+FER
+Es/No (dB)
+8PSK- 2/3
+8PSK- 2/3 AWGN
+8PSK- 3/4
+8PSK- 3/4 AWGN
+8PSK- 5/6
+8PSK- 5/6 AWGN
+8PSK- 8/9
+8PSK- 8/9 AWGN
+8
+10
+12
+14
+16
+FER
+Es/No (dB)
+16APSK- 2/3
+16APSK- 2/3 AWGN
+16APSK- 3/4
+16APSK- 3/4 AWGN
+16APSK- 4/5
+16APSK- 4/5 AWGN
+16APSK- 5/6
+16APSK- 5/6 AWGN
+16APSK- 8/9
+16APSK- 8/9 AWGN
+ 
+Figure 5-7:  Performance with Constant IBO = 5.5 dB 
+
+=====PAGE 37=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-8 
+June 2023 
+Because of the even higher PAPR of 32APSK, it does not appear possible to reach the target 
+FER with the considered IBO. For that reason, it is necessary to consider a specific IBO 
+optimization for the case of MODCODs with 32APSK modulation. 
+The optimization for 32APSK 8/9 is shown in figure 5-8. The optimal operating point is an 
+IBO of 11 dB corresponding to an OBO of 4.95 dB. 
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+2.5
+3
+3.5
+4
+4.5
+5
+5.5
+6
+6.5
+|degradation| [dB]
+|OBO| [dB]
+demodulation loss
+OBO
+total degradation
+ 
+Figure 5-8:  Amplifier Operating Point Optimization for 32APSK 8/9 
+5.3.6 COMMENTS 
+The basis for optimization of the amplifier operating point was presented, considering DVB-
+S2 nominal constellations. Another simple way to further increase performance is to use 
+static digital predistortion of the amplifier non-linearity, for 16APSK and 32APSK, at the 
+constellation mapping level in the transmitter. Such a predistortion is working at the symbol 
+rate, and thus its digital complexity is very limited. For a given MODCOD using 16APSK or 
+32APSK, a joint optimization of the predistorted constellation and of the operating point is 
+then possible. Such an optimization is proposed in 5.4. 
+When considering a VCM or even an ACM transmission, a simple solution consists in 
+optimizing the amplifier operating point for a median MODCOD, and then in keeping a 
+constant IBO for the different MODCODs. A full performance solution requires a dynamic 
+adaptation of the amplifier operating point depending on the MODCOD. (The 
+implementation of such a solution is beyond the scope of this document.) 
+
+=====PAGE 38=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-9 
+June 2023 
+5.4 
+EXAMPLE OF PERFORMANCE WITH STATIC PREDISTORTION OF 
+POWER AMPLIFIER NON-LINEARITY 
+5.4.1 INTRODUCTION 
+The objective of this subsection is: 
+– to present some additional material about Power Amplifier (PA) operating point 
+optimization when using DVB-S2 HOMs, in particular through EVM (reference [12]) 
+measurements; 
+– to evaluate the possible improvement when using a very simple symbol Constellation 
+Predistortion (CP) of the PA non-linearity; 
+– to evaluate possible constraints on the amplifier operating point related to the PSD at 
+the PA output. 
+5.4.2 METHODOLOGY 
+The model used is the classical model of non-linearity without memory (already used in 5.3): 
+the PA is fully characterized by its AM/AM and AM/PM responses. A typical European non-
+linearized X-band TWTA used for the HDRT of CNES Pleiades satellites is considered, with 
+characteristics shown in figure 5-9. 
+−14
+−12
+−10
+−8
+−6
+−4
+−2
+0
+2
+−20
+−15
+−10
+10
+−5
+5
+0
+−20
+−15
+−10
+10
+−5
+5
+0
+OBO (dB)
+IBO (dB)
+TWTA Pleiades - AM/AM
+−70
+−60
+−50
+−40
+−30
+−20
+−10
+0
+Phase (°)
+IBO (dB)
+TWTA Pleiades - AM/PM
+ 
+Figure 5-9:  AM/AM and AM/PM Responses of the 8 GHz TWTA 
+
+=====PAGE 39=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-10 
+June 2023 
+In the software simulator used, the receiver synchronization is assumed ideal: simple static 
+amplitude and phase-shift compensations are applied to the received signal to be able to 
+measure the EVM. 
+In the same way than in 5.3, the value to be minimized (by modifying the PA operating point 
+or the CP) is the Total Degradation (TD), equal to the sum in dB of the OBO and the 
+Demodulation Loss (DL) implied by the non-linearity: 
+TD(dB)
+OBO(dB)
+DL(dB)
+=
++
+ 
+The DL is obtained by the following formula, with natural values: 
+C required at demodulation with PA 
+N
+DL
+C required at demodulation without PA
+non-lineartity
+non-linear
+ 
+y
+N
+tit
+=
+ 
+C is the carrier power and N is the additive noise power measured in the equivalent noise 
+bandwidth (equal to the symbol rate). 
+It is assumed that the constellation distortion induced by the PA non-linearity has the same 
+behavior as AWGN and acts as interference on the link. The C/I induced by the PA non-
+linearity is then linked to the measured EVM (without AWGN) by the following formula (see 
+references [12] and [27]) in dB: 
+(
+)
+C / I(dB)
+20 log10 EVM(%)
+= −
+ 
+To make the link possible with the target FER, the received C/(N + I) has to be equal to the 
+required Es/No at the receiver input. The result is, with natural values (see, for example, 
+reference [26]): 
+1
+1
+1
+1
+s
+o
+C
+C
+C
+ 
+required 
+N
+I
+N
+I
+E
+N
+−
+−
+−
+−
+
+
+
+
+
+
+
+
+=
++
+= 
+
+
+
+
+
+
+
++
+
+
+
+
+
+
+
+
+ 
+or 
+s
+1
+1
+o
+1
+C
+C
+required N
+N
+E
+ 
+I
+−
+−
+−
+
+
+
+
+
+
+
+
+=
+−
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+=====PAGE 40=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-11 
+June 2023 
+Finally, that results in natural values 
+s
+s
+o
+1
+1
+o
+1
+C
+required 
+I
+     DL
+requir
+E
+N
+E
+ed N
+−
+−
+−
+
+
+
+
+
+
+
+
+−
+
+
+
+
+
+
+
+
+
+
+
+
+=
+ 
+or in dB 
+(
+)
+s
+o
+E
+N
+C
+required 
+dB
+(dB) /10
+I
+DL(dB)
+10log10 1 10
+
+
+−
+
+
+
+
+
+
+
+
+=
+−
+
+
+
+
+ 
+For the exercise, a perfect receiver is considered, using the theoretical Es/No values taken 
+from the DVB-S2 (see table 13 in reference [2]). This approximation appears close to reality 
+for modern receivers (see 5.5), at least up to 16APSK. 
+It is worth noting that throughout this subsection, TD, OBO, and DL are expressed with 
+negative values. It is also interesting that the optimization process considered in this 
+subsection is fully similar to the one considered in 5.3, the only difference being the 
+computation of the DL using EVM measurements in this subsection (of interest to reduce 
+simulation time with respect to 5.3). 
+5.4.3 QPSK AND 8PSK 
+The optimization can only be performed on the amplifier operating point (CP is not 
+applicable for constant envelop constellations). 
+The PAPR is the same for QPSK and 8PSK because of the constant envelope constellation. 
+However, the PAPR increases when the roll-off alpha value decreases. The demodulation 
+loss induced by the PA (in absolute value) varies in the same direction of the PAPR. 
+The operating point optimization leads to a higher TD (in absolute value) for 8PSK than for 
+QPSK because theoretical required Es/No is lower for QPSK than for 8PSK. 
+It can be noted that for both QPSK and 8PSK, whatever the roll-off is, the best operating 
+point is found very close to the saturation. Figure 5-10 shows the TD for different OBO and 
+for the three highest coding rates (5/6, 8/9, and 9/10) for 8PSK. The blue lines (marker +) are 
+for α = 0.2, whereas the green lines (marker o) are for α = 0.35. 
+
+=====PAGE 41=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-12 
+June 2023 
+−1
+−0.9
+−0.8
+−0.7
+−0.6
+−0.5
+−0.4
+−0.3
+−0.2
+−0.1
+0
+−1.5
+−1.4
+−1.3
+−1.2
+−1.1
+−1
+−0.9
+−0.8
+−0.7
+−0.6
+−0.5
+OBO (dB)
+total degradation TD (dB)
+8PSK (3 highest coding rates), α =0.2 and 0.35
+ 
+Figure 5-10:  TD for 8PSK 
+5.4.4 16APSK 
+The optimization is performed on: 
+– the PA operating point; 
+– the increase of the radius ratio with respect to the nominal constellation 
+(Γ=γCP/γnominal); 
+– the phase shift of the second ring with respect to the nominal constellation (∆φ). 
+The optimization is performed by the brute force approach. For each IBO, an optimal couple 
+(Γ, ∆φ) is found by testing possible values of Γ and ∆φ. Figure 5-11 shows the TD (in dB) as 
+a function of Γ and ∆φ, for the case of 16APSK 9/10, and with an IBO equal to −3 dB. The 
+optimal couple (Γ, ∆φ) is about (1.5, 20 degrees) and leads to a TD equal to −2.8 dB. 
+ 
+Figure 5-11:  TD as a Function of Γ and ∆φ for a Fixed IBO 
+
+=====PAGE 42=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-13 
+June 2023 
+It should be noted that the OBO slightly depends on the waveform and, consequently, 
+depends on the CP. 
+Figure 5-12 shows the lowest TD for different OBO, and for the six MODCODs with 16APSK 
+modulation of the DVB-S2 standard. The blue lines (marker +) are with CP, whereas the green 
+lines (marker o) are without CP (i.e., with nominal DVB-S2 constellations). 
+ 
+Figure 5-12:  Optimal TD for 16APSK 
+Tables 5-1 and 5-2 summarize the optimal operating point for roll-off α = 0.2 and α = 0.35. 
+The gain in using CP is found limited: 0.4 to 0.76 dB with α = 0.2, 0.55 dB to 1.1 dB with 
+α = 0.35. Logically, this gain is slightly higher for the highest roll-off value (the PAPR 
+increase induced by the pulse shaping filter is not mitigable by the CP). 
+Table 5-1:  Optimal Operating Points, 16APSK, Roll-Off α = 0.2 
+With CP 
+Without CP 
+(TD with 
+CP) - (TD 
+without 
+CP) (dB) 
+MODCOD 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL 
+(dB) 
+Γ 
+∆φ 
+(°) 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL 
+(dB) 
+16APSK 
+2/3 
+−1.5 −0.76 
+16.9 
+−1.53 −0.77 
+1.65 
+17.5 
+−3 
+−0.86 
+15.6 
+−1.93 
+−1.07 
+0.40 
+16APSK 
+3/4 
+−2.5 −0.85 
+17.5 
+−1.76 −0.91 
+1.5 
+17.5 
+−4 
+−1.04 
+16.3 
+−2.27 
+−1.23 
+0.51 
+16APSK 
+4/5 
+−3 
+−0.93 
+17.8 
+−1.95 −1.02 
+1.5 
+20 
+−5 
+−1.31 17.15 
+−2.53 
+−1.22 
+0.58 
+16APSK 
+5/6 
+−3.5 −1.05 
+18.1 
+−2.11 −1.06 
+1.45 
+17.5 
+−5 
+−1.3 
+17.1 
+−2.74 
+−1.44 
+0.63 
+16APSK 
+8/9 
+−4 
+−1.12 
+18.5 
+−2.5 
+−1.38 
+1.4 
+17.5 
+−6 
+−1.63 
+18 
+−3.24 
+−1.61 
+0.74 
+16APSK 
+9/10 
+−5 
+−1.36 
+19.3 
+−2.57 −1.21 
+1.3 
+15 
+−7 
+−2.03 
+19 
+−3.33 
+−1.3 
+0.76 
+
+=====PAGE 43=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-14 
+June 2023 
+Table 5-2:  Optimal Operating Points, 16APSK, Roll-Off α = 0.35 
+With CP 
+Without CP 
+(TD with 
+CP) - (TD 
+without 
+CP) (dB) 
+MODCOD 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL 
+(dB) 
+Γ 
+∆φ 
+(°) 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL (dB) 
+16APSK 
+2/3 
+−0.5 −0.71 
+18.3 
+−1.25 
+−0.54 
+1.85 
+22.5 
+−3 
+−0.86 
+16.1 
+−1.8 
+−0.94 
+0.55 
+16APSK 
+3/4 
+−1.5 −0.77 
+18.9 
+−1.4 
+−0.63 
+1.75 
+22.5 
+−4 
+−1.04 
+16.8 
+−2.1 
+−1.06 
+0.70 
+16APSK 
+4/5 
+−2 
+−0.82 
+19.2 
+−1.53 
+−0.71 
+1.7 
+22.5 
+−5 
+−1.3 
+17.7 
+−2.35 
+−1.05 
+0.82 
+16APSK 
+5/6 
+−2 
+−0.81 
+19.3 
+−1.63 
+−0.82 
+1.7 
+22.5 
+−5 
+−1.29 
+17.7 
+−2.53 
+−1.24 
+0.90 
+16APSK 
+8/9 
+−3 
+−0.95 
+19.9 
+−1.9 
+−0.95 
+1.6 
+20 
+−6 
+−1.62 
+18.6 
+−2.97 
+−1.35 
+1.07 
+16APSK 
+9/10 
+−3.5 −1.04 
+20.3 
+−1.97 
+−0.93 
+1.55 
+20 
+−6 
+−1.61 
+18.6 
+−3.05 
+−1.44 
+1.08 
+5.4.5 32APSK 
+The optimization is performed on: 
+– the PA operating point; 
+– the increase of the second radius ratio with respect to the nominal constellation 
+(Γ2=γ2,CP/γ2,nominal); 
+– the phase shift of the third ring with respect to the nominal constellation (∆φ2). 
+Thus the optimization proposed here is suboptimal, because the optimization could also be 
+performed on Γ1=γ1,CP/γ1,nominal and ∆φ1. However, the third ring of 32APSK is the most 
+subject to PA compression, and thus the improvement of a more sophisticated approach can 
+be presumed limited. Some results are shown in figure 5-13. 
+ 
+Figure 5-13:  Optimal TD for 32APSK 
+
+=====PAGE 44=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-15 
+June 2023 
+Tables 5-3 and 5-4 summarize the optimal operating point for roll-off α = 0.2 and α = 0.35. 
+The gain in using CP is found between 1.25 and 1.46 dB with α = 0.2, and between 1.69 and 
+2.11 dB with α = 0.35. In the same way as for 16APSK, this gain is slightly higher for the 
+highest roll-off value. 
+Table 5-3:  Optimal Operating Points, 32APSK, Roll-Off α = 0.2 
+With CP 
+Without CP 
+(TD with 
+CP) - (TD 
+without 
+CP) (dB) 
+MODCOD 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL 
+(dB) 
+Γ 
+∆φ 
+(°) 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL (dB) 
+32APSK 
+3/4 
+−5.5 −1.85 
+18.7 
+−3.11 −1.26 
+1.35 
+15 
+−8 
+−2.65 
+17.6 
+−4.36 
+−1.71 
+1.25 
+32APSK 
+4/5 
+−6 
+−2 
+19.2 
+−3.39 −1.39 
+1.35 
+12.5 
+−9 
+−3.14 
+18.8 
+−4.72 
+−1.58 
+1.33 
+32APSK 
+5/6 
+−6.5 −2.14 
+19.7 
+−3.6 
+−1.46 
+1.3 
+12.5 
+−9 
+−3.13 
+18.9 
+−4.98 
+−1.85 
+1.38 
+32APSK 
+8/9 
+−8 
+−2.71 
+21.2 
+−4.13 −1.42 
+1.2 
+10 
+−10 
+−3.69 
+20.2 
+−5.56 
+−1.87 
+1.43 
+32APSK 
+9/10 
+−8 
+−2.71 
+21.2 
+−4.3 
+−1.59 
+1.2 
+10 
+−10 
+−3.69 
+20.2 
+−5.76 
+−2.07 
+1.46 
+Table 5-4:  Optimal Operating Points, 32APSK, Roll-Off α = 0.35 
+With CP 
+Without CP 
+(TD with 
+CP) - (TD 
+without 
+CP) (dB) 
+MODCOD 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL 
+(dB) 
+Γ 
+∆φ 
+(°) 
+IBO 
+(dB) 
+OBO 
+(dB) 
+C/I 
+(dB) 
+TD 
+(dB) 
+DL (dB) 
+32APSK 
+3/4 
+−4.5 
+−1.7 
+19.9 
+−2.61 −0.91 
+1.55 
+17.5 
+−8 
+−2.65 
+17.7 
+−4.3 
+−1.65 
+1.69 
+32APSK 
+4/5 
+−5 
+−1.78 
+20.4 
+−2.81 −1.03 
+1.5 
+17.5 
+−9 
+−3.14 
+19 
+−4.61 
+−1.47 
+1.80 
+32APSK 
+5/6 
+−5.5 −1.86 
+20.8 
+−2.96 
+−1.1 
+1.4 
+15 
+−9 
+−3.12 
+19.1 
+−4.84 
+−1.72 
+1.88 
+32APSK 
+8/9 
+−6.5 −2.15 
+21.8 
+−3.36 −1.21 
+1.35 
+12.5 
+−10 
+−3.68 
+20.5 
+−5.41 
+−1.73 
+2.05 
+32APSK 
+9/10 
+−6.5 −2.15 
+21.9 
+−3.47 −1.32 
+1.35 
+15 
+−10 
+−3.68 
+20.6 
+−5.58 
+−1.9 
+2.11 
+
+=====PAGE 45=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-16 
+June 2023 
+5.4.6 PSD AND ACPR 
+The PSD presented here is PSD at the PA output, whereas SFCG mask is applicable at 
+the satellite output (in particular possibly after a highly selective RF output filter). PSD is 
+here normalized at the carrier center. SFCG PSD mask is computed depending on the 
+constellation as in SFCG recommendation 21-2R3 in reference [13]. 
+The spectra are identical for QPSK and 8PSK. Moreover, the spectrum is not significantly 
+dependent on the constellation (possibly with TD) for the different MODCODs with 
+16APSK modulation or for the different MODCODs with 32APSK modulation. 
+Consequently, results are only presented for 8PSK, 16APSK 5/6, and 32APSK 5/6 in 
+figure 5-15. It appears quite achievable to respect the SFCG mask with the considered PA. 
+Adjacent Channel Power Ratio (ACPR) refers here to the ratio in natural value between the 
+PSD at the carrier center and the maximum PSD above a given frequency offset from the 
+carrier center, as shown in figure 5-14. This ACPR is computed at the PA output (and not 
+at the satellite output). A possible use of the ACPR results shown in figure 5-16, for a user 
+knowing some mission requirements (carrier frequency, Symbol Rate [RS], Equivalent 
+Isotropic Radiated Power [EIRP], altitude), is to deduce the specification of an RF output 
+filter to avoid coordination with the Deep Space Network (DSN). 
+Frequency
+PSD (dB)
+Offset
+ACPR (dB)
+ 
+Figure 5-14:  Illustration of ACPR Measurement 
+
+=====PAGE 46=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-17 
+June 2023 
+ 
+Figure 5-15:  PSD at the PA Output for Various IBO 
+
+=====PAGE 47=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-18 
+June 2023 
+ 
+ 
+Figure 5-16:  ACPR at the PA Output 
+5.5 
+EXAMPLE OF DEMODULATION LOSS MEASURED ON AN HDRT 
+RECEIVER 
+This subsection provides an example of demodulation loss for a modern apparatus including 
+an HDRT receiver and a test transmitter. No channel impairment except AWGN is 
+considered for the measurement. The roll-off value 0.35, normal FECFRAME is used, and 
+pilot symbols are inserted. 
+The results are shown in table 5-5. 
+It is worth noting that: 
+– these results were obtained without dynamic equalization (hence slightly better 
+results seem achievable); 
+
+=====PAGE 48=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-19 
+June 2023 
+– the demodulation loss includes degradation from the test transmitter and from the 
+receiver. 
+For the lowest coding rates of a given modulation, the demodulation loss is higher than for 
+other coding rates because of the higher noise level in the carrier tracking loop. 
+For the highest coding rates of a given modulation, the demodulation loss can be slightly 
+higher than for the medium coding rates because of the predominance of the 
+intersymbol interference (because of the imperfect frequency flat channel with wideband 
+carriers) under high Es/No conditions. 
+
+=====PAGE 49=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page 5-20 
+June 2023 
+Table 5-5:  Example of Demodulation Loss Measured on a Modern Receiver 
+ 
+MODCOD Ideal required 
+Es/No (dB) 
+Demodulation 
+Loss 100 
+Mbauds (dB) 
+Demodulation 
+Loss 300 
+Mbauds (dB) 
+Demodulation 
+Loss 500 
+Mbauds (dB) 
+Demodulation 
+Loss 600 
+Mbauds (dB) 
+QPSK 
+1 
+−2.35 
+1.6 
+1.3 
+1.3 
+1.2 
+2 
+−1.24 
+1.5 
+1.4 
+1.1 
+1.4 
+3 
+−0.3 
+1.5 
+1.1 
+1.0 
+1.1 
+4 
+1 
+1.1 
+0.7 
+0.7 
+0.9 
+5 
+2.23 
+0.9 
+0.7 
+0.7 
+0.8 
+6 
+3.1 
+0.7 
+0.5 
+0.5 
+0.6 
+7 
+4.03 
+0.7 
+0.5 
+0.5 
+0.7 
+8 
+4.68 
+0.6 
+0.4 
+0.5 
+0.6 
+9 
+5.18 
+0.6 
+0.4 
+0.5 
+0.6 
+10 
+6.2 
+0.6 
+0.4 
+0.6 
+0.6 
+11 
+6.42 
+0.7 
+0.4 
+0.6 
+0.6 
+8PSK 
+12 
+5.5 
+1.5 
+1.3 
+1.2 
+1.5 
+13 
+6.62 
+1.2 
+1.0 
+1.0 
+1.1 
+14 
+7.91 
+1.1 
+0.9 
+0.9 
+1.0 
+15 
+9.35 
+0.9 
+1.0 
+0.8 
+1.0 
+16 
+10.69 
+0.7 
+0.6 
+0.7 
+0.8 
+17 
+10.98 
+0.7 
+0.5 
+0.7 
+0.8 
+16APSK 
+18 
+8.97 
+1.0 
+0.9 
+1.0 
+0.9 
+19 
+10.21 
+0.9 
+0.8 
+1.0 
+0.9 
+20 
+11.03 
+0.9 
+0.7 
+0.9 
+0.9 
+21 
+11.61 
+0.7 
+0.6 
+0.9 
+0.8 
+22 
+12.89 
+0.7 
+0.6 
+0.8 
+0.8 
+23 
+13.13 
+0.7 
+0.7 
+0.9 
+0.9 
+32APSK 
+24 
+12.73 
+1.2 
+1.2 
+1.7 
+1.5 
+25 
+13.64 
+1.2 
+1.3 
+1.6 
+1.5 
+26 
+14.28 
+1.1 
+1.1 
+1.5 
+1.4 
+27 
+15.69 
+1.1 
+1.3 
+1.6 
+1.5 
+28 
+16.05 
+0.9 
+1.4 
+1.7 
+1.6 
+ 
+
+=====PAGE 50=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page A-1 
+June 2023 
+ANNEX A 
+ 
+ACRONYMS AND ABBREVIATIONS 
+16APSK 
+16-ary amplitude and phase shift keying 
+32APSK 
+32-ary amplitude and phase shift keying 
+8PSK 
+8-ary phase shift keying 
+ACM 
+adaptive coding and modulation 
+ACPR 
+adjacent channel power ratio 
+AOS 
+Advanced Orbiting Systems 
+ASIC 
+application specific integrated circuit 
+ASM 
+attached synchronization marker 
+AWGN 
+additive white gaussian noise 
+BB 
+baseband 
+BBFRAME 
+baseband frame in the DVB-S2 standard 
+BBHEADER header of BBFRAME in the DVB-S2 standard 
+BCH 
+Bose-Chaudhuri-Hocquenghem 
+BLT 
+loop bandwidth 
+BPSK 
+binary phase shift keying 
+CCM 
+constant coding and modulation 
+CCSDS 
+Consultative Committee for Space Data Systems 
+CP 
+constellation predistortion 
+CRC 
+cyclic redundancy check 
+CW 
+continuous wave 
+dBK 
+decibel-kilowatt 
+dBW 
+decibel-watt 
+DFL 
+data field length in the DVB-S2 standard 
+DL 
+demodulation loss 
+DVB 
+Digital Video Broadcasting project 
+DVB-S2 
+DVB system of second generation for satellite broadcasting 
+Eb/No 
+bit energy and noise power spectral density ratio 
+EESS 
+Earth Exploration Satellites Systems 
+EIRP 
+equivalent isotropic radiated power 
+Es/No 
+channel symbol energy and noise power spectral density ratio 
+ETSI 
+European Telecommunications Standards Institute 
+EVM 
+error vector magnitude 
+
+=====PAGE 51=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page A-2 
+June 2023 
+FEC 
+forward error correction 
+FECFRAME 
+forward error correction frame in the DVB-S2 standard 
+FER 
+FECFRAME error rate 
+GS 
+generic stream 
+HDRT 
+high data rate telemetry 
+HOM 
+high order modulation 
+HSSL 
+high speed serial link 
+IBO 
+input back-off 
+IP 
+intellectual property 
+ITU 
+International Telecommunications Union 
+LDPC 
+low density parity check 
+LEO 
+low Earth orbit 
+LLR 
+log-likelihood ratio 
+LVDS 
+low voltage differential signaling 
+MATYPE 
+mode adaptation type 
+MODCOD 
+modulation and coding identifier of the DVB-S2 standard 
+MPEG 
+Moving Pictures Experts Group 
+MSB 
+most significant bit 
+NA 
+not applicable 
+OBO 
+output back-off 
+OID 
+only idle data 
+OSI 
+Open Systems Interconnection 
+PA 
+power amplifier 
+PAPR 
+peak-to-average power ratio 
+PER 
+packet error rate 
+PFD 
+power flux density 
+PLFRAME 
+physical layer frame in the DVB-S2 standard 
+PLHEADER 
+header of the PLFRAME in the DVB-S2 standard 
+PLL 
+phase lock loop 
+PSD 
+power spectral density 
+QPSK 
+quaternary phase shift keying 
+RF 
+radio frequency 
+RS 
+symbol rate 
+SFCG 
+Space Frequency Coordination Group 
+SLE-RAF 
+space link extension return all frames 
+SMTF 
+Synch-Marked Transfer Frame 
+
+=====PAGE 52=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page A-3 
+June 2023 
+SNR 
+signal power to noise power ratio 
+SOF 
+start of frame 
+SRC 
+square root raised cosine shaping 
+SYNC  
+synchronization byte 
+TD 
+total degradation 
+TM 
+telemetry 
+TWTA 
+travelling wave tube amplifier 
+VCM 
+variable coding and modulation 
+VHDL 
+VHSIC Hardware Description Language 
+VHSIC 
+very high scale integrated circuits 
+ 
+
+=====PAGE 53=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page B-1 
+June 2023 
+ANNEX B 
+ 
+EXAMPLE OF SYSTEM PERFORMANCE  
+WHEN USING DVB-S2 VCM AND ACM 
+Example 1 
+Hypotheses: 
+– X-band EESS with VCM 
+– DVB-S2 with normal FECFRAME, pilots, all MODCODs 
+– Heliosynchronous satellite at 700 km height 
+– Earth station in Toulouse (France) with clear sky G/T = 30.5 dBK−1 at 5-degree 
+elevation 
+– One HDRT channel at 300 Ms/s 
+– Pointed antenna 
+– Average data rate computed on all satellite passes with elevation > 5 degrees 
+– C/I = overall interference on the link (transmitter own degradation, power amplifier 
+non-linearity, intersymbol interference, potential cross-polarization interference) 
+– Unavailability for tropospheric propagation equal to 1 percent 
+– ITU recommendations for tropospheric propagation 
+– System margin 3 dB 
+Results: 
+800
+850
+900
+950
+1000
+1050
+1100
+1150
+1200
+1250
+1300
+22.0
+24.0
+26.0
+28.0
+30.0
+32.0
+Average data rate (Mbps)
+EIRP (dBW)
+C/I = 16 dB
+C/I = 19 dB
+C/I = 22 dB
+ 
+Remark: it appears possible to consider two channels at 300 Ms/s (1 channel per polarization). 
+
+=====PAGE 54=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page B-2 
+June 2023 
+Example 2 
+Hypotheses: 
+– Ka-band EESS with VCM or ACM 
+– DVB-S2 with normal FECFRAME, pilots, all MODCODs 
+– Heliosynchronous satellite at 600 km height 
+– Earth station in Toulouse (France) or Paris (France) with clear sky G/T = 36 dBK−1 at 
+5-degree elevation 
+– One HDRT channel at 500 Ms/s 
+– Pointed antenna with EIRP 38.4 dBW 
+– Average data rate computed on all satellite passes with elevation > 5 degrees 
+– C/I = overall interference on the link (transmitter own degradation, power amplifier 
+non-linearity, intersymbol interference, potential cross-polarization interference) = 19 
+dB 
+– ITU recommendations for tropospheric propagation 
+– System margin 3 dB 
+0.8
+1
+1.2
+1.4
+1.6
+1.8
+2
+2.2
+0.1%
+1.0%
+10.0%
+Average data rate (Gbps)
+Link unavailibility due to tropospheric propagation
+Paris
+Toulouse
+ACM 
+average data rate 
+Paris: 2.11 Gpbs
+Toulouse: 2.10 Gpbs
+VCM
+ 
+Remark: it appears possible to consider four channels at 500 Ms/s (2 channels per polarization). 
+
+=====PAGE 55=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page C-1 
+June 2023 
+ANNEX C 
+ 
+POINTERS TO ETSI DVB-S2 USER GUIDELINES (REFERENCE [3]) 
+SECTIONS OF INTEREST FOR TELEMETRY APPLICATIONS, AND 
+TO OTHER TECHNICAL REPORTS OF INTEREST FOR RECEIVER 
+IMPLEMENTATION 
+ETSI DVB-S2 User Guidelines (reference [3]) 
+Section 4.3.2.1 (p. 19): single carrier per transponder configuration. 
+4.3.2.1.1: sensitivity to satellite power amplifier characteristics. 
+4.3.2.1.2: sensitivity to roll-off. 
+Annex A (p. 63): Low Density Parity Check Codes. 
+A.1: Structure of Parity Check Matrices of Standardized LDPC Codes. 
+A.2: Description of Standardized LDPC Codes. 
+A.3: Performance Results. 
+Annex B (p. 69): DVB-S2 Physical Layer Frame and pilot structure. 
+B.1: Structured PLS code Frame Synchronization. 
+B.2: Pilot Structure. 
+Annex C (p. 73): Modem algorithms design and performance over typical satellite channels. 
+C.1: Modulator with predistortion. 
+C.2: Clock recovery. 
+C.3: Physical Layer Frame Synchronization. 
+C.3.1: An algorithm for Frame Synchronization. 
+C.3.2: An Alternative Frame Synchronization Algorithm. 
+C.3.2.1: Acquisition procedure description. 
+C.3.2.2: Performance Analysis. 
+C.3.2.3: Acquisition parameters optimization. 
+C.4: Carrier Frequency Recovery. 
+C.5: Automatic Gain Control. 
+C.6: Carrier Phase Recovery. 
+C.6.1: Pilot-Aided Linear Interpolation. 
+C.6.2: Fine Phase Recovery for High Order Modulations. 
+C.7: Performance Results. 
+Annex E.1 (p. 95): Channel estimator. 
+
+=====PAGE 56=====
+CCSDS PROTOCOLS OVER DVB-S2—SUMMARY OF DEFINITION,  
+IMPLEMENTATION, AND PERFORMANCE 
+CCSDS 130.12-G-2 
+Page C-2 
+June 2023 
+Other technical reports 
+Frame synchronization: reference [23]. 
+SNR estimation: references [17] and [18]. 
+LLR computation: references [20], [21], and [22]. 
+LDPC decoding: references [19], [24], and [25]. 

@@ -1,0 +1,4 @@
+bch/linux_lib_bch.c 37575 C_source,_Unicode_text,_U https://raw.githubusercontent.com/torvalds/linux/master/lib/bch.c
+bch/eccpage_bch3.c 16894 C_source,_ASCII_text http://www.eccpage.com/bch3.c
+bch/eccpage_index.html 18239 HTML_document,_ASCII_text http://www.eccpage.com/
+bch/ntpu_BCH_code.pdf 531812 PDF_document,_version_1.3 https://web.ntpu.edu.tw/~yshan/BCH_code.pdf

@@ -1,0 +1,1741 @@
+
+=====PAGE 1=====
+Recommendation for Space Data System Standards 
+PSEUDO-NOISE (PN) 
+RANGING SYSTEMS 
+RECOMMENDED STANDARD 
+CCSDS 414.1-B-3 
+BLUE BOOK 
+January 2022 
+
+=====PAGE 2=====
+Recommendation for Space Data System Standards 
+PSEUDO-NOISE (PN) 
+RANGING SYSTEMS 
+RECOMMENDED STANDARD 
+CCSDS 414.1-B-3 
+BLUE BOOK 
+January 2022 
+
+=====PAGE 3=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page i 
+January 2022 
+AUTHORITY 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Issue: 
+Recommended Standard, Issue 3 
+ 
+ 
+Date: 
+January 2022 
+ 
+ 
+Location: 
+Washington, DC, USA 
+ 
+ 
+ 
+ 
+ 
+This document has been approved for publication by the Management Council of the 
+Consultative Committee for Space Data Systems (CCSDS) and represents the consensus 
+technical agreement of the participating CCSDS Member Agencies.  The procedure for 
+review and authorization of CCSDS documents is detailed in Organization and Processes for 
+the Consultative Committee for Space Data Systems (CCSDS A02.1-Y-4), and the record of 
+Agency participation in the authorization of this document can be obtained from the CCSDS 
+Secretariat at the email address below. 
+ 
+ 
+This document is published and maintained by: 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+
+=====PAGE 4=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page ii 
+January 2022 
+STATEMENT OF INTENT 
+The Consultative Committee for Space Data Systems (CCSDS) is an organization officially 
+established by the management of its members. The Committee meets periodically to address 
+data systems problems that are common to all participants, and to formulate sound technical 
+solutions to these problems. Inasmuch as participation in the CCSDS is completely 
+voluntary, the results of Committee actions are termed Recommended Standards and are 
+not considered binding on any Agency. 
+This Recommended Standard is issued by, and represents the consensus of, the CCSDS 
+members.  Endorsement of this Recommendation is entirely voluntary. Endorsement, 
+however, indicates the following understandings: 
+o Whenever a member establishes a CCSDS-related standard, this standard will be in 
+accord with the relevant Recommended Standard. Establishing such a standard 
+does not preclude other provisions which a member may develop. 
+o Whenever a member establishes a CCSDS-related standard, that member will 
+provide other CCSDS members with the following information: 
+ 
+-- The standard itself. 
+ 
+-- The anticipated date of initial operational capability. 
+ 
+-- The anticipated duration of operational service. 
+o Specific service arrangements shall be made via memoranda of agreement. Neither 
+this Recommended Standard nor any ensuing standard is a substitute for a 
+memorandum of agreement. 
+No later than five years from its date of issuance, this Recommended Standard will be 
+reviewed by the CCSDS to determine whether it should: (1) remain in effect without change; 
+(2) be changed to reflect the impact of new technologies, new requirements, or new 
+directions; or (3) be retired or canceled. 
+In those instances when a new version of a Recommended Standard is issued, existing 
+CCSDS-related member standards and implementations are not negated or deemed to be non-
+CCSDS compatible.  It is the responsibility of each member to determine when such 
+standards or implementations are to be modified.  Each member is, however, strongly 
+encouraged to direct planning for its new standards and implementations towards the later 
+version of the Recommended Standard. 
+
+=====PAGE 5=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page iii 
+January 2022 
+FOREWORD 
+Attention is drawn to the possibility that some of the elements of this document may be the 
+subject of patent rights. CCSDS has processes for identifying patent issues and for securing 
+from the patent holder agreement that all licensing policies are reasonable and non-
+discriminatory.  However, CCSDS does not have a patent law staff, and CCSDS shall not be 
+held responsible for identifying any or all such patent rights. 
+Through the process of normal evolution, it is expected that expansion, deletion, or 
+modification of this document may occur.  This Recommended Standard is therefore subject 
+to CCSDS document management and change control procedures, which are defined in 
+Organization and Processes for the Consultative Committee for Space Data Systems 
+(CCSDS A02.1-Y-4).  Current versions of CCSDS documents are maintained at the CCSDS 
+Web site: 
+http://www.ccsds.org/ 
+Questions relating to the contents or status of this document should be sent to the CCSDS 
+Secretariat at the email address indicated on page i. 
+
+=====PAGE 6=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page iv 
+January 2022 
+At time of publication, the active Member and Observer Agencies of the CCSDS were: 
+Member Agencies 
+– Agenzia Spaziale Italiana (ASI)/Italy. 
+– Canadian Space Agency (CSA)/Canada. 
+– Centre National d’Etudes Spatiales (CNES)/France. 
+– China National Space Administration (CNSA)/People’s Republic of China. 
+– Deutsches Zentrum für Luft- und Raumfahrt (DLR)/Germany. 
+– European Space Agency (ESA)/Europe. 
+– Federal Space Agency (FSA)/Russian Federation. 
+– Instituto Nacional de Pesquisas Espaciais (INPE)/Brazil. 
+– Japan Aerospace Exploration Agency (JAXA)/Japan. 
+– National Aeronautics and Space Administration (NASA)/USA. 
+– UK Space Agency/United Kingdom. 
+Observer Agencies 
+– 
+Austrian Space Agency (ASA)/Austria. 
+– 
+Belgian Science Policy Office (BELSPO)/Belgium. 
+– 
+Central Research Institute of Machine Building (TsNIIMash)/Russian Federation. 
+– 
+China Satellite Launch and Tracking Control General, Beijing Institute of Tracking and 
+Telecommunications Technology (CLTC/BITTT)/China. 
+– 
+Chinese Academy of Sciences (CAS)/China. 
+– 
+China Academy of Space Technology (CAST)/China. 
+– 
+Commonwealth Scientific and Industrial Research Organization (CSIRO)/Australia. 
+– 
+Danish National Space Center (DNSC)/Denmark. 
+– 
+Departamento de Ciência e Tecnologia Aeroespacial (DCTA)/Brazil. 
+– 
+Electronics and Telecommunications Research Institute (ETRI)/Korea. 
+– 
+European Organization for the Exploitation of Meteorological Satellites (EUMETSAT)/Europe. 
+– 
+European Telecommunications Satellite Organization (EUTELSAT)/Europe. 
+– 
+Geo-Informatics and Space Technology Development Agency (GISTDA)/Thailand. 
+– 
+Hellenic National Space Committee (HNSC)/Greece. 
+– 
+Hellenic Space Agency (HSA)/Greece. 
+– 
+Indian Space Research Organization (ISRO)/India. 
+– 
+Institute of Space Research (IKI)/Russian Federation. 
+– 
+Korea Aerospace Research Institute (KARI)/Korea. 
+– 
+Ministry of Communications (MOC)/Israel. 
+– 
+Mohammed Bin Rashid Space Centre (MBRSC)/United Arab Emirates. 
+– 
+National Institute of Information and Communications Technology (NICT)/Japan. 
+– 
+National Oceanic and Atmospheric Administration (NOAA)/USA. 
+– 
+National Space Agency of the Republic of Kazakhstan (NSARK)/Kazakhstan. 
+– 
+National Space Organization (NSPO)/Chinese Taipei. 
+– 
+Naval Center for Space Technology (NCST)/USA. 
+– 
+Netherlands Space Office (NSO)/The Netherlands. 
+– 
+Research Institute for Particle & Nuclear Physics (KFKI)/Hungary. 
+– 
+Scientific and Technological Research Council of Turkey (TUBITAK)/Turkey. 
+– 
+South African National Space Agency (SANSA)/Republic of South Africa. 
+– 
+Space and Upper Atmosphere Research Commission (SUPARCO)/Pakistan. 
+– 
+Swedish Space Corporation (SSC)/Sweden. 
+– 
+Swiss Space Office (SSO)/Switzerland. 
+– 
+United States Geological Survey (USGS)/USA. 
+
+=====PAGE 7=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page v 
+January 2022 
+DOCUMENT CONTROL 
+ 
+Document 
+Title 
+Date 
+Status 
+CCSDS 
+414.1-B-1 
+Pseudo-Noise (PN) Ranging 
+Systems, Recommended Standard, 
+Issue 1 
+March 2009 Original issue, 
+superseded 
+CCSDS 
+414.1-B-2 
+Pseudo-Noise (PN) Ranging 
+Systems, Recommended Standard, 
+Issue 2 
+February 
+2014 
+Issue 2, superseded 
+CCSDS 
+414.1-B-3 
+Pseudo-Noise (PN) Ranging 
+Systems, Recommended Standard, 
+Issue 3 
+January 
+2022 
+Current issue: 
+adds a ranging-signal-
+chip-rate parameter 
+value for Ka-Band 
+uplinks. 
+EC 1 
+Editorial Change 1 
+October 
+2024 
+Changes page size to A4. 
+NOTE – Changes from the previous issue are marked with change bars in the inside 
+margin. 
+ 
+ 
+October 2024 
+
+=====PAGE 8=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page vi 
+January 2022 
+CONTENTS 
+Section 
+Page 
+1 INTRODUCTION .......................................................................................................... 1-1 
+ 
+1.1 PURPOSE ............................................................................................................... 1-1 
+1.2 SCOPE .................................................................................................................... 1-1 
+1.3 APPLICABILITY ................................................................................................... 1-1 
+1.4 RATIONALE .......................................................................................................... 1-1 
+1.5 CONVENTIONS AND DEFINITIONS ................................................................. 1-2 
+1.6 REFERENCES ........................................................................................................ 1-3 
+ 
+2 OVERVIEW ................................................................................................................... 2-1 
+ 
+3 REGENERATIVE PSEUDO-NOISE RANGING ...................................................... 3-1 
+ 
+3.1 OVERVIEW ............................................................................................................ 3-1 
+3.2 PN CODE STRUCTURE ........................................................................................ 3-1 
+3.3 GROUND STATION UPLINK PROCESSING ..................................................... 3-3 
+3.4 ON-BOARD PROCESSING .................................................................................. 3-5 
+3.5 GROUND STATION DOWNLINK PROCESSING ............................................. 3-9 
+ 
+4 TRANSPARENT PSEUDO-NOISE RANGING ......................................................... 4-1 
+ 
+4.1 OVERVIEW ............................................................................................................ 4-1 
+4.2 PN CODE STRUCTURE ........................................................................................ 4-1 
+4.3 GROUND STATION UPLINK PROCESSING ..................................................... 4-1 
+4.4 ON-BOARD TRANSPARENT PROCESSING ..................................................... 4-3 
+4.5 GROUND STATION DOWNLINK PROCESSING ............................................. 4-4 
+ 
+5 SECURITY ..................................................................................................................... 5-1 
+ 
+5.1 INTRODUCTION ................................................................................................... 5-1 
+5.2 SECURITY CONCERNS WITH RESPECT TO THE CCSDS DOCUMENT ..... 5-1 
+5.3 POTENTIAL THREATS AND ATTACK SCENARIOS ...................................... 5-2 
+5.4 CONSEQUENCES OF NOT APPLYING SECURITY TO  
+THE TECHNOLOGY ............................................................................................. 5-2 
+ 
+ANNEX A SPECIFICATIONS FOR PN RANGING (NORMATIVE) ....................... A-1 
+ANNEX B EXAMPLE OF AVAILABLE CHIP RATES (INFORMATIVE) ............ B-1 
+ANNEX C INFORMATIVE REFERENCES (INFORMATIVE) ................................ C-1 
+ANNEX D ABBREVIATIONS AND ACRONYMS (INFORMATIVE) ..................... D-1 
+
+=====PAGE 9=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page vii 
+January 2022 
+CONTENTS (continued) 
+Figure 
+Page 
+3-1 Regenerative T4B PN Code Generation ....................................................................... 3-1 
+3-2 Regenerative T2B PN Code Generation ....................................................................... 3-2 
+4-1 Transparent T2B PN Code Generation ......................................................................... 4-1 
+ 
+Table 
+3-1 Uplink Chip Rates ......................................................................................................... 3-4 
+3-2 Theoretical Ranging Code Phase Acquisition Time for the On-Board Receiver ......... 3-7 
+3-3 Theoretical (One-Way) Ranging Jitter for the On-Board Receiver .............................. 3-7 
+3-4 Theoretical Ranging Code Phase Acquisition Time for the Station Receiver ............ 3-10 
+3-5 Theoretical (One-Way) Ranging Jitter for the Station Receiver ................................. 3-10 
+4-1 Theoretical Ranging Code Phase Acquisition Time for the Station  
+Receiver (Transparent Ranging) ................................................................................... 4-5 
+4-2 Theoretical (One-Way) Ranging Jitter for the Station  
+Receiver (Transparent Ranging) ................................................................................... 4-6 
+A-1 Key Specifications for On-Board PN Regenerative Ranging ...................................... A-1 
+A-2 Key Specifications for PN Ranging and On-Board Transparent Channel ................... A-2 
+B-1 Example of Available Chip Rates ................................................................................ B-1 
+ 
+
+=====PAGE 10=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 1-1 
+January 2022 
+1 INTRODUCTION 
+1.1 
+PURPOSE 
+The purpose of this document is to provide a Recommendation for Space Data System 
+Standards in the area of transparent1 and regenerative Pseudo-Noise (PN) ranging systems.  
+The PN ranging system is used to measure the round-trip light time between a ground station 
+and a spacecraft.  Regenerative ranging is primarily relevant for low Signal-to-Noise Ratio 
+(SNR) cases like those seen in deep space missions; transparent ranging is more suitable for 
+high SNR cases or when high accuracy ranging is not required. 
+1.2 
+SCOPE 
+This Recommended Standard defines both transparent and regenerative PN ranging systems 
+for non–data relay satellite users.  The specification for PN code components and generation, 
+on-board spacecraft regenerative/transparent processing, ground station processing, and 
+uplink and downlink signal modulation are defined in this document.  This Recommended 
+Standard does not specify a) individual implementations or products, b) implementation of 
+service interfaces within real systems, or c) the management activities required to configure 
+and control the protocol. 
+1.3 
+APPLICABILITY 
+The Recommended Standard specified in this document is to be invoked through the normal 
+standards programs of each CCSDS Agency and is applicable to those missions for which 
+cross support based on capabilities described in this Recommended Standard is anticipated.  
+Where mandatory capabilities are clearly indicated in sections of the Recommended 
+Standard, they must be implemented when this document is used as a basis for cross support.  
+Where options are allowed or implied, implementation of these options is subject to specific 
+bilateral cross support agreements between the Agencies involved. 
+1.4 
+RATIONALE 
+The CCSDS believes it is important to document the rationale underlying the 
+recommendations chosen, so that future evaluations of proposed changes or improvements 
+will not lose sight of previous decisions.  Concept and rationale behind the decisions that 
+formed the basis for this Recommended Standard are found in the CCSDS Pseudo-Noise 
+Ranging Systems Green Book (reference [C1]). 
+                                                 
+1 The term ‘transparent ranging’ is used in this standard to mean non-regenerative ranging or turn-around 
+ranging. 
+
+=====PAGE 11=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 1-2 
+January 2022 
+1.5 
+CONVENTIONS AND DEFINITIONS 
+1.5.1 DEFINITIONS 
+The following definitions apply throughout this Recommended Standard: 
+chip rate:  rate at which the PN code bits (or ‘chips’) are transmitted. 
+coherent transponder:  transponder for which the downlink carrier is phase-coherent with 
+the received uplink carrier. 
+component sequences:  family of shorter-length PN sequences used to form the ranging PN 
+code using logic operations. 
+range clock:  PN component code with the highest frequency (i.e., shortest period);  
+determines the range resolution. 
+regenerative ranging:  type of ranging where the spacecraft demodulates and acquires the 
+ranging code by correlation with a local code replica from the uplink ranging signal, 
+and regenerates the ranging code on the downlink. 
+transparent ranging:  type of ranging where the spacecraft frequency-translates the uplink 
+ranging signal to the downlink without code acquisition (i.e., non-regenerative 
+ranging or turn-around ranging). 
+one-way jitter: ranging jitter in meters resulting from measuring the round-trip light time 
+and halving the measurement to compute the distance. 
+1.5.2 NOMENCLATURE 
+The following conventions apply through this Recommended Standard: 
+– the words ‘shall’ and ‘must’ imply a binding and verifiable specification; 
+– the word ‘should’ implies an optional, but desirable, specification; 
+– the word ‘may’ implies an optional specification; 
+– the words ‘is’, ‘are’, and ‘will’ imply statements of fact. 
+1.5.3 CONVENTIONS 
+In this document, the following convention is used: 
+– A ‘+1’ ranging chip corresponds to a binary 0 value; 
+– A ‘−1’ ranging chip corresponds to a binary 1 value. 
+
+=====PAGE 12=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 1-3 
+January 2022 
+1.6 
+REFERENCES 
+The following documents contain provisions which, through reference in this text, constitute 
+provisions of this Recommended Standard.  At the time of publication, the editions indicated 
+were valid.  All documents are subject to revision, and users of this Recommended Standard 
+are encouraged to investigate the possibility of applying the most recent editions of the 
+documents indicated below.  The CCSDS Secretariat maintains a register of currently valid 
+CCSDS Recommended Standards. 
+[1] 
+Radio Frequency and Modulation Systems—Part 1: Earth Stations and Spacecraft. 
+Issue 32. Recommendations for Space Data System Standards (Blue Book), CCSDS 
+401.0-B-32. Washington, D.C.: CCSDS, October 2021. 
+NOTE – Informative references are provided in annex C. 
+ 
+
+=====PAGE 13=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 2-1 
+January 2022 
+2 OVERVIEW 
+Several upcoming missions require higher accuracy spacecraft position determination 
+compared to currently supported missions.  One solution to cope with these new 
+requirements is the use of regenerative PN ranging systems. Regenerative ranging presents 
+several advantages with respect to the classical non-regenerative ranging, which is the 
+approach at present used by CCSDS Agencies supporting deep space missions.  The 
+regenerative ranging technique requires the use of PN codes with important impacts for on-
+board transponder and Earth station design, differing from non-regenerative systems for 
+which transparent transponders are commonly used. 
+Even though the advantages of regenerative ranging are mainly relevant to the low SNR case 
+(e.g., deep space missions), the use of PN ranging with transparent on-board processing is 
+also possible. This solution is attractive in presence of good link margin or when very 
+accurate ranging is not needed with performance similar to non-PN ranging systems. A 
+transponder based on a transparent ranging channel will have reduced complexity compared 
+with the regenerative case. The spacecraft demodulates a large frequency range around the 
+carrier and re-modulates the entire bandpass including the uplink noise onto the downlink 
+carrier. With a transparent system, the ranging SNR at the station is proportional to 1/r4 
+where r is the distance to be measured. In a regenerative PN ranging system, a PN ranging 
+code is phase modulated on the uplink carrier and transmitted from the ground station to the 
+spacecraft.  This ranging signal is derived using a logical combination of a ranging clock and 
+several component PN codes.  Received by the spacecraft, the ranging signal is demodulated 
+by the spacecraft transponder, and the ranging code is acquired.  The spacecraft then 
+regenerates the ranging code coherently with the uplink code and phase modulates the 
+downlink carrier with the locally generated version of the ranging code.  Back at the ground 
+station, the station receiver demodulates the downlink and correlates the received ranging 
+signal with a local model of the range clock and component PN codes to determine the 
+round-trip light time.  The ranging SNR at the station is therefore proportional to 1/r2 where r 
+is the distance to be measured. 
+Selection of the ranging clock frequency determines the range precision.  Likewise, the 
+component codes structure and combination logic affect the code acquisition time and 
+probability, range ambiguity, and range precision.  The PN codes in this Recommended 
+Standard have been selected to provide high ranging accuracy while maintaining a reasonable 
+code acquisition time. 
+For transparent PN ranging, the uplink process is exactly the same as in the regenerative 
+ranging case.  However, in transparent PN ranging the spacecraft does not attempt to acquire 
+the ranging code; instead, it phase modulates the uplink ranging signal as received on board 
+onto the downlink without further processing.  The ground station receiver demodulates the 
+downlink and performs the PN ranging correlation in the same manner as for regenerative 
+ranging.  Because any uplink noise is re-modulated onto the downlink, transparent ranging 
+accuracy will generally not be as good as with regenerative ranging; however, transparent 
+ranging requires less complexity in the spacecraft transponder. 
+
+=====PAGE 14=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 2-2 
+January 2022 
+This Recommended Standard is divided into two main parts covering regenerative PN 
+ranging and transparent PN ranging.  This Recommended Standard contains sections on the 
+selection of PN code structure and modulation scheme, ground station uplink processing, on-
+board spacecraft processing, and ground station downlink processing. 
+ 
+
+=====PAGE 15=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-1 
+January 2022 
+3 REGENERATIVE PSEUDO-NOISE RANGING 
+3.1 
+OVERVIEW 
+This section provides recommendations for regenerative PN ranging.  Specifically, 
+recommendations are made for the PN code structure and modulation scheme, ground station 
+transmit (uplink) processing, on-board regenerative processing, and ground station receive 
+(downlink) processing. 
+3.2 
+PN CODE STRUCTURE 
+3.2.1 OVERVIEW 
+This subsection defines the PN ranging code components and combination logic for 
+generating the regenerative PN ranging codes. 
+3.2.2 WEIGHTED-VOTING BALANCED TAUSWORTHE, ν=4 
+For range measurements where the ranging accuracy is of primary concern, the PN ranging 
+code called Weighted-voting balanced Tausworthe, ν=4 (T4B) shall be selected. 
+The code is made up of six binary (±1) periodic ‘component sequences’ with a combination 
+algorithm based on giving ν=4 votes to the clock component C1 as shown in figure 3-1. 
+The resulting ranging sequence C is periodic with length L = 2 × 7 × 11 × 15 × 19 × 23 = 
+1,009,470 chips. 
+Combining Logic
++1 –1
+–1
+–1 –1
+–1
+–1
+–1
+–1
+–1 –1
+–1 –1
+–1
+–1 –1 –1 –1
+–1
+–1 –1 –1 –1
+–1
+–1 –1
+–1 –1
+–1 –1
+–1
+–1
+–1
+–1
+–1
+–1
+–1
++1 +1 +1
++1
++1 +1 +1
++1
++1 +1
++1 +1 +1 +1
++1
++1 +1
++1
++1 +1 +1 +1
++1
++1
++1 +1
++1 +1
++1 +1 +1 +1 +1
++1
++1 +1
++1 +1
++1
++1
+C6
+C5
+C4
+C3
+C2
+C1
+ 
+where the combined sequence is 
+(
+)
+6
+5
+4
+3
+2
+1
+4
+C
+C
+C
+C
+C
+C
+sign
+C
+−
++
+−
+−
++
+=
+ 
+Figure 3-1:  Regenerative T4B PN Code Generation 
+
+=====PAGE 16=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-2 
+January 2022 
+3.2.3 WEIGHTED-VOTING BALANCED TAUSWORTHE, ν=2 
+For range measurements where the acquisition time is of primary concern, such as for 
+missions where the ranging signal will be very weak, the PN ranging code called Weighted-
+voting balanced Tausworthe, ν=2 (T2B) shall be selected. 
+The Weighted-voting (ν=2) Tausworthe ranging code is made up of the same six binary (±1) 
+periodic ‘component sequences’ as the T4B code, but with a different combination algorithm 
+based on giving ν=2 votes to the clock component C1 as shown in figure 3-2. 
+The resulting ranging sequence C is periodic with length L = 2 × 7 × 11 × 15 × 19 × 23 = 
+1,009,470 chips. 
+Combining Logic
++1 –1
+–1
+–1 –1
+–1
+–1
+–1
+–1
+–1 –1
+–1 –1
+–1
+–1 –1 –1 –1
+–1
+–1 –1 –1 –1
+–1
+–1 –1
+–1 –1
+–1 –1
+–1
+–1
+–1
+–1
+–1
+–1
+–1
++1 +1 +1
++1
++1 +1 +1
++1
++1 +1
++1 +1 +1 +1
++1
++1 +1
++1
++1 +1 +1 +1
++1
++1
++1 +1
++1 +1
++1 +1 +1 +1 +1
++1
++1 +1
++1 +1
++1
++1
+C6
+C5
+C4
+C3
+C2
+C1
+ 
+where the combined sequence is 
+(
+)
+6
+5
+4
+3
+2
+1
+2
+C
+C
+C
+C
+C
+C
+sign
+C
+−
++
+−
+−
++
+=
+ 
+Figure 3-2:  Regenerative T2B PN Code Generation 
+
+=====PAGE 17=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-3 
+January 2022 
+3.3 
+GROUND STATION UPLINK PROCESSING 
+3.3.1 OVERVIEW 
+This subsection provides recommendations for ground station uplink (transmit) processing 
+for PN ranging. 
+3.3.2 UPLINK MODULATION 
+3.3.2.1 Modulating Signal 
+The ground station transmitter shall modulate the uplink carrier with the PN code specified in 3.2. 
+3.3.2.2 Modulation Scheme 
+The ranging signal shall be linearly phase modulated on the uplink carrier; i.e., a positive 
+transition of  −1 to +1 in the base-band code shall result in an advance of the transmitted RF 
+carrier phase. 
+3.3.2.3 Base-Band Shaping 
+Base-band shaping should be used on the PN ranging signal to conserve bandwidth at high 
+chip rates and high modulation indexes.2  
+3.3.2.4 Base-Band Shaping Filter Impulse Response 
+The shaping filter shall have the following impulse response: 
+sin
+sin(
+/
+)
+[0,
+]
+( )
+( )
+0
+c
+c
+t T
+t
+T
+h t
+h
+t
+elsewhere
+π
+∈
+
+=
+= 
+
+ 
+where Tc is the chip duration. 
+3.3.2.5 Ranging and Telecommand 
+Ranging according to this standard and telecommand as specified in CCSDS 401.0-B 2.2.4 
+and 2.2.7 (reference [1]) may be performed at the same time. 
+                                                 
+2 Reference [C1] may be consulted for the analysis of occupied bandwidth versus modulation index. 
+
+=====PAGE 18=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-4 
+January 2022 
+3.3.3 UPLINK CHIP RATE 
+The ranging signal chip rate shall be frequency coherent with the uplink carrier as given by 
+the following expression (for k=6 and l={1,2,…,12,16,32, 64, or 94} or for l=2 and k={8,9, 
+or 10}). The value l=94 shall only be used for Ka-band uplinks. See also an example of 
+available chip rates in annex B. 
+Table 3-1:  Uplink Chip Rates 
+k
+band
+S
+clock
+chip
+f
+l
+F
+F
+2
+128
+2
+⋅
+⋅
+=
+=
+−
+  
+ 
+for S-band uplinks 
+k
+band
+X
+clock
+chip
+f
+l
+F
+F
+2
+128
+749
+221
+2
+⋅
+⋅
+
+
+
+
+⋅
+=
+=
+−
+  
+for X-band uplinks 
+k
+band
+Ka
+clock
+chip
+f
+l
+F
+F
+2
+128
+3599
+221
+2
+⋅
+⋅
+
+
+
+
+⋅
+=
+=
+−
+  
+for Ka-band uplinks3 
+where 
+ 
+Fchip is the chip rate in Mchip/s 
+ 
+Fclock is the ranging clock in MHz 
+fS-band, fX-band, fKa-band are the S-band, X-band, and Ka-band uplink frequencies, 
+respectively, in MHz 
+For interoperability reasons, the Earth stations shall as a minimum support two chip rate 
+values: the preferred value of approximately two Mchip/s obtained by selecting l=8 and k=6 
+in the equations of table 3-1 and a lower value of approximately one Mchip/s obtained by 
+selecting l=4 and k=6 in the equations of table 3-1. 
+The configuration of some CCSDS Agencies’ ground stations may not be able to easily 
+implement the above ratios between chip rate and carrier frequency.  In such cases, the offset 
+expressed in Hz between the generated value and the theoretical value shall be < 10 mHz for 
+all the chip rates in table 3-1.  However, the chip rate shall remain locked to the station 
+frequency reference. 
+                                                 
+3 34200–34700 MHz. 
+
+=====PAGE 19=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-5 
+January 2022 
+3.4 
+ON-BOARD PROCESSING 
+3.4.1 OVERVIEW 
+This subsection defines the on-board spacecraft functions and performances for regenerative 
+ranging. Subsections 3.4.2, 3.4.6.1, 3.4.6.2, 3.4.6.3, 3.4.6.4 and 3.4.6.6 are required for cross 
+support while subsections 3.4.3, 3.4.4, 3.4.5, and 3.4.6.5 are based on good engineering 
+practice and could be relaxed depending on the specific mission requirements. 
+3.4.2 PROCESSING FUNCTIONS 
+The on-board transponder shall implement the following ranging functions: 
+– carrier tracking and ranging signal demodulation; 
+– chip rate acquisition and tracking;4 
+– code acquisition and tracking; 
+– coherent retransmission of regenerated5 code on the downlink signal. 
+As far as the processing of the ranging signal is concerned, either a frequency coherent or 
+non-coherent transponder can be used.6  The performance specification in this standard 
+assumes a frequency coherent transponder.7 
+These requirements shall apply to all operational modes like telecommand on/off and 
+telemetry on/off. 
+                                                 
+4 An uplink carrier coherent with the PN code chip rate allows for the use of an on-board code-aided 
+acquisition/tracking loop; this is particularly useful in case of low SNR. 
+5 The same code structure used for the uplink is used for the downlink. 
+6 In case of carrier coherent turnaround approach, carrier and PN code chip rate received at the ground station 
+are coherent (as in the uplink case); this can be used at the ground station for code-aided acquisition/tracking 
+loop, for instance, in case of low SNR.  
+7 The correlation loss for non-coherent operations can be found in the PN Ranging Systems Green Book  (see 
+reference [C1]). 
+
+=====PAGE 20=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-6 
+January 2022 
+3.4.3 RANGING SIGNAL ACQUISITION PERFORMANCES 
+3.4.3.1 General 
+The on-board receiver shall be able to acquire the PN code for the whole dynamic range of 
+input signal power (down to the minimum ranging power over noise spectral density, Pr/No), 
+frequency shift (∆f/f) and Doppler rate (R).  These values depend on the selected mission.   
+The following two operating regions are foreseen:8 
+– 10 dBHz ≤  Pr/No ≤ 30 dBHz;  ∆f/f ≤ 30 ppm; R<0.01 ppm/sec; 
+– Pr/No > 30 dBHz;  ∆f/f ≤ 60 ppm; R<0.1 ppm/sec. 
+NOTE – An aided acquisition strategy (using the carrier frequency to estimate the chip 
+rate value) can help keep the ranging signal in the loop pull-in when a narrow 
+code loop bandwidth is used. This is particularly useful in case of low Pr/No. In 
+this case, the transponder shall be able to acquire and track a chip rate offset 
+expressed in Hz of up to 10 mHz, for all the chip rates in table 3-1. 
+3.4.3.2 On-Board Nonlinearities 
+The phase response shall not deviate more than ±5 degrees from a linear phase-frequency 
+relationship over the frequency range of ±1.5*Fchip. 
+The transmit in-band gain deviation from an ideally flat gain shall be constant to within ±0.5 dB 
+over ±1.5*Fchip. 
+3.4.3.3 Acquisition Time and Probability 
+The on-board receiver shall be able to acquire the ranging code phase in a time (Tacq) 
+corresponding to an SNR degradation of less than two dB relative to the theoretical acquisition 
+time given in table 3-2 for a probability of acquisition greater than 99.9%.  The acquisition 
+performances are related to the ranging power over noise spectral density (Pr/No) and to the 
+selected ranging code (code family and chip rate) given in 3.2 and 3.3.3. For other Pr/No 
+ratios, the maximum acquisition time shall be computed by dividing the value in table 3-2 by 
+10(Pr/No−30)/10. 
+                                                 
+8 The frequency shifts and rates given here correspond to typically expected values. The Pr/No ratios are the 
+currently expected lower limits of typical deep space missions; the PN ranging equipment may be able to 
+operate at a lower threshold. 
+
+=====PAGE 21=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-7 
+January 2022 
+Table 3-2: Theoretical Ranging Code Phase Acquisition Time for the On-Board 
+Receiver 
+Sequence 
+Theoretical acquisition time9 
+Tacq at Pr/No=30 dBHz 
+Balanced Weighted-voting Tausworthe, ν=4 
+85.7 s 
+Balanced Weighted-voting Tausworthe, ν=2 
+5.2 s 
+3.4.4 ON-BOARD RANGING DELAY STABILITY 
+For the purpose of ranging measurement, the on-board ranging delay shall meet the following 
+requirements: 
+– the average ranging delay shall be constant to within ±1/(30*
+chip
+F
+) or ±20 ns, 
+whichever is larger;10 
+– it shall be possible to calibrate the transponder delay from engineering status 
+telemetry such as uplink frequency and power level, power supply voltage, and 
+temperature to an accuracy of ±1/(500*
+chip
+F
+) or ±1 ns, whichever is larger. 
+3.4.5 ON-BOARD RANGING JITTER PERFORMANCE 
+The on-board receiver shall track the ranging chip rate with a jitter corresponding to an SNR 
+degradation of less than two dB relative to the theoretical jitter given in table 3-3 for a chip 
+tracking loop bandwidth BL=1 Hz and a chip rate of 2.068 Mchip/s.  The tracking 
+performance is related to the ranging power over noise spectral density (Pr/No), and to the 
+selected ranging code (code family and chip rate) given in 3.2 and 3.3.3. 
+Table 3-3:  Theoretical (One-Way) Ranging Jitter for the On-Board Receiver 
+Sequence 
+Theoretical jitter11 at 
+Pr/No=30 dBHz 
+Balanced Weighted-voting Tausworthe, ν=4 
+0.87 m 
+Balanced Weighted-voting Tausworthe, ν=2 
+1.29 m 
+                                                 
+9 Assuming six parallel correlators under ideal conditions and with soft quantization of the chip detection filter 
+output. 
+10 This specification applies for any values within the nominal range of carrier frequency (taking into account 
+Doppler shift), input level, modulation index, power supply, temperature, and lifetime. 
+11 Assuming uplink baseband shaping or on-board filtering, and on-board chip tracking loop under ideal 
+conditions. 
+
+=====PAGE 22=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-8 
+January 2022 
+3.4.6 DOWNLINK MODULATION 
+3.4.6.1 Modulating Signal 
+The on-board transmitter shall modulate the downlink carrier with the on-board regenerated 
+ranging signal. 
+3.4.6.2 Modulation Scheme 
+The ranging signal shall be linearly modulated on the downlink carrier;  i.e., a positive 
+transition of  −1 to +1 in the base-band code shall result in an advance of the transmitted RF 
+carrier phase. 
+3.4.6.3 Base-Band Shaping 
+Base-band shaping should be used on the PN ranging signal to conserve bandwidth at high 
+chip rates and high modulation indexes.12  
+3.4.6.4 Base-Band Shaping Filter Impulse Response 
+ The shaping filter shall have the following impulse response: 
+sin
+sin(
+/
+)
+[0,
+]
+( )
+( )
+0
+c
+c
+t T
+t
+T
+h t
+h
+t
+elsewhere
+π
+∈
+
+=
+= 
+
+ 
+where Tc is the chip duration. 
+3.4.6.5 On-Board Nonlinearities 
+The phase response shall not deviate more than ±5 degrees from a linear phase-frequency 
+relationship over the frequency range of ±1.5*Fchip. 
+The transmit in-band gain deviation from an ideally flat gain shall be constant to within ±0.5 
+dB over ±1.5*Fchip. 
+3.4.6.6 Downlink Chip Rate 
+The downlink chip rate shall be frequency coherent with the uplink chip rate. When the 
+transponder is in coherent mode, the downlink chip rate shall also be frequency coherent with 
+the downlink carrier. The phase of the transmitted code shall also be coherent with the 
+received code phase. 
+                                                 
+12 Reference [C1] may be consulted for the analysis of occupied bandwidth versus modulation index. 
+
+=====PAGE 23=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-9 
+January 2022 
+3.5 
+GROUND STATION DOWNLINK PROCESSING 
+3.5.1 OVERVIEW 
+This subsection provides recommendations for ground station downlink (receive) processing 
+for PN ranging. 
+3.5.2 RECEIVER DOWNLINK PROCESSING 
+The ground station receiver shall implement the following ranging functions: 
+– carrier tracking and ranging signal demodulation when the downlink modulation is as 
+specified in 3.4.6; 
+– chip rate acquisition and tracking;13 
+– code acquisition and tracking; 
+– comparison of transmit and receive code epochs for ranging delay evaluation. 
+NOTE – Ranging and telemetry functions are typically performed at the same time. 
+3.5.3 STATION PERFORMANCE 
+The station receiver shall be able to acquire the PN code for the whole dynamic range of input 
+signal power (down to the minimum Pr/No), frequency shift (∆f/f), and Doppler rate (R). These 
+values will depend on the selected mission.  The following two operating regions are foreseen:14 
+– −10 dBHz ≤ Pr/No ≤ 30 dBHz; ∆f/f ≤ 60 ppm; R<0.02 ppm/sec; 
+– Pr/No > 30 dBHz; ∆f/f ≤ 120 ppm; R<0.2 ppm/sec. 
+NOTE – The aided acquisition strategy (using the carrier frequency to estimate the chip 
+rate value) helps keep the ranging signal within the loop pull-in range when using 
+a narrow code loop bandwidth. This is particularly useful in case of low Pr/No. 
+3.5.4 ACQUISITION TIME AND PROBABILITY 
+The station receiver shall be able to acquire the ranging code phase in a time (Tacq) 
+corresponding to an SNR degradation of less than 0.5 dB relative to the theoretical 
+acquisition time given in table 3-4, for a probability of acquisition greater than 99.9%.  The 
+acquisition performances are related to the received Pr/No, and to the selected ranging code 
+(code family and chip rate) given in 3.2 and 3.3.3. For other Pr/No ratios, the maximum 
+acquisition time shall be computed by dividing the value in table 3-4 by 10(Pr/No−30)/10. 
+                                                 
+13 Coherent carrier and code downlink signal allows the use of on-ground code-aided acquisition/tracking loop; 
+this is particularly useful in case of low SNR. 
+14 The frequency shifts and rates given here correspond to typically expected values. The Pr/No ratios are the 
+currently expected lower limits of typical deep space missions; the PN ranging equipment may be able to 
+operate at a lower threshold. 
+
+=====PAGE 24=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 3-10 
+January 2022 
+Table 3-4:  Theoretical Ranging Code Phase Acquisition Time for the Station Receiver 
+Sequence 
+Theoretical acquisition 
+time15 Tacq at Pr/No=30 dBHz 
+Balanced Weighted-voting Tausworthe, ν=4 
+4.3 s 
+Balanced Weighted-voting Tausworthe, ν=2 
+0.26 s 
+3.5.5 STATION GROUP DELAY STABILITY 
+The station group delay shall be constant to within ±2 ns over a period of 12 hours. 
+3.5.6 STATION RANGING JITTER PERFORMANCE 
+The station receiver shall track the ranging chip rate with a jitter16 corresponding to an SNR 
+degradation of less than one dB relative to the theoretical jitter given in table 3-5 for a chip 
+tracking loop bandwidth BL=1 Hz and a chip rate of 2.068 Mchip/s.  The tracking 
+performance is related to the ranging power over noise spectral density (Pr/No), and to the 
+selected ranging code (code family and chip rate) given in 3.2 and 3.3.3. 
+Table 3-5:  Theoretical (One-Way) Ranging Jitter for the Station Receiver 
+Sequence 
+Theoretical jitter17 at 
+Pr/No=30 dBHz 
+Balanced Weighted-voting Tausworthe, ν=4 
+0.78 m 
+Balanced Weighted-voting Tausworthe, ν=2 
+1.17 m 
+3.5.7 STATION TIME TAGGING ACCURACY 
+The station receiver shall time tag the ranging delay measurement with an uncertainty 
+relative to UTC of less than one microsecond. 
+                                                 
+15 Assuming 76 parallel correlators under ideal conditions and with soft quantization of the matched filter output. 
+16 The worst-case end-to-end ranging jitter performance is given by the Root Sum Squared (RSS) of the on-
+board and station contributions. Depending on the ratio of on-board and station loop bandwidths, the actual 
+performance can be better than the RSS value. 
+17 Assuming  downlink baseband shaping and station matched receiver under ideal conditions. In case of open 
+loop receiver based on I-Q correlator,  the same performance is obtained by setting the integration time T equal 
+to 1/(2BL) or 0.5 sec for BL=1 Hz. 
+
+=====PAGE 25=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 4-1 
+January 2022 
+4 TRANSPARENT PSEUDO-NOISE RANGING 
+4.1 
+OVERVIEW 
+This section provides recommendations for transparent PN ranging.  Specifically, 
+recommendations are made for the PN code structure, ground station transmit (uplink) 
+processing, on-board transparent processing, and ground station receive (downlink) 
+processing. 
+4.2 
+PN CODE STRUCTURE 
+For transparent range measurements, the PN ranging code called Weighted-voting balanced 
+Tausworthe, ν=2 (T2B) shall be selected. 
+The code is made up of six binary (±1) periodic ‘component sequences’ with a combination 
+algorithm based on giving ν=2 votes to the clock component C1 as shown in figure 4-1. 
+The resulting ranging sequence C is periodic with length L = 2 × 7 × 11 × 15 × 19 × 23 = 
+1,009,470 chips. 
+Combining Logic
++1 –1
+–1
+–1 –1
+–1
+–1
+–1
+–1
+–1 –1
+–1 –1
+–1
+–1 –1 –1 –1
+–1
+–1 –1 –1 –1
+–1
+–1 –1
+–1 –1
+–1 –1
+–1
+–1
+–1
+–1
+–1
+–1
+–1
++1 +1 +1
++1
++1 +1 +1
++1
++1 +1
++1 +1 +1 +1
++1
++1 +1
++1
++1 +1 +1 +1
++1
++1
++1 +1
++1 +1
++1 +1 +1 +1 +1
++1
++1 +1
++1 +1
++1
++1
+C6
+C5
+C4
+C3
+C2
+C1
+ 
+where the combined sequence is 
+(
+)
+6
+5
+4
+3
+2
+1
+2
+C
+C
+C
+C
+C
+C
+sign
+C
+−
++
+−
+−
++
+=
+ 
+Figure 4-1:  Transparent T2B PN Code Generation 
+4.3 
+GROUND STATION UPLINK PROCESSING 
+4.3.1 OVERVIEW 
+This subsection provides recommendations for ground station uplink (transmit) processing 
+for PN ranging. 
+
+=====PAGE 26=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 4-2 
+January 2022 
+4.3.2 UPLINK MODULATION 
+4.3.2.1 Modulating Signal 
+The ground station transmitter shall modulate the uplink carrier with the PN code specified in 4.2. 
+4.3.2.2 Modulation Scheme 
+The ranging signal shall be linearly phase modulated on the uplink carrier; i.e., a positive 
+transition of  −1 to +1 in the base-band code shall result in an advance of the transmitted RF 
+carrier phase. 
+4.3.2.3 Base-Band Shaping 
+Base-band shaping should be used on the PN ranging signal to conserve bandwidth at high 
+chip rates and high modulation indexes.18  
+4.3.2.4 Base-Band Shaping Filter Impulse Response 
+The shaping filter shall have the following impulse response: 
+sin
+sin(
+/
+)
+[0,
+]
+( )
+( )
+0
+c
+c
+t T
+t
+T
+h t
+h
+t
+elsewhere
+π
+∈
+
+=
+= 
+
+ 
+where Tc is the chip duration. 
+4.3.2.5 Ranging and Telecommand 
+Ranging according to this standard and telecommand as specified in CCSDS 401.0-B 2.2.4 
+and 2.2.7 (reference [1]) may be performed at the same time. 
+4.3.3 UPLINK CHIP RATE 
+The ranging signal chip rate shall be frequency coherent with the uplink carrier as given in 3.3.3. 
+                                                 
+18 Reference [C1] may be consulted for the analysis of occupied bandwidth versus modulation index. 
+
+=====PAGE 27=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 4-3 
+January 2022 
+4.4 
+ON-BOARD TRANSPARENT PROCESSING 
+4.4.1 OVERVIEW 
+This subsection defines the on-board spacecraft functions and performances for transparent 
+ranging. Sections 4.4.2 and 4.4.7 are required for cross support while sections 4.4.3, 4.4.4, 
+4.4.5, and 4.4.6 are based on good engineering practice and could be relaxed depending on 
+the specific mission requirements. 
+4.4.2 PROCESSING FUNCTIONS 
+The on-board transponder shall implement the following ranging functions: 
+– carrier tracking and ranging signal demodulation; 
+– video ranging signal filtering and Automatic Level Control (ALC); 
+– downlink signal modulation. 
+As far as the processing of the ranging signal is concerned, either a frequency coherent or 
+non-coherent transponder can be used.19  The performance specification in this standard 
+assumes a frequency coherent transponder.20 
+These requirements shall be applied in all the operational modes such as telecommand on/off 
+and telemetry on/off. 
+4.4.3 RANGING CHANNEL NON-LINEARITIES 
+4.4.3.1 In-Band Group Delay Variation 
+The end-to-end in-band group delay variation of the ranging channel shall be constant to 
+within ±1/(30*
+chip
+F
+) in the range from (
+chip
+F
+/8) to (1.0*
+chip
+F
+). 
+4.4.3.2 Gain Flatness 
+The end-to-end in-band gain deviation from an ideally flat gain shall be constant to within 
+±0.5 dB in the range from (
+chip
+F
+/8) to (1.0*
+chip
+F
+). 
+                                                 
+19 In case of coherent approach, carrier and PN code chip rate received at the ground station are coherent (as in 
+the uplink case); this can be used at the ground station for code-aided acquisition/tracking loop, for instance, in 
+case of low SNR.  
+20 The correlation loss for non-coherent operations can be found in the PN Ranging Systems Green Book  (see 
+reference [C1]). 
+
+=====PAGE 28=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 4-4 
+January 2022 
+4.4.4   3-DB BANDWIDTH 
+The  –3 dB frequencies shall be below (
+chip
+F
+/50) or 3 kHz, whichever is larger, and above 
+(1.5*
+chip
+F
+) from the carrier. 
+4.4.5 ONE-SIDED NOISE BANDWIDTH 
+The one-sided noise bandwidth shall be ≤ 1.8*
+chip
+F
+. 
+4.4.6 ON-BOARD RANGING DELAY STABILITY 
+For the purpose of ranging measurement, the on-board ranging delay shall meet the following 
+requirements: 
+– the average ranging delay shall be constant to within ±1/(30*
+chip
+F
+) or ±20 ns, 
+whichever is larger;21 
+– it shall be possible to calibrate the transponder delay from engineering status 
+telemetry such as uplink frequency and power level, power supply voltage, and 
+temperature to an accuracy of ±1/(500*
+chip
+F
+) or ±1 ns, whichever is larger. 
+4.4.7 DOWNLINK MODULATION 
+The baseband ranging signal after filtering and ALC control shall be applied to the downlink 
+modulator using linear phase modulation; i.e., a positive phase shift on the Earth-to-space 
+link shall give rise to a positive shift on the space-to-Earth link. 
+4.5 
+GROUND STATION DOWNLINK PROCESSING 
+4.5.1 OVERVIEW 
+This subsection provides recommendations for ground station downlink (receive) processing 
+for PN ranging. 
+4.5.2 RECEIVER DOWNLINK PROCESSING 
+The ground station receiver shall implement the ranging function according to the following 
+requirements: 
+– carrier tracking and ranging signal demodulation; 
+                                                 
+21 This specification applies for any values within the nominal range of carrier frequency (taking into account 
+Doppler shift), input level, modulation index, power supply, temperature, and lifetime. 
+
+=====PAGE 29=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 4-5 
+January 2022 
+– chip rate acquisition and tracking;22 
+– code acquisition and tracking; 
+– comparison of transmit and receive code epochs for ranging delay evaluation. 
+NOTE – Ranging and telemetry functions are typically performed at the same time. 
+4.5.3 STATION PERFORMANCES 
+The station receiver shall be able to acquire the PN code for the whole dynamic of input 
+signal power (down to the minimum ranging power over noise spectral density, Pr/No), 
+frequency shift (∆f/f), and Doppler rate (R).  These values depend on the selected mission.  
+The following two operating regions are foreseen:23 
+– 10 dBHz ≤ Pr/No ≤ 30 dBHz, ∆f/f ≤ 30 ppm, R<0.01 ppm/sec; 
+– Pr/No > 30 dBHz, ∆f/f ≤ 60 ppm, R<0.1 ppm/sec. 
+NOTE – The aided acquisition strategy (using the carrier frequency to estimate the chip 
+rate value) allows keeping the ranging signal in the loop pull-in also in case of 
+narrow code loop bandwidth. This is particularly useful in case of low Pr/No. 
+4.5.4 ACQUISITION TIME AND PROBABILITY 
+The station receiver shall be able to acquire the ranging code phase in a time (Tacq) 
+corresponding to an SNR degradation of less than 0.5 dB relative to the theoretical acquisition 
+time given in table 4-1 for a probability of acquisition greater than 99.9%.  The acquisition 
+performances are related to the input signal power (Pr/No), and to the selected ranging code 
+(code family and chip rate) given in 4.2 and 4.3.3.  For other Pr/No ratios, the maximum 
+acquisition time shall be computed by dividing the value in table 4-1 by 10(Pr/No−10)/10. 
+Table 4-1: Theoretical Ranging Code Phase Acquisition Time for the Station 
+Receiver (Transparent Ranging) 
+Sequence 
+Theoretical acquisition 
+time24 Tacq at Pr/No=10 
+dBHz 
+Balanced Weighted-voting Tausworthe, ν=2 
+26.2 s 
+                                                 
+22 Coherent carrier and code down-link signal allows the use of on-ground code-aided acquisition/tracking loop; 
+this is particularly useful in case of low SNR. 
+23 The frequency shifts and rates given here correspond to typically expected values.  The Pr/No ratios are the 
+currently expected lower limits of typical L1/L2 Lagrangian point missions; the PN ranging equipment may be 
+able to operate at a lower threshold. 
+24 Assuming 76 parallel correlators under ideal conditions and with soft quantization of the matched filter output. 
+
+=====PAGE 30=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 4-6 
+January 2022 
+4.5.5 STATION GROUP DELAY STABILITY 
+The station delay shall be constant to within ±2 ns over a period of 12 hours. 
+4.5.6 STATION RANGING JITTER PERFORMANCE 
+The station receiver shall track the ranging chip rate with a jitter corresponding to an SNR 
+degradation of less than one dB relative to the theoretical jitter given in table 4-2 for a chip 
+tracking loop bandwidth BL=0.1 Hz and a chip rate of 2.068 Mchip/s.  The tracking 
+performance is related to the ranging power over noise spectral density (Pr/No),  and to the 
+selected ranging code (code family and chip rate) given in 4.2 and 4.3.3. 
+Table 4-2: Theoretical (One-Way) Ranging Jitter for the Station Receiver 
+(Transparent Ranging) 
+Sequence 
+Theoretical jitter25 at 
+Pr/No=10 dBHz 
+Balanced Weighted-voting Tausworthe, ν=2 
+3.7 m 
+4.5.7 STATION TIME TAGGING ACCURACY 
+The station receiver shall time tag the ranging delay measurement with an uncertainty 
+relative to UTC of less than one microsecond. 
+                                                 
+25 Assuming downlink baseband shaping and station matched receiver under ideal conditions. In case of open 
+loop receiver based on I-Q correlator, the same performance is obtained by setting the integration time T equal 
+to 1/(2BL) or 5 sec for BL=0.1 Hz. 
+
+=====PAGE 31=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 5-1 
+January 2022 
+5 SECURITY 
+5.1 
+INTRODUCTION 
+The PN ranging system has several potential areas of security concern.   
+One security concern involves radio frequency jamming of the uplink and/or downlink 
+ranging signal.  Jamming of the ranging signal could lead to the total loss of ranging data, 
+and potential navigation errors.   
+Another concern involves spoofing of the ranging signal. Spoofing could lead to erroneous 
+range measurements, which could cause incorrect trajectory determination and, in the worst 
+case, could lead to the failure or loss of the mission.   
+Likewise, interception and either modification or corruption of ranging measurements could 
+lead to incorrect trajectory determination and possible loss of mission.   
+5.2 
+SECURITY CONCERNS WITH RESPECT TO THE CCSDS DOCUMENT 
+The PN ranging signal is vulnerable to jamming, although there are several mitigating 
+factors.  With respect to a deep space ranging scenario, there is limited availability of 
+equipment capable of generating enough uplink power to effectively jam the spacecraft 
+receiver at interplanetary distances.  In addition, ranging passes are often over long durations, 
+making it easy to detect and find the jamming signal source.  All RF-based transmissions are 
+subject to jamming unless they have been designed with anti-jam features (e.g., frequency 
+hopping, spread spectrum). 
+Trajectory solutions are a combination of Doppler, ranging, and Delta-DOR measurements, 
+and so spoofing of the ranging signal alone would be detectable because it would differ from 
+the other measurements.   
+Undetected alteration/corruption of range data could cause erroneous trajectory solutions, 
+resulting in navigation errors.  Interception of range data could allow adversaries to locate 
+and more accurately target the victim spacecraft.  Alteration or corruption of range data could 
+result in navigation errors or mission loss.   
+While these are all valid security concerns, they fall outside the purview of this standard, 
+which applies only to the PN ranging physical layer.   
+
+=====PAGE 32=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page 5-2 
+January 2022 
+5.3 
+POTENTIAL THREATS AND ATTACK SCENARIOS 
+Jamming of the ranging signal could result in the loss of ranging measurements.  During a 
+critical maneuver (e.g., spacecraft orbit insertion), jamming could cause uncertainty in the 
+spacecraft trajectory or, in the worst case, cause navigation errors leading to loss of the 
+spacecraft.   
+Spoofing of the PN ranging signal in such a manner to cause erroneous range measurements 
+during critical trajectory maneuvers could have the same effect. 
+Intercepted and modified (or corrupted) range measurements could be sent to the control 
+center and later to the navigation team.  This could also result in navigation errors and loss of 
+mission. 
+5.4 
+CONSEQUENCES OF NOT APPLYING SECURITY TO THE TECHNOLOGY 
+While these security issues are of concern, they are out of scope with respect to this 
+document.  This document specifies the PN ranging physical layer.  Providing protection for 
+the PN ranging, as well as for all other ranging services, should be provided by higher layers.   
+Range measurement integrity provides protection against undetected alternation/modification 
+of range measurements.  If range measurement integrity is not implemented, erroneous range 
+measurements may result, which in turn may cause loss or failure of the mission.   
+Range measurement confidentiality provides protection against both undetected modification 
+as well as unauthorized disclosure of the ranging data.  If confidentiality is not implemented, 
+range measurements could be intercepted by unauthorized entities, which could gain precise 
+knowledge of the spacecraft location and range. 
+Jamming denies all range measurement data, and protection must be accomplished by 
+physical-layer techniques such as spread spectrum and/or frequency hopping.  This problem 
+is somewhat mitigated by the amount of power and the size of antennas needed to 
+communicate with spacecraft. 
+ 
+ 
+
+=====PAGE 33=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page A-1 
+January 2022 
+ANNEX A 
+ 
+SPECIFICATIONS FOR PN RANGING 
+  
+(NORMATIVE) 
+ 
+Table A-1:  Key Specifications for On-Board PN Regenerative Ranging 
+ 
+Parameter Value 
+1 - Earth-to-Space Link (signal received on-board) 
+ 
+1.1-  Carrier frequency  
+2.1 GHz, 7.1 GHz, or 34.0 GHz 
+bands 
+1.2 - Ranging signal-to-noise spectral density26 
+Pr/No ≥  10 dBHz  
+1.3 - Chip Rate (Fchip)  
+1 and 2 Mchip/s 
+1.4 - Carrier frequency and chip rate 
+Frequency coherent 
+ 
+ 
+2 - Spacecraft Transponder 
+ 
+2.1 - Ranging signal acquisition performance degradation 
+< 2 dB from theoretical Tacq 
+for Prob_acq > 99.9 % 
+ 
+2.2 - Transmitted carrier frequency (Ft)  
+2.2 GHz, 8.4 GHz or 32.0 GHz 
+bands 
+2.3 - Transmitted carrier frequency and chip rate 
+Frequency coherent 
+2.4 - Ranging jitter performance degradation 
+< 2 dB from theoretical 
+ 
+ 
+3 - Space-to-Earth Link (signal received at the ground station) 
+ 
+3.1 - Ranging signal-to-noise spectral density26 
+Pr/No ≥ −10 dBHz 
+3.2 - Ranging signal acquisition performance degradation 
+< 0.5 dB from theoretical Tacq 
+for Prob_acq > 99.9 %  
+3.3 - Ranging jitter performance degradation 
+< 1 dB from theoretical  
+3.4 – Ranging measurement time-tagging uncertainty 
+< 1 µs from UTC 
+                                                 
+26 These are currently expected lower Pr/No limits of typical deep space missions; the PN ranging equipment 
+may be able to operate at a lower threshold. 
+
+=====PAGE 34=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page A-2 
+January 2022 
+Table A-2:  Key Specifications for PN Ranging and On-Board Transparent Channel 
+ 
+Parameter Value 
+1 - Earth-to-Space Link (signal received on-board) 
+ 
+1.1 -  Carrier frequency  
+2.1 GHz, 7.1 GHz, or 34.0 GHz 
+bands 
+1.2 - Ranging signal-to-noise spectral density27 
+Pr/No  ≥  10 dBHz  
+1.3 - Chip Rate (Fchip)  
+1 and 2 Mchip/s 
+1.4 - Carrier frequency and chip rate 
+Frequency coherent 
+ 
+ 
+2 - Space-to-Earth Link (signal received at the ground station) 
+ 
+2.1 - Carrier frequency  
+2.2 GHz, 8.4 GHz, 32.0 GHz 
+bands 
+2.2 - Transmitted carrier frequency and chip rate 
+Frequency coherent 
+2.3 - Effective ranging modulation index 
+As per link budget 
+2.4 - Carrier (unmodulated) signal-to-noise spectral density  
+C/No > 21 dBHz  
+2.5 - Ranging signal-to-noise spectral density27 
+Pr/No ≥ +10 dBHz  
+2.6 - Ranging signal acquisition performance degradation 
+< 0.5 dB from theoretical Tacq 
+for Prob_acq > 99.9 %  
+2.7 - Ranging jitter performance degradation 
+< 1 dB from theoretical  
+2.8 – Ranging measurement time-tagging uncertainty 
+< 1 µs from UTC 
+ 
+                                                 
+27 These are currently expected lower Pr/No limits of typical L1/L2 Lagrangian point missions; the PN ranging 
+equipment may be able to operate at a lower threshold. 
+
+=====PAGE 35=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page B-1 
+January 2022 
+ANNEX B 
+ 
+EXAMPLE OF AVAILABLE CHIP RATES 
+  
+(INFORMATIVE) 
+An example of available chip rates for an uplink frequency of 7179.000 MHz is shown in 
+table B-1. The highlighted chip rates (obtained by using l=4, k=6 and l=8, k=6) correspond to 
+the cross support (interoperability) rates. 
+Table B-1:  Example of Available Chip Rates 
+l 
+k 
+Fchip, 
+kchips/s 
+2 
+10 
+32.322 
+2 
+9 
+64.643 
+2 
+8 
+129.287 
+1 
+6 
+258.574 
+2 
+6 
+517.148 
+3 
+6 
+775.721 
+4 
+6 
+1034.295 
+5 
+6 
+1292.869 
+6 
+6 
+1551.443 
+7 
+6 
+1810.016 
+8 
+6 
+2068.590 
+9 
+6 
+2327.164 
+10 
+6 
+2585.738 
+11 
+6 
+2844.311 
+12 
+6 
+3102.885 
+16 
+6 
+4137.180 
+32 
+6 
+8274.361 
+64 
+6 
+16548.721 
+ 
+
+=====PAGE 36=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page C-1 
+January 2022 
+ANNEX C 
+ 
+INFORMATIVE REFERENCES 
+  
+(INFORMATIVE) 
+[C1] Pseudo-Noise (PN) Ranging Systems. Issue 2. Report Concerning Space Data System 
+Standards (Green Book), CCSDS 414.0-G-2. Washington, D.C.: CCSDS, January 
+2014. 
+[C2] J. B. Berner, et al.  “Regenerative Pseudo-Noise Ranging for Deep-Space 
+Applications.” 
+ 
+TMO 
+Progress 
+Report 
+42-137 
+(May 
+15, 
+1999).  
+<http://tmo.jpl.nasa.gov/progress_report/42-137/137G.pdf> 
+[C3] Pseudo-Noise and Regenerative Ranging.  Module 214 in DSN Telecommunications 
+Link Design Handbook.  DSN No. 810-005.  Pasadena California: JPL, April 8, 2013. 
+[C4] R. C. Titsworth.28  “Optimal Ranging Codes.”  IEEE Transactions on Space Electronics 
+and Telemetry 10, no. 1 (March 1964): 19–30. 
+[C5] J. L. Massey, “Study on PN Ranging Codes for Future Missions,” Final Report, 
+ESA/ESOC Contract No. 17954/03/D/CS(SC), November 2004. 
+[C6] J. L. Massey, “Study on PN Ranging Codes for Transparent Channels,” Final Report, 
+ESA/ESOC Contract No. 20432/07/D/CS(SC), November 2007. 
+NOTE – Normative references are provided in 1.6. 
+ 
+                                                 
+28 Subsequent to publication of this paper, the author changed his surname to Tausworthe. 
+
+=====PAGE 37=====
+CCSDS RECOMMENDED STANDARD FOR PSEUDO-NOISE RANGING SYSTEMS 
+CCSDS 414.1-B-3 
+Page D-1 
+January 2022 
+ANNEX D 
+ 
+ABBREVIATIONS AND ACRONYMS 
+  
+(INFORMATIVE) 
+Term 
+Definition 
+ALC 
+automatic level control 
+Fchip 
+chip rate 
+PN 
+pseudo-noise 
+ppm 
+parts per million 
+RSS 
+root sum squared 
+SNR 
+signal-to-noise ratio 
+TC 
+chip duration 
+UTC 
+universal time (coordinated) 
+ 

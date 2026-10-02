@@ -1,0 +1,60 @@
+<HTML>
+<HEAD>
+<title>Key to ascii files</title>
+</HEAD>
+<BODY
+BGCOLOR="#FFFFEE" TEXT="#000000" LINK="#0000C8" ALINK="#C80000" 
+VLINK="#C80000">
+
+<h2>Encyclopedia of sparse graph codes: Key to ascii files</h2>
+<h3>Files created by the programs 'gallager' and 'RA'</h3>
+<pre> First, here are the column headings: 
+
+#blks es un det valid Eb/No(dB)  x    xass   K    N biters undet det block_ep   
+  u     l      bit_ep   u     l      blep_det   undet   bldetlw blep totlps lmax
+ undetu undetl 
+
+ Now here are the meanings of these columns: 
+
+	#blks   number of block transmissions simulated
+	es      number of block errors (total)
+	un      number of block errors that were "undetected" errors
+	det	number of block errors that were "detected" errors, also known as erasures
+	valid	number of decodings that ended in a valid state corresponding to a codeword
+	Eb/No(dB)   when computing this I use the "apparent rate" of the code K/N,
+	                  which may be smaller than the true rate, since there may be
+		          redundancy in the parity check matrix.
+	x           signal to noise ratio
+	xass        snr assumed by the decoder
+	K
+	N
+	biters	total number of bit errors in all those blocks
+	undet   how many of the bit errors were in undetected blocks
+	det	how many of the bit errors were in detected blocks
+	block_ep  maximum likelihood estimate of block error prob
+	u        ] error bars on this estimate
+	l	 ]
+	bit_ep     estimate of bit error prob
+	u        ] error bars on this estimate
+	l	 ]
+	blep_det   estimate of detected block error probability
+	undet      estimate of undetected block error probability
+	bldetlw     (ignore this)
+	blep        (and this)
+	totlps     total number of iterations used to decode the valid blocks
+	lmax      can't remember what this is
+	undetu ] error bars on undetected block error probability
+	undetl ]                            
+
+ A typical use of this file would be as follows: 
+   to plot the total block error rate with error bars:
+
+ plot "a/273.82.3.353" u 6:14:15:16 t "" w error 1 2\
+	,"a/273.82.3.353" u 6:14 t "total" w linesp 1 2
+
+   to plot the detected block error rate and undetected error rate with error bars: 
+ plot "a/273.82.3.353" u 6:20 t "detected" w linesp 2 6\
+	,"a/273.82.3.353" u 6:21 t "undetected" w linesp 3 3 \
+	,"a/273.82.3.353" u 6:21:26:27 t "" w error 3 3 
+
+</pre>

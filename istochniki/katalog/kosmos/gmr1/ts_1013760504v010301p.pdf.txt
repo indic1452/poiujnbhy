@@ -1,0 +1,1581 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02)
+Technical Specification 
+GEO-Mobile Radio Interface Specifications (Release 1);
+Part 5: Radio interface physical layer specifications;
+Sub-part 4: Modulation;
+GMR-1 05.004
+ 
+ 
+
+=====PAGE 2=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+2 
+GMR-1 05.004 
+ 
+ 
+ 
+Reference 
+RTS/SES-00218-5-4 
+Keywords 
+GMR, MSS, MES, satellite, GSO, S-PCN, GSM, 
+interface, mobile, modulation, radio 
+ETSI 
+650 Route des Lucioles 
+F-06921 Sophia Antipolis Cedex - FRANCE 
+ 
+Tel.: +33 4 92 94 42 00   Fax: +33 4 93 65 47 16 
+ 
+Siret N° 348 623 562 00017 - NAF 742 C 
+Association à but non lucratif enregistrée à la 
+Sous-Préfecture de Grasse (06) N° 7803/88 
+ 
+Important notice 
+Individual copies of the present document can be downloaded from: 
+http://www.etsi.org 
+The present document may be made available in more than one electronic version or in print. In any case of existing or 
+perceived difference in contents between such versions, the reference version is the Portable Document Format (PDF). 
+In case of dispute, the reference shall be the printing on ETSI printers of the PDF version kept on a specific network drive 
+within ETSI Secretariat. 
+Users of the present document should be aware that the document may be subject to revision or change of status. 
+Information on the current status of this and other ETSI documents is available at 
+http://portal.etsi.org/tb/status/status.asp 
+If you find errors in the present document, please send your comment to one of the following services: 
+http://portal.etsi.org/chaircor/ETSI_support.asp 
+Copyright Notification 
+No part may be reproduced except as authorized by written permission. 
+The copyright and the foregoing restriction extend to reproduction in all media. 
+ 
+© European Telecommunications Standards Institute 2005. 
+All rights reserved. 
+ 
+DECTTM, PLUGTESTSTM and UMTSTM are Trade Marks of ETSI registered for the benefit of its Members. 
+TIPHONTM and the TIPHON logo are Trade Marks currently being registered by ETSI for the benefit of its Members. 
+3GPPTM is a Trade Mark of ETSI registered for the benefit of its Members and of the 3GPP Organizational Partners. 
+
+=====PAGE 3=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+3 
+GMR-1 05.004 
+Contents 
+Intellectual Property Rights................................................................................................................................4 
+Foreword.............................................................................................................................................................4 
+Introduction ........................................................................................................................................................5 
+1 
+Scope........................................................................................................................................................6 
+2 
+References................................................................................................................................................6 
+3 
+Definitions and abbreviations...................................................................................................................6 
+3.1 
+Definitions..........................................................................................................................................................6 
+3.2 
+Abbreviations .....................................................................................................................................................6 
+4 
+Burst structure ..........................................................................................................................................7 
+4.1 
+Signal representation ..........................................................................................................................................7 
+4.2 
+Modulating symbol rate......................................................................................................................................7 
+4.3 
+Start and stop of the burst...................................................................................................................................7 
+4.4 
+Data bits and data symbols.................................................................................................................................7 
+5 
+Normal burst.............................................................................................................................................9 
+5.1 
+π/4-CQPSK modulation .....................................................................................................................................9 
+5.1.1 
+Filtering ........................................................................................................................................................9 
+5.1.2 
+Power ramp.................................................................................................................................................10 
+5.2 
+π/4-CBIT/SK modulation.................................................................................................................................10 
+6 
+DKABs...................................................................................................................................................10 
+6.1 
+π/4-DBIT/SK modulation.................................................................................................................................10 
+7 
+BACH.....................................................................................................................................................11 
+7.1 
+Modulation format............................................................................................................................................11 
+8 
+Frequency correction burst.....................................................................................................................13 
+8.1 
+Modulation format............................................................................................................................................13 
+9 
+Modulation accuracy..............................................................................................................................13 
+Annex A (informative): 
+Bibliography...................................................................................................15 
+Annex B (informative): 
+Change Record...............................................................................................16 
+History..............................................................................................................................................................17 
+ 
+
+=====PAGE 4=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+4 
+GMR-1 05.004 
+Intellectual Property Rights 
+IPRs essential or potentially essential to the present document may have been declared to ETSI. The information 
+pertaining to these essential IPRs, if any, is publicly available for ETSI members and non-members, and can be found 
+in ETSI SR 000 314: "Intellectual Property Rights (IPRs); Essential, or potentially Essential, IPRs notified to ETSI in 
+respect of ETSI standards", which is available from the ETSI Secretariat. Latest updates are available on the ETSI Web 
+server (http://webapp.etsi.org/IPR/home.asp). 
+Pursuant to the ETSI IPR Policy, no investigation, including IPR searches, has been carried out by ETSI. No guarantee 
+can be given as to the existence of other IPRs not referenced in ETSI SR 000 314 (or the updates on the ETSI Web 
+server) which are, or may be, or may become, essential to the present document. 
+Foreword 
+This Technical Specification (TS) has been produced by ETSI Technical Committee Satellite Earth Stations and 
+Systems (SES). 
+The contents of the present document are subject to continuing work within TC-SES and may change following formal 
+TC-SES approval. Should TC-SES modify the contents of the present document it will then be republished by ETSI 
+with an identifying change of release date and an increase in version number as follows: 
+Version 1.m.n 
+where: 
+•  the third digit (n) is incremented when editorial only changes have been incorporated in the specification; 
+• the second digit (m) is incremented for all other types of changes, i.e. technical enhancements, corrections, 
+updates, etc. 
+The present document is part 5, sub-part 4 of a multi-part deliverable covering the GEO-Mobile Radio Interface 
+Specifications (Release 1), as identified below: 
+Part 1: 
+"General specifications"; 
+Part 2: 
+"Service specifications"; 
+Part 3: 
+"Network specifications"; 
+Part 4: 
+"Radio interface protocol specifications"; 
+Part 5: 
+"Radio interface physical layer specifications"; 
+Sub-part 1: 
+"Physical Layer on the Radio Path: General Description"; 
+Sub-part 2: 
+"Multiplexing and Multiple Access; Stage 2 Service Description"; 
+Sub-part 3: 
+"Channel Coding"; 
+Sub-part 4: 
+"Modulation"; 
+Sub-part 5: 
+"Radio Transmission and Reception"; 
+Sub-part 6: 
+"Radio Subsystem Link Control"; 
+Sub-part 7: 
+"Radio Subsystem Synchronization"; 
+Part 6: 
+"Speech coding specifications"; 
+Part 7: 
+"Terminal adaptor specifications". 
+
+=====PAGE 5=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+5 
+GMR-1 05.004 
+Introduction 
+GMR stands for GEO (Geostationary Earth Orbit) Mobile Radio interface, which is used for mobile satellite services 
+(MSS) utilizing geostationary satellite(s). GMR is derived from the terrestrial digital cellular standard GSM and 
+supports access to GSM core networks. 
+The present document is part of the GMR Release 1 specifications. Release 1 specifications are identified in the title 
+and can also be identified by the version number: 
+• 
+Release 1 specifications have a GMR-1 prefix in the title and a version number starting with "1" (V1.x.x.). 
+• 
+Release 2 specifications have a GMPRS-1 prefix in the title and a version number starting with "2" (V2.x.x.). 
+The GMR release 1 specifications introduce the GEO-Mobile Radio interface specifications for circuit mode mobile 
+satellite services (MSS) utilizing geostationary satellite(s). GMR release 1 is derived from the terrestrial digital cellular 
+standard GSM (phase 2) and it supports access to GSM core networks. 
+The GMR release 2 specifications add packet mode services to GMR release 1. The GMR release 2 specifications 
+introduce the GEO-Mobile Packet Radio Service (GMPRS). GMPRS is derived from the terrestrial digital cellular 
+standard GPRS (included in GSM Phase 2+) and it supports access to GSM/GPRS core networks. 
+Due to the differences between terrestrial and satellite channels, some modifications to the GSM standard are necessary. 
+Some GSM specifications are directly applicable, whereas others are applicable with modifications. Similarly, some 
+GSM specifications do not apply, while some GMR specifications have no corresponding GSM specification.  
+Since GMR is derived from GSM, the organization of the GMR specifications closely follows that of GSM. The GMR 
+numbers have been designed to correspond to the GSM numbering system. All GMR specifications are allocated a 
+unique GMR number. This GMR number has a different prefix for Release 2 specifications as follows: 
+• 
+Release 1: GMR-n xx.zyy. 
+• 
+Release 2: GMPRS-n xx.zyy. 
+where: 
+- 
+xx.0yy (z = 0) is used for GMR specifications that have a corresponding GSM specification. In this case, 
+the numbers xx and yy correspond to the GSM numbering scheme. 
+- 
+xx.2yy (z = 2) is used for GMR specifications that do not correspond to a GSM specification. In this 
+case, only the number xx corresponds to the GSM numbering scheme and the number yy is allocated by 
+GMR. 
+- 
+n denotes the first (n = 1) or second (n = 2) family of GMR specifications. 
+A GMR system is defined by the combination of a family of GMR specifications and GSM specifications as follows: 
+• 
+If a GMR specification exists it takes precedence over the corresponding GSM specification (if any). This 
+precedence rule applies to any references in the corresponding GSM specifications. 
+NOTE: 
+Any references to GSM specifications within the GMR specifications are not subject to this precedence 
+rule. For example, a GMR specification may contain specific references to the corresponding GSM 
+specification. 
+• 
+If a GMR specification does not exist, the corresponding GSM specification may or may not apply. The 
+applicability of the GSM specifications is defined in GMR-1 01.201 [2]. 
+
+=====PAGE 6=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+6 
+GMR-1 05.004 
+1 
+Scope 
+The present document defines the modulation used within the GMR-1 Mobile Satellite System. It includes the various 
+modulation formats that are required for different physical channel types. It also defines the concept of the transmission 
+burst and the mapping of modulated symbols to the burst, describes the required transmit filtering in general terms, and 
+specifies the modulation accuracy. 
+2 
+References 
+The following documents contain provisions which, through reference in this text, constitute provisions of the present 
+document. 
+• 
+References are either specific (identified by date of publication and/or edition number or version number) or 
+non-specific. 
+• 
+For a specific reference, subsequent revisions do not apply. 
+• 
+For a non-specific reference, the latest version applies. 
+Referenced documents which are not found to be publicly available in the expected location might be found at 
+http://docbox.etsi.org/Reference 
+[1] 
+GMR-1 01.004 (ETSI TS 101 376-1-1): "GEO-Mobile Radio Interface Specifications; 
+Part 1: General specifications; Sub-part 1: Abbreviations and acronyms". 
+NOTE: 
+This is a reference to a GMR-1 Release 1 specification. See the introduction for more details. 
+[2] 
+GMR-1 01.201 (ETSI TS 101 376-1-2): "GEO-Mobile Radio Interface Specifications (Release 1); 
+Part 1: General specifications; Sub-part 2: Introduction to the GMR-1 Family". 
+NOTE: 
+This is a reference to a GMR-1 Release 1 specification. See the introduction for more details. 
+[3] 
+GMR-1 05.002 (ETSI TS 101 376-5-2): "GEO-Mobile Radio Interface Specifications; 
+Part 5: Radio interface physical layer specifications; Sub-part 2: Multiplexing and Multiple 
+Access; Stage 2 Service Description". 
+NOTE: 
+This is a reference to a GMR-1 Release 1 specification. See the introduction for more details. 
+[4] 
+GMR-1 05.005 (ETSI TS 101 376-5-5): "GEO-Mobile Radio Interface Specifications (Release 1); 
+Part 5: Radio interface physical layer specifications; Sub-part 5: Radio Transmission and 
+Reception". 
+NOTE: 
+This is a reference to a GMR-1 Release 1 specification. See the introduction for more details. 
+3 
+Definitions and abbreviations 
+3.1 
+Definitions 
+For the purposes of the present document, the terms and definitions given in GMR-1 01.004 [1] apply. 
+3.2 
+Abbreviations 
+For the purposes of the present document, the abbreviations given in GMR-1 01.004 [1] apply. 
+
+=====PAGE 7=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+7 
+GMR-1 05.004 
+4 
+Burst structure 
+4.1 
+Signal representation 
+All transmitted signals s(t) are represented as baseband complex signals x(t). The actual transmitted signal may be 
+derived from its baseband representation as follows: 
+ 
+(
+)
+ft
+j
+e
+t
+x
+e
+t
+s
+π
+2
+)
+(
+)
+(
+ℜ
+=
+ 
+where f is the carrier frequency, and ℜe represents the real part of a complex number. 
+4.2 
+Modulating symbol rate 
+The modulating symbol rate is 23,4 ksymbol/s for all burst types. The symbol period T is defined as 1/23,4 ms. 
+4.3 
+Start and stop of the burst 
+The time interval [0, N(39T)] is the burst time window where N = 2, 3, 4, 6, 9, corresponding to the burst types defined 
+in GMR-1 05.002 [3]. The time interval [2,5T, N(39T)-2,5T] is the burst time window corresponding to the active part 
+of this burst. The content of this part corresponds to data symbols, i.e. reference and free symbols. The remaining time 
+corresponds to the guard intervals (see GMR-1 05.002 [3]). These guard intervals correspond to the transition from no 
+signal to a continuous carrier and vice-versa. 
+4.4 
+Data bits and data symbols 
+There are 78N binary data bits defined in {0,1} in each burst for π/4-CQPSK (Coherent Quadrature Phase-Shift Keying) 
+modulation and 39N binary bits for π/4-DBIT/SK (Differential Binary Phase-Shift Keying) and π/4-CBIT/SK (Coherent 
+Binary Phase-Shift Keying) modulation. For π/4-CQPSK, the burst bits are represented by 
+[b0 b1 b2 b3 … b78N-2 b78N-1], where b0 to b4 and b78N-5 to b78N-1 are guard bits. For π/4-DBIT/SK and π/4-CBIT/SK, 
+the burst bits are denoted by [b0 b1 b2 b3 … b39N-2 b39N-1] and b0 to b2 and b39N-2 to b39N-1 are guard bits (total 5 guard 
+bits). When modulating these bits, we want to avoid grouping 1 guard bit with 1 information bit. Thus for π/4-CQPSK, 
+the mapping rule from data bits to data symbols shall be: 
+ 
+N
+k
+b
+b
+d
+k
+k
+k
+39
+...,
+,1,0
+   
+),
+(
+2
+1
+2
+=
+=
+−
+ 
+which results in 39N+1 different symbols being transmitted during 39NT (39N symbol duration). However, the signals 
+contained in the first and the last half symbol duration are not actually transmitted according to the burst window 
+definition in clause 4.3. To generate the first and the last symbols, one needs to use 2 dummy bits, which are 
+represented by b-1 and b78N The dummy bits can be either of the two binary values {0,1}. Figure 4.1 clearly illustrates 
+the relationship of data bits, dummy bits, data symbols, burst boundary, and symbol boundary for a π/4-CQPSK 
+modulated burst. Similarly, figure 4.2 shows the relationship of the π/4-DBIT/SK and π/4-CBIT/SK bursts. According 
+to figure 4.2, the mapping rule from data bits to data symbols for π/4-DBIT/SK and π/4-CBIT/SK bursts is: 
+ 
+N
+k
+b
+d
+k
+k
+39
+...,
+,1,0
+   
+,
+=
+=
+ 
+where b39N is considered to be a dummy bit. 
+Finally, the mapping of {dk} to the constellation points is defined in clauses 5.1 and 6.1. 
+
+=====PAGE 8=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+8 
+GMR-1 05.004 
+ d0
+d1
+d2
+ d3
+d39N-2
+d39N
+d39N-1
+d39N-3
+ b78N-1 b78N
+ b78N-5 b78N-4 b78N-3 b78N-2
+ b78N-7 b78N-6
+b-1 b0 b1 b2
+b5 b6
+b3 b4
+data bits
+data symbols
+data pulses
+39NT
+burst boundary
+burst boundary
+information bits
+guard bits
+guard bits
+ 
+NOTE: 
+The vertical dotted lines represent the symbol boundaries. 
+ 
+Figure 4.1: Relationship of data bits, data symbols, burst timing, and symbol timing for QPSK 
+ d0
+d1
+d2
+ d3
+d39N-2
+d39N
+d39N-1
+d39N-3
+     b39N
+     b39N-2
+     b39N-1
+    b39N-3
+   b0
+  b1
+  b3
+  b2
+data bits
+data symbols
+data pulses
+39NT
+burst boundary
+burst boundary
+information bits
+guard bits
+guard bits
+ 
+NOTE: 
+The vertical dotted lines represent the symbol boundaries. 
+ 
+Figure 4.2: Relationship of data bits, data symbols, burst timing, and symbol timing for BIT/SK 
+
+=====PAGE 9=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+9 
+GMR-1 05.004 
+5 
+Normal burst 
+All traffic and control channel bursts except for DKAB, BACH, and FCCH are called normal bursts. They can be 
+uplink or downlink bursts. 
+5.1 
+π/4-CQPSK modulation 
+Normal bursts are π/4-CQPSK (coherent quadrature phase shift keying) modulated. The complex envelope of the 
+transmitted signal is defined as follows: 
+ 
+
+
+
+
+
+
+
+
+−
+=
+∑
+∞
+−∞
+=
+k
+k
+j
+kT
+t
+h
+e
+t
+p
+t
+x
+o
+)
+(
+)
+(
+)
+(
+α
+ϕ
+ 
+where ϕo is a random phase, h(t) is the impulse response of a shaping filter defined in clause 5.1.1, p(t) is the ramp 
+function as defined in clause 5.1.2 and {αk} are the modulating symbols defined as follows: 
+ 
+
+
+
+=
+>
+≤
+≤
+=
+<
+0
+39
+5.1
+ 
+table
+ 
+see
+:
+39
+0
+0
+:
+0
+k
+k
+N:
+k
+N
+k
+k
+α
+α
+ 
+where N = 2, 3, 4, 6, 9 depending on the type of the burst. The modulating symbols are derived from the data symbols 
+(free and reference symbols) according to table 5.1. 
+Table 5.1: π/4-CQPSK modulation 
+Data symbols (dk) 
+Modulating symbols αk 
+0 0 
+4
+)
+0
+1(
+kπ
+j
+e
+j
++
+ 
+0 1 
+4
+)1
+0
+(
+π
+kj
+e
+j
++
+ 
+1 1 
+4
+)
+0
+1
+(
+π
+k
+j
+e
+j
++
+−
+ 
+1 0 
+4
+)1
+0
+(
+π
+kj
+e
+j
+−
+ 
+ 
+5.1.1 
+Filtering 
+The pulse shaping filter is the root raised cosine filter with a roll-off  factor of 0,35. Its frequency response H(f) is 
+defined by the following function: 
+ 
+(
+)
+
+
+
+
+
+
+
+
+
+>
+≤
+≤
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+−
+−
+<
+<
+=
+T
+f
+T
+f
+T
+T
+f
+T
+f
+f
+H
+675
+,0
+for 
+0
+675
+,0
+325
+,0
+for 
+7,0
+1
+2
+sin
+1
+2
+1
+325
+,0
+0
+for 
+1
+)
+(
+π
+ 
+The impulse response h(t), the inverse Fourier transform of H(f), is written as: 
+ 
+
+
+
+
+
+
++
+
+
+
+
+
+
+
+
+−
+
+
+
+
+
+
+=
+T
+t
+t
+T
+T
+t
+t
+T
+T
+t
+h
+π
+π
+π
+65
+,0
+sin
+7
+5
+35
+,1
+cos
+7
+5
+7
+5
+)
+(
+2
+2
+2
+ 
+
+=====PAGE 10=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+10
+GMR-1 05.004 
+5.1.2 
+Power ramp 
+The power ramp function shall meet the GMR-1 05.005 [4] specification. 
+NOTE: 
+An approach to meeting the GMR-1 05.005 [4] specification is the convolution of a Blackman window of 
+appropriate duration x (the duration may be different for different types of bursts) and a 
+rectangular-shaped function of duration 
+)
+(
+x
+Tb −
+ ms, where Tb is the burst length in ms.  
+An alternative approach is to set all the guard modulating symbols (α0, α1, α2, α3N-2, α3N-1, α3N) to zero. 
+In this way, the ramp effect is achieved by the filter response defined in clause 5.1.1. 
+5.2 
+π/4-CBIT/SK modulation 
+Some of the normal bursts are π/4-CBIT/SK (coherent binary phase-shift keying) modulated. The complex envelope of 
+the transmitted signal is defined as for the π/4-CQPSK case. π/4-CBIT/SK bursts are considered as a special case of 
+π/4-CQPSK with the following correspondence. 
+Table 5.2: π/4-CBIT/SK modulation 
+Data symbols (dk) 
+Modulating symbols αk 
+0 
+4
+)
+0
+1(
+π
+kj
+e
+j
++
+ 
+1 
+4
+)
+0
+1
+(
+π
+k
+j
+e
+j
++
+−
+ 
+ 
+6 
+DKABs 
+6.1 
+π/4-DBIT/SK modulation 
+Dual Keep-Alive Bursts (DKABs) are π/4-DBIT/SK modulated. The complex envelope of the transmitted signal is 
+defined as follows: 
+ 
+
+
+
+
+
+
+
+
+−
+=
+∑
+∞
+−∞
+=
+k
+k
+j
+kT
+t
+h
+e
+t
+p
+t
+x
+o
+)
+(
+)
+(
+)
+(
+α
+ϕ
+ 
+where ϕo is a random phase, h(t) is the impulse response of a shaping filter defined in clause 5.1.1, p(t) is the ramp 
+function as defined in clause 5.1.2, and {αk} are the modulating symbols defined as follows: 
+ 
+
+
+
+
+
+
+
+
+
+
+
+=
++
+>
++
+≤
+<
++
+=
++
+=
+=
++
+<
+<
++
++
+≤
+<
++
+=
++
+=
+=
++
+<
+0
+:
+2
+/
+66
+6.1
+ 
+table
+ 
+see
+:
+2
+/
+66
+2
+/
+62
+1
+:
+2
+/
+62
+0
+:
+2
+62
+2
+7
+6.1
+ 
+table
+ 
+see
+:
+2
+/
+7
+2
+/
+3
+1
+:
+2
+/
+3
+0
+:
+2
+/
+3
+k
+k
+k
+k
+k
+q
+k
+q
+k
+q
+q
+k
+q/
+k
+q/
+q
+k
+q
+q
+k
+q
+k
+α
+α
+α
+α
+α
+ 
+where q shall be even and 0 < q < 95 as explained in GMR-1 05.002 [3]. The modulating symbols are derived from the 
+data symbols (free and reference symbols) according to table 6.1. 
+
+=====PAGE 11=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+11
+GMR-1 05.004 
+Table 6.1: π/4-DBIT/SK modulation 
+Data symbols dk 
+Modulating symbols αk 
+0 
+4
+1
+π
+α
+j
+k
+e
+−
+ 
+1 
+4
+3
+1
+π
+α
+j
+k
+e−
+−
+ 
+ 
+2
+3 q
++
+α
+ and 
+2
+62 q
++
+α
+ represent the first and the second reference symbols respectively. 
+7 
+BACH 
+The Basic Alerting CHannel (BACH) data consists of a 36-bit message that addresses the intended terminal notifying 
+the user of a call attempt. The message bits are encoded to output 60 coded bits. Each BACH burst of two slots carries 4 
+coded bits. 15 BACH bursts are required to transmit a complete alerting message. 
+7.1 
+Modulation format 
+BACH bursts are 6PSK modulated. The complex envelope of the transmitted signal is defined as follows: 
+ 
+
+
+
+
+
+
+
+
+−
+=
+∑
+∞
+−∞
+=
+k
+k
+j
+kT
+t
+h
+e
+t
+p
+t
+x
+o
+)
+(
+)
+(
+)
+(
+α
+ϕ
+ 
+where ϕo is a random phase, h(t) is the impulse response of a shaping filter defined in clause 5.1.1, p(t) is the ramp 
+function as defined in clause 5.1.2, and {αk} are the modulating symbols defined as follows: 
+ 
+
+
+
+=
+>
+≤
+≤
+=
+<
+0
+:
+78
+7.1
+ 
+ table
+see
+:
+78
+0
+0
+:
+0
+k
+α
+α
+k
+k
+k
+k
+ 
+The modulating symbols are derived from a set of BACH sequence values {vk} according to table 7.1. Each sequence 
+value is replicated over 4 successive symbol periods. 
+Table 7.1: HPSK modulation 
+Sequence values (vk) 
+Modulating symbols αk 
+0 
+0
+j
+e
+ 
+1 
+3
+/
+2π
+j
+e
+ 
+2 
+3
+/
+2π
+j
+e−
+ 
+3 
+π
+j
+e
+ 
+4 
+3
+/
+π
+j
+e
+ 
+5 
+3
+/
+π
+j
+e−
+ 
+ 
+The sequence value vk is uniquely defined by one of the 16 sequences Sj in table 7.2 as follows: 
+ 
+
+
+
+=
+=
+=
+=
+=
+.
+78
+,
+77
+,
+76
+,
+75
+5)},
+ 
+4,
+ 
+3,
+ 
+2,
+ 
+1,
+ 
+(0,
+ 
+of
+{any 
+ .
+74
+,...,
+4
+,3
+ ;}
+15
+...,
+,1
+,0
+{
+       
+),
+(
+.2
+,1
+,0
+5)},
+ 
+4,
+ 
+3,
+ 
+2,
+ 
+1,
+ 
+(0,
+ 
+of
+{any 
+k
+k
+j
+i
+S
+k
+v
+j
+k
+ 
+
+=====PAGE 12=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+12
+GMR-1 05.004 
+where i is computed by: 
+ 
+
+
+
+
+−
+=
+4
+3
+k
+i
+ 
+and 
+x takes the integer part of x. i takes numbers from {0, 1, …, 17} for the range of k values. 
+The mapping from the 4 coded bits to one of the 16 sequences Sj is defined in table 7.3. 
+Table 7.2: Definition of 16 BACH sequences 
+Sequences 
+Sequence elements 
+(18 per each sequence) 
+S0 
+0  3  0  3  0  3  0  3  0  3  0  3  0  3  0  3  0  3 
+S1 
+0  0  1  1  2  2  0  0  1  1  2  2  0  0  1  1  2  2 
+S2 
+0  3  1  5  2  4  0  3  1  5  2  4  0  3  1  5  2  4 
+S3 
+0  0  2  2  1  1  0  0  2  2  1  1  0  0  2  2  1  1 
+S4 
+0  3  2  4  1  5  0  3  2  4  1  5  0  3  2  4  1  5 
+S5 
+0  0  0  0  0  0  1  1  1  1  1  1  2  2  2  2  2  2 
+S6 
+0  3  0  3  0  3  1  5  1  5  1  5  2  4  2  4  2  4 
+S7 
+0  0  1  1  2  2  1  1  2  2  0  0  2  2  0  0  1  1 
+S8 
+0  3  1  5  2  4  1  5  2  4  0  3  2  4  0  3  1  5 
+S9 
+0  0  2  2  1  1  1  1  0  0  2  2  2  2  1  1  0  0 
+S10 
+0  3  2  4  1  5  1  5  0  3  2  4  2  4  1  5  0  3    
+S11 
+0  0  0  0  0  0  2  2  2  2  2  2  1  1  1  1  1  1  
+S12 
+0  3  0  3  0  3  2  4  2  4  2  4  1  5  1  5  1  5 
+S13 
+0  0  1  1  2  2  2  2  0  0  1  1  1  1  2  2  0  0 
+S14 
+0  3  1  5  2  4  2  4  0  3  1  5  1  5  2  4  0  3 
+S15 
+0  0  2  2  1  1  2  2  1  1  0  0  1  1  0  0  2  2 
+ 
+From the above equation, vk for k = 0, 1, 2 and k = 75, 76, 77, 78 also belongs to {0, 1, 2, 3, 4, 5}. The specific sequence 
+patterns can be arbitrarily defined. 
+Table 7.3: Coded bits to Sj mapping 
+Coded bits 
+Sequences Sj 
+0000 
+S0 
+0001 
+S1 
+0010 
+S2 
+0011 
+S3 
+0100 
+S4 
+0101 
+S5 
+0110 
+S6 
+0111 
+S7 
+1000 
+S8 
+1001 
+S9 
+1010 
+S10 
+1011 
+S11 
+1100 
+S12 
+1101 
+S13 
+1110 
+S14 
+1111 
+S15 
+ 
+
+=====PAGE 13=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+13
+GMR-1 05.004 
+8 
+Frequency correction burst 
+8.1 
+Modulation format 
+Frequency correction burst is a real chirp signal spanning three slots. The complex envelope of the transmitted burst is 
+defined as follows: 
+ 
+(
+)
+[
+]
+)
+117
+/(
+)
+5,
+58
+(
+64
+,0
+cos
+2
+)
+(
+)
+(
+2
+2
+T
+T
+t
+e
+t
+p
+t
+x
+o
+j
+−
+=
+π
+ϕ
+ 
+where ϕo is a random phase and p(t) is the ramp function as defined in clause 5.1.2. This signal defines the chirp 
+sweeping range as (-7,488 kHz to 7,488 kHz). 
+9 
+Modulation accuracy 
+Modulation accuracy is defined as the difference between the actual transmitted signal and the theoretical signal defined 
+in previous clauses. 
+Modulation accuracy is measured in terms of the error vector magnitude from the transmitted symbol to the theoretical 
+point in the constellation at the optimum symbol sampling points. 
+The transmit accuracy requirements are: 
+• 
+the root-mean-square (rms) error vector magnitude over the entire burst shall be less than 0,09; 
+• 
+the rms error vector magnitude over the first eight symbols of the burst shall be less than 0,18. 
+The rms error vector magnitude, the measure of modulation accuracy, shall be computed as follows: 
+Observing an ideal transmitter through an ideal square root raised-cosine receiver filter at the correct sampling instants 
+one symbol apart would result in the sequence of values given (for π/4-CQPSK) by: 
+ 
+[
+]
+2
+)
+(
+4
+)
+(
+π
+π
+k
+B
+k
+j
+Re
+S
+k
+S
++
+=
+ 
+where SR is a reference symbol position defined by the transmitted sync pattern and 
+k = 0, 1, ...., 39N, |S(k)| = 1 and B(k) = 0, 1, 2, 3 according to table 9.1. 
+For π/4-DBIT/SK: 
+ 
+[
+]
+2
+/
+)
+(
+4
+/
+)1
+(
+)
+(
+π
+π
+k
+B
+j
+e
+k
+S
+k
+S
++
+−
+=
+ 
+where k = 0, 1, ...., 39N, |S(k)| = 1 and B(k) = 0, 2 according to table 9.2. 
+Table 9.1: Derivation of B(k) for π/4-CQPSK 
+Data symbols (dk) 
+B(k) 
+0 0 
+0 
+0 1 
+1 
+1 1 
+2 
+1 0 
+3 
+ 
+Table 9.2: Derivation of B(k) for π/4-DBIT/SK 
+Data symbols (dk) 
+B(k) 
+0 
+0 
+1 
+2 
+ 
+
+=====PAGE 14=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+14
+GMR-1 05.004 
+The ideal transmit and receive filters in cascade form a raised cosine Nyquist filter having an impulse response going 
+through zero at symbol period intervals so there is no intersymbol interference at the ideal sampling points. Therefore, 
+the ideal signal samples take on one of the eight values defined above, at the output of the receive filter. 
+Let Z(k) be the complex vectors produced by observing the real transmitter through an ideal measuring receiver filter at 
+instants k, one symbol period apart. With S(k) defined as above, the transmitter is modelled as: 
+ 
+[
+]
+{
+}
+k
+W
+k
+E
+k
+S
+C
+C
+k
+Z
+)
+(
+)
+(
+)
+(
+1
+0
++
++
+=
+ 
+where: 
+1) 
+W = edr + jdσ accounts for both a frequency offset giving "dσ" radians per symbol phase rotation and an 
+amplitude change of "dr" nepers per symbol; 
+2) 
+C0 is a constant origin offset representing carrier feedthrough at the transmitter; 
+3) 
+C1 is a complex constant representing the arbitrary phase and output power of the transmitter; and 
+4) 
+E(k) is the residual vector error on sample S(k). 
+The sum square vector error is then: 
+ 
+[
+]
+∑
+∑
+=
+−
+=
+−
+−
+=
+MAX
+MIN
+k
+k
+MAX
+MIN
+k
+k
+S
+C
+C
+W
+k
+Z
+k
+E
+2
+1
+0
+2
+)
+(
+)
+(
+)
+(
+ 
+C0, C1, and W will be chosen to minimize this expression and are then used to compute the individual vector errors E(k) 
+on each symbol. The symbol timing phase of the receiver output samples used to compute the vector error will also be 
+chosen to give the lowest value. 
+The values of MAX and MIN are the last and first maximum effect points in the (segment of the) burst under 
+measurement. 
+The rms vector error is then computed as the square root of the sum-square vector divided by the number of symbols in 
+the segment under measurement. The result is then normalized relative to the symbol magnitude. 
+The above requirements shall be satisfied over the extreme set of environmental conditions specified in annex B of 
+GMR-1 05.005 [4]. If the MES is operated outside the range of extreme environmental conditions, the EVM of the 
+whole burst shall not exceed 0,12, and the EVM of the first eight symbols of the burst shall not exceed 0,24. 
+
+=====PAGE 15=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+15
+GMR-1 05.004 
+Annex A (informative): 
+Bibliography 
+GMR-1 05.001 (ETSI TS 101 376-5-1): "GEO-Mobile Radio Interface Specifications; Part 5: Radio interface physical 
+layer specifications; Sub-part 1: Physical Layer on the Radio Path: General Description". 
+
+=====PAGE 16=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+16
+GMR-1 05.004 
+Annex B (informative): 
+Change Record 
+This annex lists the CRs that have been applied to the present document. 
+CR 
+REV 
+CATEGORY 
+SUBJECT 
+CR004 
+2 
+Editorial 
+Suggested improvement to BACH description 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 17=====
+ 
+ETSI 
+ETSI TS 101 376-5-4 V1.3.1 (2005-02) 
+17
+GMR-1 05.004 
+History 
+Document history 
+V1.1.1 
+March 2001 
+Publication 
+V1.2.1 
+April 2002 
+Publication 
+V1.3.1 
+February 2005 
+Publication 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

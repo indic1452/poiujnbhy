@@ -1,0 +1,1732 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ 
+ETSI TS 103 129 V1.1.2 (2014-03) 
+Digital Video Broadcasting (DVB); 
+Framing structure, channel coding and modulation of 
+a carrier identification system (DVB-CID) 
+for satellite transmission 
+ 
+ 
+ 
+Technical Specification 
+
+=====PAGE 2=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+2
+ 
+ 
+ 
+ 
+Reference 
+RTS/JTC-DVB-339 
+Keywords 
+DVB, identification, modulation, satellite, 
+transmission 
+ETSI 
+650 Route des Lucioles 
+F-06921 Sophia Antipolis Cedex - FRANCE 
+ 
+Tel.: +33 4 92 94 42 00   Fax: +33 4 93 65 47 16 
+ 
+Siret N° 348 623 562 00017 - NAF 742 C 
+Association à but non lucratif enregistrée à la 
+Sous-Préfecture de Grasse (06) N° 7803/88 
+ 
+Important notice 
+The present document can be downloaded from: 
+http://www.etsi.org 
+The present document may be made available in electronic versions and/or in print. The content of any electronic and/or 
+print versions of the present document shall not be modified without the prior written authorization of ETSI. In case of any 
+existing or perceived difference in contents between such versions and/or in print, the only prevailing document is the 
+print of the Portable Document Format (PDF) version kept on a specific network drive within ETSI Secretariat. 
+Users of the present document should be aware that the document may be subject to revision or change of status. 
+Information on the current status of this and other ETSI documents is available at 
+http://portal.etsi.org/tb/status/status.asp 
+If you find errors in the present document, please send your comment to one of the following services: 
+http://portal.etsi.org/chaircor/ETSI_support.asp 
+Copyright Notification 
+No part may be reproduced or utilized in any form or by any means, electronic or mechanical, including photocopying 
+and microfilm except as authorized by written permission of ETSI. 
+The content of the PDF version shall not be modified without the written authorization of ETSI. 
+The copyright and the foregoing restriction extend to reproduction in all media. 
+ 
+© European Telecommunications Standards Institute 2014. 
+© European Broadcasting Union 2014. 
+All rights reserved. 
+ 
+DECTTM, PLUGTESTSTM, UMTSTM and the ETSI logo are Trade Marks of ETSI registered for the benefit of its Members. 
+3GPPTM and LTE™ are Trade Marks of ETSI registered for the benefit of its Members and 
+of the 3GPP Organizational Partners. 
+GSM® and the GSM logo are Trade Marks registered and owned by the GSM Association.
+
+=====PAGE 3=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+3
+ 
+Contents 
+Intellectual Property Rights ................................................................................................................................ 4 
+Foreword ............................................................................................................................................................. 4 
+Introduction ........................................................................................................................................................ 4 
+1 
+Scope ........................................................................................................................................................ 6 
+2 
+References ................................................................................................................................................ 6 
+2.1 
+Normative references ......................................................................................................................................... 6 
+2.2 
+Informative references ........................................................................................................................................ 7 
+3 
+Definitions, symbols and abbreviations ................................................................................................... 7 
+3.1 
+Definitions .......................................................................................................................................................... 7 
+3.2 
+Symbols .............................................................................................................................................................. 7 
+3.3 
+Abbreviations ..................................................................................................................................................... 8 
+4 
+Host Carrier identification information .................................................................................................... 8 
+4.1 
+DVB CID Global Unique Identifier ................................................................................................................... 9 
+4.2 
+Content ID table ............................................................................................................................................... 10 
+5 
+DVB CID construction ........................................................................................................................... 12 
+5.1 
+DVB CID frame construction ........................................................................................................................... 13 
+5.1.1 
+DVB CID Frame format ............................................................................................................................. 13 
+5.1.2 
+CRC8 .......................................................................................................................................................... 14 
+5.1.3 
+BCH FEC .................................................................................................................................................... 14 
+5.2 
+Scrambling ....................................................................................................................................................... 15 
+5.3 
+Repetition ......................................................................................................................................................... 15 
+5.4 
+Differential encoder .......................................................................................................................................... 16 
+5.5 
+Chipping ........................................................................................................................................................... 16 
+5.6 
+Chip mapping into BPSK constellation ............................................................................................................ 16 
+5.7 
+Nyquist filter .................................................................................................................................................... 17 
+5.8 
+Gain adjust........................................................................................................................................................ 17 
+5.9 
+Complex Mix .................................................................................................................................................... 18 
+6 
+DVB CID carrier phase noise specification ........................................................................................... 18 
+Annex A (normative): 
+Transmit filter response ................................................................................ 19 
+Annex B (informative): 
+Computation of the Degradation of the host carrier and Detectability 
+computation .................................................................................................... 21 
+B.1 
+Void ........................................................................................................................................................ 21 
+B.2 
+Degradation of the host carrier ............................................................................................................... 21 
+B.3 
+Detectability computation ...................................................................................................................... 22 
+Annex C (informative): 
+Bibliography ................................................................................................... 24 
+History .............................................................................................................................................................. 25 
+ 
+
+=====PAGE 4=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+4
+ 
+Intellectual Property Rights 
+IPRs essential or potentially essential to the present document may have been declared to ETSI. The information 
+pertaining to these essential IPRs, if any, is publicly available for ETSI members and non-members, and can be found 
+in ETSI SR 000 314: "Intellectual Property Rights (IPRs); Essential, or potentially Essential, IPRs notified to ETSI in 
+respect of ETSI standards", which is available from the ETSI Secretariat. Latest updates are available on the ETSI Web 
+server (http://ipr.etsi.org). 
+Pursuant to the ETSI IPR Policy, no investigation, including IPR searches, has been carried out by ETSI. No guarantee 
+can be given as to the existence of other IPRs not referenced in ETSI SR 000 314 (or the updates on the ETSI Web 
+server) which are, or may be, or may become, essential to the present document. 
+Foreword 
+This Technical Specification (TS) has been produced by Joint Technical Committee (JTC) Broadcast of the European 
+Broadcasting Union (EBU), Comité Européen de Normalisation ELECtrotechnique (CENELEC) and the European 
+Telecommunications Standards Institute (ETSI). 
+NOTE: 
+The EBU/ETSI JTC Broadcast was established in 1990 to co-ordinate the drafting of standards in the 
+specific field of broadcasting and related fields. Since 1995 the JTC Broadcast became a tripartite body 
+by including in the Memorandum of Understanding also CENELEC, which is responsible for the 
+standardization of radio and television receivers. The EBU is a professional association of broadcasting 
+organizations whose work includes the co-ordination of its members' activities in the technical, legal, 
+programme-making and programme-exchange domains. The EBU has active members in about 
+60 countries in the European broadcasting area; its headquarters is in Geneva. 
+European Broadcasting Union 
+CH-1218 GRAND SACONNEX (Geneva) 
+Switzerland 
+Tel: 
++41 22 717 21 11 
+Fax: 
++41 22 717 24 81 
+ 
+The Digital Video Broadcasting Project (DVB) is an industry-led consortium of broadcasters, manufacturers, network 
+operators, software developers, regulatory bodies, content owners and others committed to designing global standards 
+for the delivery of digital television and data services. DVB fosters market driven solutions that meet the needs and 
+economic circumstances of broadcast industry stakeholders and consumers. DVB standards cover all aspects of digital 
+television from transmission through interfacing, conditional access and interactivity for digital video, audio and data. 
+The consortium came together in 1993 to provide global standardization, interoperability and future proof 
+specifications. 
+Introduction 
+Radio Frequency Interference (RFI) is the largest single issue that impacts Quality of Service for satellite operators and 
+their customers. This in particular applies to occasional use satellite transmissions and temporary feeder links, rather 
+than to full time DTH services where the owners and locations of the uplinks are well known and identified by the 
+respective DVB-SI data. 
+Whilst RFI can come from many sources, various satellite operators have confirmed that a significant amount of 
+interference comes from so-called "rogue carriers". These are often caused by failed equipment or by a system 
+improperly configured due to human error. 
+Various actions are being taken by operators, customers, vendors and industry groups to tackle interference, including: 
+training for installers and operators; data sharing to improve operational processes; and new innovations such as Carrier 
+Identification (CID). 
+Carrier ID is not expected to be a perfect solution to solve all RFI, but it will be a key technology in contributing to the 
+rapid identification of RFI and reducing its negative impact on operators, customers, and the satellite industry as a 
+whole. 
+
+=====PAGE 5=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+5
+ 
+Carrier ID will enable the operators and users to: 
+• 
+Quickly identify interfering carriers and respond to RFI, reducing the duration of each event. 
+• 
+Improve Quality of Service and reduce operating costs. 
+• 
+In the longer term, lower the number of RFI events and release bandwidth being used to overcome current and 
+ongoing RFI events. 
+
+=====PAGE 6=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+6
+ 
+1 
+Scope 
+The present document describes the modulation, channel coding and signalling protocol system (denoted the "System", 
+"DVB Carrier Identification" or "DVB-CID" for the purposes of the present document) intended for the identification of 
+the host carrier it belongs to.  
+The system uses Binary Phase Shift Keying (BPSK) spread spectrum modulation, differential encoding, scrambling and 
+a concatenated error protection strategy based on repetition, cyclic redundancy check (CRC) and Bose and 
+Ray-Chaudhuri (BCH) codes. 
+The present document: 
+• 
+Gives a general description of the system for the transmission of the identification information of a host 
+carrier. 
+• 
+Specifies the digitally modulated signal in order to allow compatibility between pieces of equipment 
+developed by different manufacturers. This is achieved by describing in detail the signal processing principles 
+at the modulator side, while the processing at the receive side is left open to different implementation 
+solutions. 
+• 
+Identifies the global performance requirements and features of the System, in order to meet the quality targets 
+for identification of the host carrier. 
+The system has been optimized for satellite applications including DVB-S, DVB-DSNG and DVB-S2, but can be 
+applied to any continuous transmission by satellite. The system is to be used when no other suitable means of 
+identifying the transmitter are available; such means include but are not limited to remote-control facilities that can 
+switch the transmitter on and off. 
+2 
+References 
+References are either specific (identified by date of publication and/or edition number or version number) or 
+non-specific. For specific references, only the cited version applies. For non-specific references, the latest version of the 
+reference document (including any amendments) applies. 
+Referenced documents which are not found to be publicly available in the expected location might be found at 
+http://docbox.etsi.org/Reference. 
+NOTE: 
+While any hyperlinks included in this clause were valid at the time of publication, ETSI cannot guarantee 
+their long term validity. 
+2.1 
+Normative references 
+The following referenced documents are necessary for the application of the present document. 
+[1] 
+IEEE™ standards association, EUI-64 Guidelines: "Guidelines for 64-bit Global Identifier 
+(EUI-64™)" Registration Authority. 
+NOTE: 
+Available at: http://standards.ieee.org/develop/regauth/tut/eui64.pdf. 
+[2] 
+Recommendation ITU-T E.123: "Notation for national and international telephone numbers, 
+e-mail addresses and Web addresses". 
+2.2 
+Informative references 
+The following referenced documents are not necessary for the application of the present document but they assist the 
+user with regard to a particular subject area. 
+[i.1] 
+IETF RFC 2373 (July 1998): "IP Version 6 Addressing Architecture". 
+
+=====PAGE 7=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+7
+ 
+[i.2] 
+National Marine Electronic Association, NMEA 0183. 
+[i.3] 
+Intelsat Earth Station Standard IESS-308 (Rev 10): "Performance Characteristics for Intermediate 
+Data Rate Digital Carriers using Convolutional Encoding/Viterbi Encoding and QPSK 
+Modulation". 
+[i.4] 
+Intelsat Earth Station Standard IESS-316: "Performance Characteristics for Digital Carriers using 
+16QAM modulation". 
+3 
+Definitions, symbols and abbreviations 
+3.1 
+Definitions 
+For the purposes of the present document, the following terms and definitions apply: 
+CID carrier: transmission signal that transports the Content ID 
+content ID: possible content of information field carried by CID 
+NOTE: 
+As described in clause 4.2. 
+DVB CID global unique identifier: unique identifier for the modulator that transmits the host carrier 
+hexadecimal representation: representation of a sequence of octet values in which the values of the individual octets 
+are displayed in order from left to right, with each octet value represented as a two-digit hexadecimal numeral, and with 
+the resulting pairs of hexadecimal digits separated by colons 
+NOTE: 
+The order of the hexadecimal digits in each pair, and the mapping between the hexadecimal digits and the 
+bits of the octet value, are derived by interpreting the bits of the octet value as a binary numeral using the 
+normal mathematical rules for digit significance. 
+host carrier: transmission signal that is identified by the DVB CID 
+3.2 
+Symbols 
+For the purposes of the present document, the following symbols apply: 
+α 
+roll-off factor 
+A 
+the signal identified by the CID 
+B 
+the signal being interfered 
+∗
+B
+C ,0
+ [W/Hz] 
+signal B power spectral density, at the E/S where the CID is decoded 
+ci 
+chip 
+comp_factor_CIDA [dB] 
+compensation factor to be added to the link budget target SNIR in order to reach a target 
+SNIRA+CID total level equal to the SNIRA when no CID would have been present 
+D(x) 
+BCH FEC code message polynomial 
+DegA [dB] 
+degradation of the link budget when a CID is added to an existing link 
+f0 
+carrier frequency 
+Nf
+ 
+Nyquist frequency 
+GBCH(x) 
+BCH FEC code generator polynomial 
+GCRC8(x) 
+CRC-8 generator polynomial 
+g1(x),g2(x),...,g6(x) 
+polynomials to obtain BCH FEC code generator polynomial 
+GF 
+Galois Field 
+I, Q 
+in-phase, Quadrature phase components of the modulated signal 
+∗
+0
+N [W/Hz] 
+noise power spectral density, at the E/S where CID is decoded 
+P(x) 
+BCH FEC code parity polynomial 
+PSDCID [dB] 
+the power density level of the CID signal relative to the power density of A 
+RA [ksps] 
+the symbol rate of signal A  
+
+=====PAGE 8=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+8
+ 
+C
+R 
+chip rate 
+SNIRA [dB] 
+the Es/(No+Io) threshold for the coding and modulation scheme used by signal A 
+ (in 
+the absence of a carrier-ID nuisance signal) 
+SNIRA+CID [dB] 
+Overall link budget result as signal to noise and interference ratio with all noise and 
+interference degradations and impact 
+RB [ksps]  
+the symbol rate of signal B  
+Rc [ksps]  
+the chip rate of the CID signal that identifies A 
+sT 
+symbol period 
+SF [] 
+the spreading factor for the CID signal 
+SNRCID [dB] 
+the Es/(No+Io) threshold for the coding and modulation scheme used by for the carrier-
+ID signal, after despreading and assuming diff. coherent detection 
+yi 
+modulation symbol 
+3.3 
+Abbreviations 
+For the purposes of the present document, the following abbreviations apply: 
+ASCII 
+American Standard Code for Information Interchange 
+BCD 
+Binary Coded Decimal 
+BCH 
+Bose, Ray-Chaudhuri, Hocquenghem code 
+BPSK 
+Binary Phase Shift Keying 
+CID 
+Carrier IDentification 
+CRC 
+Cyclic Redundancy Check 
+CRC8 
+Cyclic Redundancy Check with 8 bits 
+DTH 
+Direct To Home 
+DVB  
+Digital Video Broadcasting Project 
+DVB-CID 
+DVB Carrier IDentification 
+DVB-DSNG 
+DVB System for Digital Satellite News Gathering 
+DVB-S 
+DVB System for satellite broadcasting 
+DVB-S2 
+second generation DVB System for satellite broadcasting and unicasting 
+DVB-SI 
+DVB Service Information 
+EBU 
+European Broadcasting Union 
+EUI 
+Extended Unique Identifier 
+FEC 
+Forward Error Correction 
+GF 
+Galois Field 
+ID 
+IDentifier 
+IEEE 
+Institute of Electrical and Electronics Engineers 
+LFSR 
+Linear Feedback Shift Register 
+LSB 
+Least significant bit 
+MAC 
+Media Access Control 
+MSB 
+Most Significant Bit 
+OUI 
+Organizationally Unique Identifier 
+PSD 
+Power Spectral Density 
+RFI 
+Radio Frequency Interference  
+SSB 
+Single Side Band 
+TX 
+Tansmitter 
+UW 
+Unique Word 
+4 
+Host Carrier identification information 
+The following specifies the host carrier identification information that is transported by the CID carrier.  
+The information that identifies the host carrier contains mandatory the DVB CID Global Unique Identifier, fixed by the 
+equipment manufacturer, that shall not be editable by the user, and the CID format revision code (Content ID 0). 
+Additionally it may contain other information that is configurable by the user, identified by different Content ID fields. 
+
+=====PAGE 9=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+9
+ 
+4.1 
+DVB CID Global Unique Identifier 
+The 64-bit DVB CID Global Unique Identifier is based on the IEEE-defined 64-bit extended unique identifier 
+(EUI-64 [1]) and is sent in two parts of 32 bits. It can be derived from a 48 bit MAC address or a 48 bit Space Data 
+Association modulator identifier as described below. 
+A 48 bit MAC address assigned to a modulator can be unambiguously sent in the same 64 bit field that specifies an 
+IEEE EUI-64 [1]. The process is also described in Appendix A of RFC 2373 [i.1]. The process is illustrated as follows. 
+An EUI-48 MAC is composed of 2 sections, a 24 bit manufacturer's IEEE-assigned company ID (for OUI-24) followed 
+by the 24 bit extension identifier: 
+EXAMPLE 1: 
+00:06:B0:01:AC:07  
+ 
+Manufacturer ID 00:06:B0 
+ 
+Extension  
+01:AC:07 
+An equivalent EUI-64 starts with the same manufacturer ID, but adds 2 additional bytes of extension identifier. EUI-64 
+can also accommodate an OUI-36 manufacturer ID with a 28 bit extension identifier. 
+In either case, there is a restriction on bytes 4 and 5, that shall never be set to either 0x"FFFF" or 0x"FFFE". This is 
+used in the standard as a means of encapsulating a 48 bit MAC into the 64 bit field: 
+EXAMPLE 2: 
+00:06:B0:FF:FF:01:AC:07 is parsed as: 
+ 
+Manufacturer ID 
+00:06:B0 
+ 
+Added Bytes 
+FF:FE  
+Code identifies a 48 bit MAC (EUI-48) 
+Or:  
+ 
+Added Bytes 
+FF:FF  Code identifies a 48 bit MAC (MAC-48) 
+ 
+Extension 
+01:AC:07 
+To be noted that the two least significant bits of the most significant byte of the 48 bit MAC address shall always be 
+equal to 0: multicast off and globally unique (OUI enforced).  
+Alternatively, instead of a 48 bit MAC address, a 48 bit Space Data Association assigned modulator identifier can be 
+encoded as a MAC-48, but the least significant bit of the most significant byte shall be set to zero (=unicast) and the 
+second-least-significant bit of the most significant byte shall be set to one (=locally administered). 
+NOTE: 
+To make sure that the DVB CID Global Unique Identifier is unique, the 'locally administered' are to be 
+assigned by Space Data Association. 
+Where the DVB CID Global Unique Identifier is shown on the device (printed on a label, displayed on a command line 
+interface, displayed on a graphical user interface) the representation shall be a string of 9 octects starting with a 
+check_digits_octet followed by the octets of the DVB CID Global Unique Identifier starting with the most significant 
+octet, using the hexadecimal representation. The check_digits_octet is a CRC8 covering the bits of the DVB CID 
+Global Unique Identifier with the most significant bit first: 
+EXAMPLE 3: 
+The format of the displayed DVB CID Global Unique Identifier is then:  
+ 
+CC:XX:XX:XX:XX:XX:XX:XX:XX  
+ 
+Where C are the hexadecimal digits of check_digits_octet and X 16 hexadecimal digits of the 
+octets of the DVB CID Global Unique Identifier. 
+EXAMPLE 4: 
+The DVB CID Global Unique Identifier 00:06:B0:FF:FF:01:AC:07 will then be shown as: 
+ 
+75:00:06:B0:FF:FF:01:AC:07 
+
+=====PAGE 10=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+10
+ 
+When the DVB CID Global Unique Identifier is entered by a human (for example for adding an entry to the CID 
+database), it shall be prepended by this check_digits_octet and the human shall be notified if the check_digits_octet 
+does not match with the following octets of the DVB CID Global Unique Identifier. 
+4.2 
+Content ID table 
+The Content ID table (see table 1) lists the possible content of the Information field carried by CID. The CID format 
+revision code (Content ID 0) shall be transmitted; other information is optional, and the Content ID value indicates the 
+corresponding Information field content. If the telephone is sent, all 3 Telephone content ID fields shall be sent. If the 
+User Data is sent, all 7 User Data fields shall be sent. 
+Table 1: Content ID 
+Content ID table 
+Content ID 
+Value 
+Information field content 
+0 
+Carrier ID Format (23:0) 
+CID Format is a revision code anticipating possible changes in the number and possible content of the 
+Fields. This shall be set to 0x000001. All other values are reserved. 
+1 
+Latitude(23:4) and (0) Latitude(3:1) are unused and set to '000' 
+Interpreted based on NMEA 0183 [i.2] protocol of degrees and decimal minutes. The field is interpreted as:  
+6 numerical digits in binary form, plus a single bit assigned as "0" = N and "1" = South latitude. For 
+example: 8959.99 N or 89°59'59.4" N would be coded in 24 bits as 110110101011111111110000 and 
+1245.9 S or 12°45'54" S would be coded in 24 bits as 000111100110101011100001. Resolution is 
+equivalent to  
+20 meters. 
+2 
+Longitude(23:3) and (0) Longitude(2:1) is unused and set to '00' 
+Interpreted based on NMEA 0183 [i.2] protocol of degrees and decimal minutes. The field is interpreted as  
+7 numerical digits in binary form, plus a single bit assigned as "0" = E and "1" = W longitude. For example: 
+17959.99 W or 179°59'59.4" W would be coded in 24 bits as 110110110011110011111001 and 2334.45 E 
+or 23°34'27" E would be coded in 24 bits as 000111000111111100101000. Resolution is equivalent to  
+20 meters. 
+3 
+Telephone 1 of 3: (23:0): field is 72 bits made up of 18 x 4 bit BCD coded characters. This field is user 
+entered. Telephone 1 (23) is the MSB of the BCD code of the first digit of the telephone number while 
+Telephone 3 (0) is the LSB of the BCD code of the last digit of an 18 digit telephone number. The telephone 
+number is in international format according to Recommendation ITU-T E.123 [2] with three modifications: 
+'+', "ext." and padding. The '+' sign is not transmitted. In case of an extension, "ext." will be transmitted as 
+binary code "1101". Telephone numbers that do not completely fill the 72 bits are appended with the 
+appropriate number of bits to fulfil the 72 bit filed with the invalid BCD code '1111' (padding). The full table 
+with used BCD codes is in table 2.  
+EXAMPLE: +1 480 333 2200 ext. 1835 would be coded as 
+000101001000000000110011001100100010000000001101000110000011010111111111 
+4 
+Telephone 2 of 3: (23:0). 
+5 
+Telephone 3 of 3: (23:0). 
+6 
+User Data 1 of 7 (23:0) This field is 168 bits made up of 24 x 7 bit ASCII characters. It allows the operator to 
+enter a user message. This field is user entered. User Data 1 (23) is the MSB of the ASCII code of the 1st 
+character. User Data 7 (0) is the LSB of the ASCII code of the last (24th) character. Used Data that does 
+not completely fill the 168 bits are appended with the appropriate number of bits to fulfil the 168 bit filed with 
+binary '0's (padding). 
+7 
+User Data 2 of 7 (23:0). 
+8  
+User Data 3 of 7 (23:0). 
+9 
+User Data 4 of 7 (23:0). 
+10 
+User Data 5 of 7 (23:0). 
+11 
+User Data 6 of 7 (23:0). 
+12 
+User Data 7 of 7 (23:0). 
+13 - 31 
+Undefined. 
+ 
+
+=====PAGE 11=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+11
+ 
+Table 2: Coding of the telephone number 
+Phone number symbol or padding 
+BCD 
+8 4 2 1 
+'0' 
+0 0 0 0 
+'1' 
+0 0 0 1 
+'2' 
+0 0 1 0 
+'3' 
+0 0 1 1 
+'4' 
+0 1 0 0 
+'5' 
+0 1 0 1 
+'6' 
+0 1 1 0 
+'7' 
+0 1 1 1 
+'8' 
+1 0 0 0 
+'9' 
+1 0 0 1 
+'ext.' 
+1 1 0 1 
+Padding 
+1 1 1 1 
+ 
+The content ID shall be sent in a repetitive sequential manner (starting from the lowest Content ID value and ending 
+with the highest Content ID value) for any Content ID fields that are populated with data. If the total number of 
+populated content ID fields is odd, another Content ID field "0" shall be appended at the end of sequence, to make the 
+number even. Each frame contains two content ID fields.  
+NOTE: 
+Content ID 0 is a mandatory filed that is sent per the sequence rules below. 
+EXAMPLE 1: 
+Using the Content ID table above if a user only entered their telephone number into the modulator 
+and did not enter any other information, the sequence becomes 0-3-4-5. The frames sent would be 
+as follows: 
+  Frame N => Content ID "0" and Content ID "3" 
+  Frame N+1 => Content ID "4" and Content ID "5" 
+  Frame N+2 => Content ID "0" and Content ID "3" (restart from the beginning) 
+  Frame N+3 => Content ID "4" and Content ID "5" 
+  Frame N+4 => Content ID "0" and Content ID "3" (restart from the beginning) 
+EXAMPLE 2: 
+Using the Content ID table above if a user did not enter any optional information, the sequence 
+becomes 0-0 (another Content ID field "0" was added to make the total number even). The frames 
+sent would be as follows: 
+  Frame N => Content ID "0" and Content ID "0" 
+  Frame N+1 => Content ID "0" and Content ID "0" (restart from the beginning) 
+  Frame N+2 => Content ID "0" and Content ID "0" (restart from the beginning) 
+EXAMPLE 3: 
+Using the Content ID table above if a user only entered latitude and longitude information and did 
+not enter any other information, the sequence becomes 0-1-2-0 (another Content ID field "0" was 
+added to make the total number even). The frames sent would be as follows: 
+  Frame N => Content ID "0" and Content ID "1" 
+  Frame N+1 => Content ID "2" and Content ID "0"  
+  Frame N+2 => Content ID "0" and Content ID "1" (restart from the beginning) 
+  Frame N+3 => Content ID "2" and Content ID "0"  
+  Frame N+4 => Content ID "0" and Content ID "1" (restart from the beginning) 
+
+=====PAGE 12=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+12
+ 
+5 
+DVB CID construction 
+The Carrier ID Transmitter Block diagram is shown in figure 1. It shall be possible to disable the CID in an equipment 
+by hardware or software. 
+ 
+Figure 1: An example Carrier ID transmission block diagram 
+
+=====PAGE 13=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+13
+ 
+5.1 
+DVB CID frame construction 
+5.1.1 
+DVB CID Frame format 
+The syntax and semantics of the CID_Frame are defined in table 3. This CID_Frame will contain the DVB CID Global 
+Unique Identifier and 2 content ID's. 
+Table 3: Syntax and semantics 
+Syntax 
+No. of bits 
+Mnemonic 
+CID_Frame () { 
+ 
+ 
+unique_word 
+22 
+bslbf 
+id_high 
+32 
+uimsbf 
+content_id_1 
+5 
+uimsbf 
+content_id_information_1 
+24 
+uimsbf 
+crc_1 
+8 
+rpchof 
+fec_1 
+42 
+bslbf 
+id_low 
+32 
+uimsbf 
+content_id_2 
+5 
+uimsbf 
+content_id_information_2 
+24 
+uimsbf 
+crc_2 
+8 
+rpchof 
+fec_2 
+42 
+bslbf 
+} 
+ 
+ 
+NOTE: 
+id_high and id_low are transmitted in most significant bit first order here, on Ethernet the least significant bit 
+of the most significant byte is transmitted first. 
+ 
+The semantics of CID_Frame are as follows (see table 3): 
+unique_word: The unique word (UW) is a 22-bit unique word set alternatively to (MSB first) 0x147147 and 0x2b8eb8. 
+id_high: The 32 most significant bits of the DVB CID Global Unique Identifier. 
+content_id_1: Contains the content ID value that indicates what the content_id_information_1 field content will be (see 
+table 2). 
+content_id_information_1: Contains the Information field content for the Content ID value specified in content_id_1 
+(see table 2). 
+crc_1: The CRC8 covers the bits in the id_high, content_id_1, and content_id_information_1 fields in that sequence. 
+See clause 5.1.2 for the details for CRC8 calculation. 
+fec_1: The BCH FEC covers the id_high, content_id_1,content_id_information_1 and crc_1. See clause 5.1.3 for the 
+details on BCH FEC calculation. 
+id_low: The 32 least significant bits of the DVB CID Global Unique Identifier. 
+content_id_2: Contains the content ID value that indicates what the content_id_information_2 field content will be (see 
+table 2). 
+content_id_information_2: Contains the Information field content for the Content ID value specified in content_id_2 
+(see table 2). 
+crc_2: The CRC8 covers the bits in the id_low, content_id_2, and content_id_information_2 fields in that sequence. 
+See clause 5.1.2 for the details for CRC8 calculation. 
+fec_2: The BCH FEC covers the id_low,content_id_2, content_id_information_2 and crc_2. See clause 5.1.3 for the 
+details on BCH FEC calculation. 
+
+=====PAGE 14=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+14
+ 
+5.1.2 
+CRC8 
+The calculation below for CRC-8 shall be used for crc_1 and crc_2 in CID_Frame (see clause 5.1.1 and table 3), and for 
+the creation of the check_digits_octet when displaying a DVB CID Global Unique Identifier (see clause 4.1). The 
+CRC8 is a systematic 8-bit CRC encoder. The generator polynomial shall be: 
+ 
+GCRC8(X) = (X5+X4+X3+X2+1)(X2+X+1)(X+1) = X8+X7+X6+X4+X2+1 
+The CRC encoder output shall be computed as: 
+ 
+CRC = remainder [X8 u(X): GCRC8(X)] 
+Where u(X) is the input sequence to be systematically encoded. Figure 2 gives a possible implementation of the CRC 
+generator by means of a shift register. 
+The register shall be initialized to all ones (0xFF) before the first bit of each sequence enters the circuit. 
+ 
+7 
+8 
+6 
+5 
+4 
+3 
+2 
+1 
+A
+B
+A
+B
+A
+Bits to be protected by CRC-8 
+Switches:  in A for the bits to be protected by CRC-8; in B for 8 bits 
+CRC-8 
+B
+=EXOR  
+ 
+Figure 2: Implementation of the CRC-8 encoder 
+The MSB of the CRC shift register is MSB of the CRC byte. This CRC is "0xD5" in MSB first notation, and is 
+equivalent to the CRC-8 with Polynomial "0xEA" in Koopman notation. 
+NOTE: 
+The CRC does not cover the unique word. 
+5.1.3 
+BCH FEC 
+The FEC is a (127, 85) 6-error correcting systematic BCH code, shortened by 16 bits to (111, 69). The encoding 
+operation is defined as an operation involving polynomials over GF(2). The first data bit sent is the coefficient of the 
+highest degree term in the degree 68 data polynomial D(x). The first parity bit sent is the coefficient of the highest 
+degree term in the degree 41 parity polynomial P(x). The parity polynomial P(x) is the remainder after dividing 
+D(x)⋅x42 by the degree-42 generator polynomial GBCH(x). The generator polynomial is the product of the following 
+degree-7 polynomials over GF(2) (see table 4). The parity bits are sent after the data bits. 
+Table 4: BCH polynomials 
+g1(x) 
+1+x4+ x7 
+g2(x) 
+1+ x2+ x3+x4+ x7 
+g3(x) 
+1+x+ x2+ x3+x4+ x5+ x7 
+g4(x) 
+1+ x6+ x7 
+g5(x) 
+1+ x2 +x4 +x6+ x7 
+g6(x) 
+1 +x4 +x5 +x6+ x7 
+NOTE: 
+The BCH FEC does not cover the unique word. 
+ 
+
+=====PAGE 15=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+15
+ 
+5.2 
+Scrambling 
+All bits in a CID_Frame except the unique word bits are scrambled. The scrambling polynomial is: x^9 + x^5 + 1. The 
+initial state is 0x41. The feedback value x^9 + x^5 is the output. The scrambler does not advance over the unique words. 
+The scrambler is reset to the initial state at the start of each CID_Frame. 
+0
+0
+1
+0
+0
+0
+0
+0
+1
+XOR
+Output
+Scrambler Sequence Generator with Initial State
+x0
+x5
+x9
+ 
+NOTE 
+ The scrambler does not cover the unique word. 
+ 
+Figure 3: Message Frame Scrambler 
+5.3 
+Repetition 
+The scrambled CID bits (unique word and scrambled bits) are repeated 4 times. 
+Unique 
+Word
+(22 bits)
+Global Unique 
+Identifier_high 
+(32 bits)
+Content 
+ID_1 type
+(5 bits)
+Information1
+(24 bits)
+CRC 1 
+(8 bits)
+FEC 1
+(42 bits)
+Global Unique 
+Identifier_low 
+(32 bits)
+Content 
+ID_2 type
+(5 bits)
+Information 2 
+(24 bits)
+CRC 2
+(8 bits)
+FEC 2
+(42 bits)
+976 bits
+Differential encoding
+244 bits
+244 bits
+244 bits
+244 bits
+Repetition of the packet by 4
+Unique 
+Word
+(22 bits)
+Global Unique 
+Identifier_high 
+(32 bits)
+Content 
+ID_1 type
+(5 bits)
+Information1
+(24 bits)
+CRC 1 
+(8 bits)
+FEC 1
+(42 bits)
+Global Unique 
+Identifier_low 
+(32 bits)
+Content 
+ID_2 type
+(5 bits)
+Information 2 
+(24 bits)
+CRC 2
+(8 bits)
+FEC 2
+(42 bits)
+Scrambling
+976*4096 chips
+Spreading with a sequence at
+224kHz (s >= 512kBd) or 112kHz (s < 512kBd )
+ 
+Figure 4: Scheme of the CID Frame 
+
+=====PAGE 16=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+16
+ 
+5.4 
+Differential encoder 
+All repeated CID bits are differentially encoded. 
+Differential Encoder 
+Z-1 
+Input 
+ 
+NOTE 
+Unique word bits are also differentially encoded. 
+ 
+Figure 5: Symbol Differential Encoder 
+5.5 
+Chipping 
+Chipping is applied on every bit after differential encoding. The chipping ratio (spreading) is 4 096 chips/bit at all 
+supported symbol rates. Each bit is chipped using the same 4 096 bit pattern. 
+The chipping pattern is created using a LFSR polynomial of x15 + x14 + 1 with an initial state of [0 1 0 1 0 0 0 0 1 0 0 1 
+0 0 0]. The first 32 chips generated by the LFSR are (MSB first) 0x5091E364. The pattern is forced to repeat every 
+4 096 chips. 
+0
+1
+0
+1
+0
+0
+0
+0
+1
+0
+0
+1
+0
+0
+0
+XOR
+Output
+Chipping Sequence Generator with Initial State
+x0
+x14
+x15
+ 
+Figure 6: Chipping Sequence Generator 
+For host carrier symbol rate (see note) ≥ 512 kBd a chip rate of 224 kHz shall be used. For host carrier symbol rate 
+< 512 kBd a chip rate of 112 kHz shall be used.  
+NOTE: 
+The -3 dB Bandwidth is considered when the Symbol rate concept is not applicable. 
+5.6 
+Chip mapping into BPSK constellation 
+After chipping, each chip ci of the sequence of CID_frames shall be mapped into BPSK constellation, generating a 
+modulation symbol yi as a complex vector in the format (I,Q) (I being the in-phase component and Q the quadrature 
+component). 
+Chip mapping into the BPSK constellation shall follow figure 7. The normalized average energy per symbol shall be 
+equal to 1. 
+
+=====PAGE 17=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+17
+ 
+Re{yi} convey ci
+Im{yi} 
+1 
+0 
+ 
+Figure 7: Bit mapping into BPSK constellation 
+The exact values of the real and imaginary components Re(yi) and Im(yi) for each combination of the relevant input bits 
+ci are given in table 5. 
+Table 5: Constellation mapping for BPSK 
+ci  
+1 
+0 
+Re(yi)  
+-1  
+1 
+Im(yi)  
+0  
+0 
+ 
+5.7 
+Nyquist filter 
+After mapping into constellation, the signal shall be square root raised cosine filtered. The roll-off factor shall be 
+α = 0,35. 
+The baseband square root raised cosine filter shall have a theoretical function defined by the following expression: 
+ 
+1
+)
+(
+=
+f
+H
+ 
+for 
+(
+)
+α
+−
+<
+1
+N
+f
+f
+ 
+ 
+2
+1
+2
+sin
+2
+1
+2
+1
+)
+(
+⎪⎭
+⎪⎬
+⎫
+⎪⎩
+⎪⎨
+⎧
+⎥
+⎥
+⎦
+⎤
+⎢
+⎢
+⎣
+⎡
+−
++
+=
+α
+π
+f
+N
+f
+f
+f
+H
+N
+ 
+for 
+(
+)
+α
+−
+1
+N
+f
+ 
+ 
+0
+)
+(
+=
+f
+H
+ 
+for 
+(
+)
+α
++
+>
+1
+N
+f
+f
+, 
+where: 
+2
+2
+1
+s
+s
+N
+R
+T
+f
+=
+=
+ is the Nyquist frequency, α is the roll-off factor and 
+C
+R
+ is the chip rate. 
+A template for the signal spectrum at the modulator output is given in annex A. 
+Modulation shall be performed by multiplying the samples (after baseband filtering) by sin (2πf0t) (where f0 is the 
+carrier frequency). The resulting signal shall be added to obtain the modulator output signal. 
+5.8 
+Gain adjust 
+A gain adjust has to be performed in order to produce a constant power spectral density of the DVB CID signal relative 
+to the power spectral density of the center of the host carrier at the level as detailed in table 6. The power spectral 
+density accuracy shall be within ±0,5 dB. 
+
+=====PAGE 18=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+18
+ 
+Table 6: Relative PSD levels for the DVB CID signal 
+Host carrier Symbol rate (s) 
+range (see note) 
+DVB CID signal PSD level relative to host 
+carrier center PSD 
+128 kBd ≤ s < 256 kBd 
+-27,5 
+256 kBd ≤ s < 512 kBd 
+-27,5 
+512 kBd ≤ s < 1 024 kBd 
+-27,5 
+1 024 kBd ≤ s < 2 048 kBd 
+-27,5 
+2 048 kBd ≤ s < 4 096 kBd 
+-24,5 
+4 096 kBd ≤ s < 8 192 kBd 
+-21,5 
+8 192 kBd ≤ s < 16 384 kBd 
+-18,5 
+16 384 kBd ≤ s 
+-17,5 
+NOTE: 
+The -3 dB Bandwidth is considered when the Symbol rate concept is not 
+applicable. 
+ 
+5.9 
+Complex Mix 
+At the output of the modulator the carrier ID signal is sent at +220 Hz offset when the modulator is configured not to 
+introduce a spectrum inversion in the host carrier signal. 
+At the output of the modulator the carrier ID signal is sent at -220 Hz offset when the modulator is configured to 
+introduce a spectrum inversion in the host carrier signal. 
+6 
+DVB CID carrier phase noise specification 
+For chip rate 224 kHz (host carrier symbol rate ≥ 512 kBd) the close-in TX phase noise for the DVB CID signal shall be 
+as specified in table 7, which extends the mask in [i.3] below 10 Hz maintaining 1/f3 slope down to 1 Hz. 
+For chip rate 112 kHz (host carrier symbol rate < 512 kBd) the close-in TX phase noise for the DVB CID signal shall be 
+as specified in table 8. 
+NOTE: 
+The -3 dB Bandwidth is considered when the Symbol rate concept is not applicable. 
+For both chip rates, the accuracy shall be 5 ppm/year. 
+Table 7: Close-in TX phase noise mask for the Carrier-ID signal for chip rate 224 kHz  
+(host carrier symbol rate ≥ 512 kBd)  
+Frequency Offset  
+[Hz] 
+SSB phase noise 
+ [dBc/Hz] 
+SSB phase noise [dBc/Hz] 
+after xD frequency divider D ≥ 20 
+Source 
+1  
+0  
+-20⋅log10(D) 
+[i.3] extended 
+10  
+-30  
+ 
+[i.3] 
+100 
+-60  
+ 
+[i.3] 
+NOTE: 
+To avoid confusion about the interpretation of 0 dBc/Hz phase noise: The 3rd column corresponds 
+to -26 dBc/Hz measured with an ideal spectrum analyzer after a x 20 frequency divider.  
+ 
+Table 8: Close-in TX phase noise mask for the Carrier-ID signal for chip rate 112 kHz  
+(host carrier symbol rate < 512 kBd)  
+Frequency Offset  
+[Hz] 
+SSB phase noise 
+ [dBc/Hz] 
+SSB phase noise 
+[dBc/Hz] 
+after xD frequency 
+divider D ≥ 20 
+Source 
+1  
+-6  
+-6-20⋅log10(D) 
+[i.3] extended - 6 dB 
+[i.4] extended + 6 dB 
+10  
+-36  
+ 
+[i.3]- 6 dB 
+[i.4]+ 6 dB 
+100 
+-66  
+ 
+ 
+
+=====PAGE 19=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+19
+ 
+Annex A (normative): 
+Transmit filter response 
+Figure A.1 gives the template for the amplitude response of the CID modulator equivalent baseband Nyquist filter. 
+Relative power (dB)
+-50
+-40
+-30
+-20
+-10
+0
+10
+0
+0,5
+1 
+1,5
+2
+2,5
+3
+A
+B
+C
+D
+E
+F
+G
+H
+J
+K
+L
+M 
+ 
+P
+Q
+ 
+I
+f/f N
+ 
+Figure A.1: Template for the amplitude response of the CID modulator 
+equivalent baseband Nyquist filter 
+Figure A.2 gives the template for the group delay response of the CID modulator equivalent baseband Nyquist filter. 
+All filter effects up to the output of the CID modulator are understood to be included. 
+f / f 
+-0,2 
+-0,15 
+-0,1 
+-0,05 
+0 
+0,05 
+0,1 
+0,15 
+0,2 
+0,00 
+0,50 
+1,00 
+1,50 
+2,00 
+2,50 
+3,00 
+N 
+Group delay  x  f    N 
+A 
+B 
+C 
+D 
+E 
+F 
+G 
+H 
+I 
+J 
+K 
+L 
+M 
+ 
+Figure A.2: Template for the group delay response of the CID modulator  
+equivalent baseband Nyquist filter 
+
+=====PAGE 20=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+20
+ 
+Table A.1: Definition of points given in figures A.1 and A.2 
+Point 
+Frequency  
+ 
+Relative power 
+(dB) 
+Group delay 
+A 
+0,0 fN 
++0,25 
++0,07/fN 
+B 
+0,0 fN 
+-0,25 
+-0,07/fN 
+C 
+0,2 fN 
++0,25 
++0,07/fN 
+D 
+0,2 fN 
+-0,40 
+-0,07/fN 
+E 
+0,4 fN 
++0,25 
++0,07/fN 
+F 
+0,4 fN 
+-0,40 
+-0,07/fN 
+G 
+0,8 fN 
++0,15 
++0,07/fN 
+H 
+0,8 fN 
+-1,10 
+-0,07/fN 
+I 
+0,9 fN 
+-0,50 
++0,07/fN 
+J 
+1,0 fN 
+-2,00 
++0,07/fN 
+K 
+1,0 fN 
+-4,00 
+-0,07/fN 
+L 
+1,2 fN 
+-8,00 
+- 
+M 
+1,2 fN 
+-11,00 
+- 
+N 
+1,8 fN 
+-35,00 
+- 
+P 
+1,4 fN 
+-16,00 
+- 
+Q 
+1,6 fN 
+-24,00 
+- 
+ 
+
+=====PAGE 21=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+21
+ 
+Annex B (informative): 
+Computation of the Degradation of the host carrier and 
+Detectability computation 
+B.1 
+Void 
+B.2 
+Degradation of the host carrier 
+Degradation of signal A.: There are two effects from the CID signal that cause degradation: 
+1) 
+To maintain a fixed transmit power, the signal A carrier power is decreased by the CID signal power. 
+2) 
+The CID signal power acts as an interferer to the signal A carrier. 
+Degradation due to the first effect can be shown to be an order of magnitude smaller than the second effect, so the first 
+effect often can be ignored.  
+The second effect can be calculated as described here. For a given link with symbol rate RA 256 kBaud and with an 
+overall link signal to noise and interference ratio of SNIRA of for example 19 dB, a carrier ID (CID) signal is added at a 
+power spectral density level of -27,5 dB compared to signal power and with a chip rate RC 112 kHz. 
+The resulting link degradation can be computed as follows: 
+ 
+dB
+Deg
+A
+c
+CID
+A
+R
+R
+PSD
+SNIR
+A
+26
+.0
+10
+1
+log
+10
+)
+dB
+(
+10
+log
+10
+10
+10
+=
+⎟⎟
+⎟
+⎟
+⎟
+⎟
+⎠
+⎞
+⎜⎜
+⎜
+⎜
+⎜
+⎜
+⎝
+⎛
++
+=
+⎟⎟
+⎠
+⎞
+⎜⎜
+⎝
+⎛
++
++
+ 
+Hence factors leading to high degradation in service A are: 
+• 
+high level of the CID signal 
+CID
+PSD
+; 
+• 
+high operational 
+A
+SNIR
+for signal A; 
+• 
+low symbol rate 
+A
+R of the main signal compared to the CID chip rate
+c
+R . 
+)
+dB
+(
+A
+Deg
+ is the link degradation at receiver after the carrier CID has been added. The receiver will see the CID as 
+additional interference contribution and the overall link SNIRA+CID becomes 18,74 dB. 
+SNIRA = 19.00 dB
+CID
+PSD of -27.5dB
+RC/RA of 112/256
++
+SNIRA+CID = 18.74 dB
+-DegA (dB)
+ 
+Figure B.1 
+
+=====PAGE 22=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+22
+ 
+The operator of the link may dispose of means to compensate for the link degradation with small changes in link 
+parameters like the uplink power for example. In this case the overall link SNIRA needs to be changed to take into 
+account the additional carrier ID interference contribution to the overall link budget. 
+The initial SNIRA of 19 dB needs to be adapted to take into account the CID contribution by the additional factor of: 
+ 
+dB
+CID
+factor
+comp
+A
+c
+CID
+A
+R
+R
+PSD
+SNIR
+A
+277
+.0
+10
+1
+log
+10
+)
+dB
+(
+_
+_
+10
+log
+10
+10
+10
+=
+⎟⎟
+⎟
+⎟
+⎟
+⎟
+⎠
+⎞
+⎜⎜
+⎜
+⎜
+⎜
+⎜
+⎝
+⎛
+−
+−
+=
+⎟⎟
+⎠
+⎞
+⎜⎜
+⎝
+⎛
++
++
+ 
+The compensated SNIRA+comp_factor_CIDA is then 19,277 dB. This represents the target overall link budget without 
+CID. This assuming a CID of PSD -27,5 dB and at a rate of RC/RA = 112/256 to this link will yield an overall link 
+budget at reception of SNIRA+CID of 19,0 dB. 
+SNIRA + comp_factor_CIDA
+= 19.277 dB
+CID
+PSD of -27.5dB
+RC/RA of 112/256
++
+SNIRA+CID = 19.0 dB
+ 
+Figure B.2 
+B.3 
+Detectability computation 
+It is preferred to detect the identity of interferer A without interrupting the service of the interfered signal B. This 
+requires spare margin for the interfered signal B. As a figure of merit for detectability we will compute the extra C/I to 
+be considered in the link budget of signal B to allow identifying interferer A without switching off B. This value is well 
+approximated by: 
+ 
+(
+)
+⎟
+⎟
+⎠
+⎞
+⎜
+⎜
+⎝
+⎛
++
+−
+⎥
+⎦
+⎤
+⎢
+⎣
+⎡
++
+−
+=
+∗
+∗
+B
+A
+B
+A
+CID
+CID
+C
+N
+R
+R
+R
+SF
+SNR
+PSD
+I
+C
+,0
+0
+10
+10
+1
+log
+10
+,
+max
+log
+10
+/
+ 
+A small correction is needed when service A and B have very similar symbol rates. Providing the exact formula would 
+blur the main trends. 
+Hence factors improving detectability are: 
+• 
+high level of the CID signal 
+CID
+PSD
+; 
+• 
+low detection threshold; 
+• 
+high spreading factor SF ; 
+• 
+high symbol rate 
+B
+R of the interfered signal compared to the interfering signal 
+A
+R . 
+
+=====PAGE 23=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+23
+ 
+The last term:  
+ 
+⎟
+⎟
+⎠
+⎞
+⎜
+⎜
+⎝
+⎛
++
+∗
+∗
+B
+C
+N
+,0
+0
+10 1
+log
+10
+ 
+is often negligible, in particular when the interfered signal B is a broadcast service(since service B is then typically 
+downlink limited and the E/S where carrier-ID is decoded can be expected to have much better G/T than service B 
+terminals). 
+It will be noticed from the factor analysis above that the requirement for low degradation to signal A and good 
+detectability of interference to signal B are in part opposing requirements. A better marriage of the opposing 
+requirements is possible by selecting the value of 
+CID
+PSD
+as a function of the TX symbol rate 
+A
+R . 
+
+=====PAGE 24=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+24
+ 
+Annex C (informative): 
+Bibliography 
+• 
+"Spread spectrum systems", J. Wiley. 
+NOTE: 
+Available at Robert Clyde Dixon. 
+
+=====PAGE 25=====
+ 
+ETSI 
+ETSI TS 103 129 V1.1.2 (2014-03)
+25
+ 
+History 
+Document history 
+V1.1.1 
+May 2013 
+Publication 
+V1.1.2 
+March 2014 
+Publication 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

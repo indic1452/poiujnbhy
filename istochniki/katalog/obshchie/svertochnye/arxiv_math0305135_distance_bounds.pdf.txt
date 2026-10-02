@@ -1,0 +1,1980 @@
+
+=====PAGE 1=====
+arXiv:math/0305135v1  [math.RA]  9 May 2003
+Distance Bounds for Convolutional Codes and Some Optimal
+Codes
+Heide Gluesing-Luerssen∗and Wiland Schmale∗
+October 30, 2018
+Abstract
+After a discussion of the Griesmer and Heller bound for the distance of a convolutional
+code we present several codes with various parameters, over various ﬁelds, and meeting
+the given distance bounds. Moreover, the Griesmer bound is used for deriving a lower
+bound for the ﬁeld size of an MDS convolutional code and examples are presented showing
+that, in most cases, the lower bound is tight. Most of the examples in this paper are cyclic
+convolutional codes in a generalized sense as it has been introduced in the seventies. A
+brief introduction to this promising type of cyclicity is given at the end of the paper in
+order to make the examples more transparent.
+Keywords: Convolutional coding theory, distance bounds, cyclic convolutional codes.
+MSC (2000): 94B10, 94B15, 16S36
+1
+Introduction
+The fundamental task of coding theory is the construction of good codes, that is, codes having
+a large distance and a fast decoding algorithm. This task applies equally well to block codes
+and convolutional codes. Yet, the state of the art is totally diﬀerent for these two classes of
+codes. The mathematical theory of block codes is highly developed and has produced many
+sophisticated classes of codes, some of which, like BCH-codes, also come with an eﬃcient
+decoding algorithm. On the other hand, the mathematical theory of convolutional codes is
+still in the beginnings. Engineers make use of these codes since decades, but all convolutional
+codes used in practice have been found by systematic computer search and their distances
+have been found by computer as well, see for instance [12] and [9, Sec. 8] for codes having
+the largest distance among all codes with the same parameters. Moreover, in all practical
+situations decoding of convolutional codes is done by search algorithms, for instance the
+Viterbi algorithm or one of the sequential decoding algorithms, e. g. the stack algorithm. It
+depends on the algorithm how complex a code may be without exceeding the range of the
+decoding algorithms. However, the important fact about the theory of convolutional codes is
+that so far no speciﬁc codes are known that allow an algebraic decoding (in the present paper
+∗Department of Mathematics, University of Oldenburg, 26 111 Oldenburg, Germany, email: gluesing@
+mathematik.uni-oldenburg.de and wiland.schmale@uni-oldenburg.de
+1
+
+=====PAGE 2=====
+a decoding algorithm will be called algebraic if it is capable to exploit the speciﬁc structure
+of the given code in order to avoid a full search).
+Since the seventies quite some eﬀort has been made in order to ﬁnd algebraic constructions of
+convolutional codes that guarantee a large (free) distance [10, 15, 11, 23, 4]. The drawbacks
+of all these constructions are that, ﬁrstly, the ﬁeld size has to be adapted and in general
+becomes quite large and, secondly, so far no algebraic decoding for these codes is known. A
+main feature of most of these constructions is that they make use of cyclic block codes in
+order to derive the desired convolutional code.
+Parallel to these considerations there was an independent investigation of convolutional codes
+that have a cyclic structure themselves, which also began in the seventies [18, 19, 6, 5]. It was
+the goal of these papers to see whether this additional structure has, just like for block codes,
+some beneﬁt for the error-correcting capability of the code. The ﬁrst and very important
+observation of the seventies was the fact that a convolutional code which is cyclic in the
+usual sense is a block code.
+This negative insight has led to a more complex notion of
+cyclicity for convolutional codes. The algebraic analysis of these codes has been completed
+only recently in [5] and yields a nice, yet nontrivial, generalization of the algebraic situation
+for cyclic block codes. Furthermore, by now plenty of optimal cyclic convolutional codes
+have been found in the sense that their (free) distance reaches the Griesmer bound. To the
+best of our knowledge it was, for most cases of the parameters, not known before whether
+such optimal codes existed. Many of these codes are over small ﬁelds (like the binary ﬁeld)
+and are therefore well-suited for the existing decoding algorithms. Along with the algebraic
+theory of [5] all this indicates that this notion of cyclicity is not only the appropriate one for
+convolutional codes but also a very promising one. Yet, the theory of these codes is still in
+the beginnings. So far, no theoretical results concerning the distance of such a code or its
+decoding properties are known. But we are convinced that this class of codes deserves further
+investigation and that the theory developed so far will be a good basis for the next steps.
+It is the aim of this paper to present many of these examples in order to introduce the
+class of cyclic convolutional codes to the convolutional coding community. The examples
+are presented via a generator matrix so that no knowledge about cyclicity for convolutional
+codes is required from the reader. The (free) distances of all these codes have been obtained
+by a computer program. A detailed discussion of various distance bounds for convolutional
+codes over arbitrary ﬁelds shows that all the given codes are optimal with respect to their
+distance. It is beyond the scope of this paper to acquaint the reader with the theory of cyclic
+convolutional codes. However, in Section 5 we will give a very brief introduction into this
+subject so that the reader may see how the examples have been constructed. The details of
+the theory can be found in [5].
+The outline of the paper is as follows. After reviewing the main notions of convolutional
+coding theory in the next section we will discuss in Section 3 various bounds for the free
+distance of a convolutional code, the Griesmer bound, the Heller bound and the generalized
+Singleton bound. The ﬁrst two bounds are well-known for binary convolutional codes and
+can straightforwardly be generalized to codes over arbitrary ﬁelds.
+It is also shown that
+for all sets of parameters the Griesmer bound is at least as good as the Heller bound. The
+generalized Singleton bound is an upper bound for the free distance of a code of given length,
+dimension, and complexity, but over an arbitrary ﬁeld.
+Just like for block codes a code
+reaching this bound is called an MDS code [22]. The Griesmer bound is used for showing
+how large the ﬁeld size has to be in order to allow for an MDS code. In Section 4 many
+examples of codes are presented reaching the respective bound. Most of these examples are
+2
+
+=====PAGE 3=====
+cyclic convolutional codes, but we also include some other codes with the purpose to exhibit
+certain features of convolutional codes. For instance, we give examples of MDS codes showing
+that the lower bounds for the ﬁeld size as derived in Section 3 are tight. Furthermore, an
+example is given showing that a code reaching the Griesmer bound may have extreme Forney
+indices, a phenomenon that does not occur for MDS codes. The paper concludes with a brief
+account of cyclicity for convolutional codes.
+2
+Preliminaries
+We will make use of the following notation. The symbol F stands for any ﬁnite ﬁeld while Fq
+always denotes a ﬁeld with q elements.
+The ring of polynomials and the ﬁeld of formal
+Laurent series over F are given by
+F[z] =
+n N
+X
+j=0
+fjzj  N ∈N0, fj ∈F
+o
+and F((z)) =
+n ∞
+X
+j=l
+fjzj  l ∈Z, fj ∈F
+o
+.
+The following deﬁnition of a convolutional code is standard.
+Deﬁnition 2.1 Let F = Fq be a ﬁeld with q elements. An (n, k, δ)q-convolutional code is a
+k-dimensional subspace C of the vector space F((z))n of the form
+C = im G :=
+
+uG
+ u ∈F((z))k	
+where G ∈F[z]k×n satisﬁes
+(a) G is right invertible, i. e. there exists some matrix ˜G ∈F[z]n×k such that G ˜G = Ik.
+(b) δ = max{deg γ | γ is a k-minor of G}.
+We call G a generator matrix and δ the complexity of the code C.
+The complexity is also known as the overall constraint length [9, p. 55] or the degree [16,
+Def. 3.5] of the code. Notice that a generator matrix is always polynomial and has a poly-
+nomial right inverse.
+This implies that in the situation of Deﬁnition 2.1 the polynomial
+codewords belong to polynomial messages, i. e.
+C ∩F[z]n =
+
+uG
+ u ∈F[z]k	
+.
+(2.1)
+In other words, the generator matrix is delay-free and non-catastrophic. As a consequence,
+a convolutional code is always uniquely determined by its polynomial part.
+Precisely, if
+C = im G and C′ = im G′ where G, G′ ∈F[z]k×n are right invertible, then
+C = C′ ⇐⇒C ∩F[z]n = C′ ∩F[z]n.
+(2.2)
+This follows from (2.1) and the fact that {uG | u ∈F[z]k} = {uG′ | u ∈F[z]k} is equivalent
+to G′ = V G for some matrix V ∈F[z]k×k that is invertible over F[z]. This also shows that
+the complexity of a code does not depend on the choice of the generator matrix. From all
+this it should have become clear that with respect to code construction there is no diﬀerence
+whether one works in the context of inﬁnite message and codeword sequences (Laurent series)
+or ﬁnite ones (polynomials) as long as one considers right invertible generator matrices. Only
+for decoding it becomes important whether or not one may assume the sent codeword to be
+3
+
+=====PAGE 4=====
+ﬁnite. The issue whether convolutional coding theory should be based on ﬁnite or inﬁnite
+message sequences, has ﬁrst been raised and discussed in detail in [21, 20].
+It is well-known [2, Thm. 5] or [3, p. 495] that each convolutional code has a minimal generator
+matrix in the sense of the next deﬁnition. In the same paper [3, Sec. 4] it has been shown
+how to derive such a matrix from a given generator matrix in a constructive way.
+Deﬁnition 2.2 (1) For v = PN
+j=0 vjzj ∈F[z]n where vj ∈Fn and vN̸ = 0 let deg v := N be
+the degree of v. Moreover, put deg 0 = −∞.
+(2) Let G ∈F[z]k×n be a right invertible matrix with complexity δ = max{deg γ | γ is a
+k-minor of G} and let ν1, . . . , νk be the degrees of the rows of G in the sense of (1). We
+say that G is minimal if δ = Pk
+i=1 νi. In this case, the row degrees of G are uniquely
+determined by the code C := im G ⊆F((z))n. They are called the Forney indices of C and
+the number max{ν1, . . . , νk} is said to be the memory of the code. An (n, k, δ)q-code
+with memory m is also called an (n, k, δ; m)q-code.
+From the above it follows that an (n, k, δ)q-convolutional code has a constant generator matrix
+if and only if δ = 0. In that case the code can be regarded as an (n, k)q-block code.
+The deﬁnition of the distance of a convolutional code is straightforward.
+For a constant
+vector w = (w1, . . . , wn) ∈Fn we deﬁne its (Hamming) weight as wt(w) = #{i | wi̸ = 0}.
+For a polynomial vector v = PN
+j=0 vjzj ∈F[z]n, where vj ∈Fn, the weight is deﬁned as
+wt(v) = PN
+j=0 wt(vj). Then the (free) distance of a code C ⊆F((z))n with generator matrix
+G ∈F[z]k×n is given as
+dist(C) := min
+
+wt(v)
+ v ∈C ∩F[z]n, v̸ = 0
+	
+.
+By virtue of (2.1) this can be rephrased as dist(C) = min{wt(uG) | u ∈F[z]k, u̸ = 0}.
+When presenting some optimal codes in Section 4 we will also investigate the column distances
+of the codes. For each l ∈N0 the lth column distance of C is deﬁned as
+dc
+l = min
+n
+wt
+ (uG)[0,l]
+  u ∈F[z]k, u0̸ = 0
+o
+(2.3)
+where for a polynomial vector v = PN
+j=0 vjzj we deﬁne v[0,l] = Pmin{N,l}
+j=0
+vjzj. It can easily
+be shown [9, Thm. 3.4] that for each code C there exists some M ∈N0 such that
+dc
+0 ≤dc
+1 ≤dc
+2 . . . ≤dc
+M = dc
+M+1 = . . . = dist(C).
+(2.4)
+3
+Distance Bounds
+In this section we want to present some upper bounds for the distance of a convolutional
+code. These bounds are quite standard for binary convolutional codes and can be found
+in Chapter 3.5 of the book [9]. The proof for arbitrary ﬁelds goes along the same lines of
+arguments, but for sake of completeness we wish to repeat the arguments in this paper. We
+will also compare the numerical values of the bounds with each other.
+Let us begin with recalling various distance bounds for block codes. The Plotkin bound as
+given below can be found in [1, 1.4.3], but can also easily be derived from the more familiar
+formula
+if d > θn where θ = q −1
+q
+, then qk ≤
+d
+d −θn,
+(3.1)
+4
+
+=====PAGE 5=====
+see for instance [13, (5.2.4)].
+As for the Singleton and the Griesmer bound we also refer
+to [13, Ch. 5.2].
+Theorem 3.1 Let C ⊆Fn be an (n, k)q-block code and let d = dist(C). Then
+d ≤n −k + 1
+(Singleton bound),
+d ≤
+jnqk−1(q −1)
+qk −1
+k
+(Plotkin bound),
+k−1
+X
+l=0
+l d
+ql
+m
+≤n
+(Griesmer bound).
+An (n, k)q-code C with dist(C) = n −k + 1 is called an MDS code.
+Notice that the Singleton bound does not take the ﬁeld size into account. As a consequence
+the question arises as to how large the ﬁeld size q has to be in order to allow the existence of
+MDS codes and how to construct such codes. Answers in this direction can be found in [14,
+Ch. 11].
+It is certainly well-known that the Griesmer bound is at least as good as the Plotkin bound.
+The importance of the Plotkin bound, however, is that it also applies to nonlinear block
+codes, in which case it is usually given as in (3.1) and with M := |C| instead of qk. Since we
+did not ﬁnd a comparison of the two bounds for linear block codes in the literature we wish
+to present a short proof of this statement. We also include the relation between the Griesmer
+and the Singleton bound.
+Proposition 3.2 Given the parameters n, k, d, and q ∈N where k < n and q is a prime
+power. Assume Pk−1
+l=0
+l
+d
+ql
+m
+≤n. Then
+(a) d ≤
+jnqk−1(q −1)
+qk −1
+k
+,
+(b) d ≤n −k + 1.
+There is no relation between the Plotkin and the Singleton bound in this generality. Roughly
+speaking, for relatively large values of q the Singleton bound is better than the Plotkin bound
+while for small values the Plotkin bound is better.
+Proof: (a) Assume to the contrary that d >
+ nqk−1(q−1)
+qk−1
+
+. Since d is an integer this implies
+that d > nqk−1(q−1)
+qk−1
+. Thus
+k−1
+X
+l=0
+l d
+ql
+m
+≥
+k−1
+X
+l=0
+d
+ql >
+k−1
+X
+l=0
+n(q −1)
+qk −1 qk−1−l = n(q −1)
+qk −1
+k−1
+X
+l=0
+ql = n.
+(b) follows from Pk−1
+l=0
+ d
+ql
+
+≥d + k −1.
+✷
+One should also recall that the Griesmer bound is not tight. An example is given by the
+parameters n = 13, k = 6, q = 2 in which case the Griesmer bound shows that the distance
+is upper bounded by 5. But it is known that no (13, 6)2-code with distance 5 exists, see [13,
+p. 69].
+We will now present the generalization of these bounds to convolutional codes. Let us begin
+with the Singleton bound. The following result has been proven in [22, Thm. 2.2].
+5
+
+=====PAGE 6=====
+Theorem 3.3 Let C ⊆F((z))n be an (n, k, δ)-code. Then
+(a) The distance of C satisﬁes
+dist(C) ≤(n −k)
+jδ
+k
+k
++ 1
+
++ δ + 1 =: S(n, k, δ).
+The number S(n, k, δ) is called the generalized Singleton bound for the parameters
+(n, k, δ) and we call the code C an MDS code if dist(C) = S(n, k, δ).
+(b) If C is an MDS code and δ = ak + r where a ∈N0 and 0 ≤r ≤k −1, then the Forney
+indices of C are given by
+a, . . . , a
+| {z }
+k−r times
+, a + 1, . . . , a + 1
+|
+{z
+}
+r times
+.
+Hence the code is compact in the sense of [16, Cor. 4.3].
+Just like for block codes the acronym MDS stands for maximum distance separable. In [22,
+Thm. 2.10] it has been shown that for all given parameters n, k, δ and all primes p there exists
+an MDS code over a suitably large ﬁeld of characteristic p. The proof is non-constructive
+and, as a consequence, does not give a hint about the ﬁeld size required. In [23, Thm. 3.3] a
+construction of (n, k, δ)-MDS codes over ﬁelds Fpr is given under the condition that n|(pr −1)
+and pr ≥
+nδ2
+k(n−k). Notice that this requires n and the characteristic p being coprime. This
+result gives ﬁrst information about the ﬁeld size required in order to guarantee the existence
+of an MDS code. However, many examples of MDS codes over smaller ﬁelds are known. We
+will present some of them in the next section. Although they all have a certain structure in
+common (they are cyclic in the sense of Section 5) we do not know any general construction
+for cyclic MDS codes yet.
+Now we proceed with a generalization of the Plotkin and Griesmer bound to convolutional
+codes.
+Theorem 3.4 Let C be an (n, k, δ; m)q-convolutional code having distance dist(C) = d.
+Moreover, let
+ˆN =
+(
+N := {1, 2, . . .},
+if km = δ
+N0 := {0, 1, 2, . . .},
+if km > δ
+Then
+d
+≤min
+i∈ˆN
+jn(m + i)qk(m+i)−δ−1(q −1)
+qk(m+i)−δ −1
+k
+=: Hq(n, k, δ; m)
+(Heller bound)
+d
+≤max
+n
+d′ ∈{1, . . . , S(n, k, δ)}
+
+k(m+i)−δ−1
+X
+l=0
+ld′
+ql
+m
+≤n(m + i) for all i ∈ˆN
+o
+=: Gq(n, k, δ; m)
+(Griesmer bound)
+Moreover, Gq(n, k, δ; m) ≤Hq(n, k, δ; m).
+In the binary case (q = 2) both bounds can be found in [9, 3.17 and 3.22]. In that version the
+ﬁrst bound has been proven ﬁrst by Heller in [7]. The Griesmer bound as given above diﬀers
+slightly from the one given at [9, 3.22]. We have upper bounded the possible values for d′
+by the generalized Singleton bound, which is certainly reasonable to do. As a consequence,
+the Griesmer bound is always less than or equal to the generalized Singleton bound. This
+6
+
+=====PAGE 7=====
+would not have been the case had we taken the maximum over all d′ ∈N. This can be seen
+by taking the parameters (n, k, δ; m)q = (5, 2, 3; 3)8. In this case the generalized Singleton
+bound is S(n, k, δ) = 10 but the inequalities of the Griesmer bound are all satisﬁed for the
+value d′ = 12.
+The proof of the inequalities above is based on the same idea as in the binary case as we will
+show now.
+Proof: The last statement follows from Proposition 3.2(a). As for the bounds themselves
+we will see that they are based on certain block codes which appear as subsets of the given
+convolutional code C. This will make it possible to apply the block code bounds of Theo-
+rem 3.1. The subcodes to be considered are simply the subsets of all codewords corresponding
+to polynomial messages with an upper bounded degree.
+Let C = im G, where G ∈F[z]k×n is right-invertible and minimal with Forney indices
+ν1, . . . , νk. Hence δ = Pk
+i=1 νi and m = max{ν1, . . . , νk}. Notice that km ≥δ and km =
+δ ⇐⇒ν1 = . . . = νk = m. For each i ∈N0 deﬁne
+Ui = {(u1, . . . , uk) ∈F[z]k | deg ul ≤m + i −1 −νl for l = 1, . . . , k}.
+This implies ul = 0 if νl = m and i = 0. In particular, Ui = {0} ⇐⇒km = δ and i = 0
+and this shows that i = 0 has to be excluded if km = δ. Obviously, the set Ui is an F-vector
+space and dimF Ui = Pk
+l=1(m + i −νl) = k(m + i) −δ. Consider now Ci := {uG | u ∈Ui} for
+i ∈N0. Then Ci ⊆C and Ci is an F-vector space and, by injectivity of G,
+dimF Ci = dimF Ui = k(m + i) −δ.
+Furthermore, minimality of the generator matrix G tells us that
+deg(uG) = max
+l=1,...,k(deg ul + νl) ≤m + i −1 for all u ∈Ui,
+see [3, p. 495]. Hence Ci can be regarded as a block code of length n(m + i) and dimension
+k(m + i) −δ for all i ∈ˆN. Since dist(C) ≤dist(Ci) for all i ∈ˆN we obtain the desired results
+by applying the Plotkin and Griesmer bounds of Theorem 3.1 to the codes Ci.
+✷
+The proof shows that the existence of an (n, k, δ; m)q-code meeting the Griesmer bound
+implies the existence of (n(m+i), k(m+i)−δ)q-block codes having at least the same distance
+for all i ∈ˆN. The converse, however, is not true, since the block codes have to have some
+additional structure. We will come back to this at the end of this section.
+One should note that these bounds do only take the largest Forney index, the memory, into
+account. More precisely, the proof shows that codewords having degree smaller than m −1
+are never taken into consideration. As a consequence, codes with a rather bad distribution
+of the Forney indices will never attain the bound. For instance, for a code with parameters
+(n, k, δ; m)q = (5, 3, 4; 2)2 the Griesmer bound shows that the distance is upper bounded by 6.
+This can certainly never be attained if the Forney indices of that code are given by 0, 2, 2
+since in that case a constant codeword exists. Hence the Forney indices have to be 1, 1, 2.
+In this case a code with distance 6 does indeed exist, see the ﬁrst code given in Table I of
+Section 4. But also note that, on the other hand, a code reaching the Griesmer bound need
+not be compact (see Theorem 3.3(b)); an example is given by the (5, 2, 6; 4)2-code given in
+Table I of the next section.
+The Griesmer bound as given above has the disadvantage that inﬁnitely many inequalities
+have to be considered. A simple way to reduce this to ﬁnitely many inequalities is obtained
+7
+
+=====PAGE 8=====
+by making use of the generalized Singleton bound S(n, k, δ). Instead of this bound one could
+equally well use any of the numbers occurring on the right hand side of the Heller bound.
+Proposition 3.5 Given the parameters n, k, m, δ such that k < n and km ≥δ and let q be
+any prime power. Deﬁne the set ˆN as in Theorem 3.4. Furthermore, let i0 ∈N be such that
+qk(m+i0)−δ ≥S(n, k, δ) and put ˆN≤i0 := ˆN ∩{0, 1, . . . , i0}. Then
+Gq(n, k, δ; m)=max
+n
+d′ ∈{1, . . . , S(n, k, δ)}
+
+k(m+i)−δ−1
+X
+l=0
+ld′
+ql
+m
+≤n(m + i) for all i ∈ˆN≤i0
+o
+.
+(3.2)
+Hence the distance of an (n, k, δ; m)q-code is upper bounded by the number given in (3.2).
+We will see in the next section that the Griesmer bound is tight for many sets of parameters.
+Proof: Notice that for a ≥S(n, k, δ) we have
+ d′
+a
+
+= 1 since d′ ≤S(n, k, δ). As for (3.2)
+it suﬃces to show that whenever d′ satisﬁes the inequality Pk(m+i)−δ−1
+l=0
+ d′
+ql
+
+≤n(m + i) for
+some i ≥i0, then it also satisﬁes the inequality for i + 1. But this follows easily from
+k(m+i+1)−δ−1
+X
+l=0
+ld′
+ql
+m
+=
+k(m+i)−δ−1
+X
+l=0
+ld′
+ql
+m
++
+k(m+i+1)δ−1
+X
+l=k(m+i)−δ
+ld′
+ql
+m
+≤n(m + i) + k ≤n(m + i + 1). ✷
+The ﬁnite sets for d′ and i in (3.2) are not optimized, but they are good enough for our
+purposes since they allow for a computation of the Griesmer bound in ﬁnitely many steps.
+Unfortunately, (3.2) does not reveal the block code case where only the index i = 1 has to be
+considered according to Theorem 3.1. The consistency of the Griesmer bound for m = δ = 0
+with that case is guaranteed by the following result.
+Proposition 3.6 Given the parameters n, k, and q. Then
+max
+n
+d′ ∈N
+
+ki−1
+X
+l=0
+ld′
+ql
+m
+≤ni for all i ∈N
+o
+= max
+n
+d′ ∈N
+
+k−1
+X
+l=0
+ld′
+ql
+m
+≤n
+o
+.
+Proof: Let d′ be any number satisfying Pk−1
+l=0
+ d′
+ql
+
+≤n. We have to show that d′ satisﬁes
+the inequalities given on the left hand side for all i ∈N. In order to do so, notice that
+according to Proposition 3.2(a)
+d′ ≤
+jnqk−1(q −1)
+qk −1
+k
+≤
+nqk−1
+1 + q + . . . + qk−1 ≤n
+k qk−1.
+But this implies d′
+ql < n
+k for all l ≥k, thus
+ d′
+ql
+
+≤n
+k and
+ki−1
+X
+l=0
+ld′
+ql
+m
+=
+k−1
+X
+l=0
+ld′
+ql
+m
++
+ki−1
+X
+l=k
+ld′
+ql
+m
+≤n + k(i −1)n
+k = ni.
+This proves the assertion.
+✷
+Finally we want to investigate as to how big the ﬁeld size q has to be in order to allow for an
+MDS code with parameters (n, k, δ)q. A ﬁrst estimate can be achieved by using the Griesmer
+bound in combination with the generalized Singleton bound.
+8
+
+=====PAGE 9=====
+Theorem 3.7 Let C ⊆F((z))n be an (n, k, δ; m)q-MDS code, thus d := dist(C) = S(n, k, δ) =
+(n −k)
+  δ
+k
+
++ 1
+
++ δ + 1. Then the ﬁeld size q satisﬁes
+q ≥
+(
+d
+n−k+1,
+if [k = 1] or [k > 1 and km = δ + 1]
+d,
+if [k > 1 and km̸ = δ + 1].
+The estimate above also covers the block code case as given in [14, p. 321].
+Proof: We will consider the various cases separately. In each case we will apply the inequal-
+ity
+d
+q ≤n(m + i) −d −
+k(m+i)−δ−1
+X
+l=2
+l d
+ql
+m
+,
+(3.3)
+which is a simple consequence of the Griesmer bound, to the case d = S(n, k, δ). Moreover
+we will make use of the fact that
+ d
+ql
+
+≥1 for all l ∈N.
+k = 1:
+In this case m = δ and d = n(m + 1). Since k(m + i) −δ −1 = i −1 Inequality (3.3)
+gives us
+d
+q ≤n(m + i) −n(m + 1) −(i −2) = n(i −1) −i + 2
+for all i ≥2. This shows q ≥d
+n as desired. Using i = 1 in the Griesmer bound simply leads
+to d ≤n(m + 1). This is true by assumption and gives no further condition on q.
+k > 1 and km = δ:
+Now m = δ
+k and thus d = (n−k)(m+1)+mk+1. Using k(m+i)−δ−1 =
+ki −1 we obtain from Inequality (3.3)
+d
+q ≤n(m + i) −(n −k)(m + 1) −mk −1 −(ki −2) = (n −k)(i −1) + 1
+for all i ≥1. Using i = 1 leads to q ≥d.
+k > 1 and km > δ:
+In this case m =
+ δ
+k
+
++1, see Theorem 3.3(b), and d = (n−k)m+δ +1.
+Therefore Inequality (3.3) leads to
+d
+q ≤n(m + i) −(n −k)m −δ −1 −
+ k(m + i) −δ −2
+
+= (n −k)i + 1
+for all i ≥1. This shows q ≥
+d
+n−k+1. In order to ﬁnish the proof we have to consider also
+i = 0. In the case km = δ + 1 the Griesmer bound applied to i = 0 simply leads to d ≤nm,
+which is true anyway, and no additional condition on q arises. If km −δ > 1 a better bound
+can be achieved. Since
+ δ
+k
+
+= m −1, we obtain after division with remainder of δ by k an
+identity of the form δ = (m −1)k + r where 0 ≤r < k −1. Thus d = nm −k + r + 1 and
+Inequality (3.3) for i = 0 leads to
+d
+q ≤nm −d −
+k−r−1
+X
+l=2
+l d
+ql
+m
+≤k −r −1 −(k −r −2) = 1,
+hence q ≥d.
+This covers all cases, since we always have km ≥δ.
+✷
+The proof shows that in general the lower bounds on q are not tight since we have estimated
+ d
+ql
+
+by 1 for l ≥2 in all cases. For instance, if (n −k + 1)2 > d, no (n, k, δ; m)q-MDS code
+exists for q =
+d
+n−k+1 and k = 1 or km = δ + 1. But even if
+ d
+ql
+
+= 1 for all l ≥2 there might
+9
+
+=====PAGE 10=====
+not exist an (n, k, δ)q-MDS code where q attains the lower bound. The obstacle is that for
+some i ∈ˆN there might not exist an (n(m+i), k(m+i)−δ)q-block code with the appropriate
+distance as required by the proof of Theorem 3.4. Since these block codes have to produce a
+convolutional code in a very speciﬁc way, they even have to have some additional structure.
+We wish to illustrate this by the following example.
+Example 3.8 Let (n, k, δ) = (3, 2, 3). The generalized Singleton bound is d := S(3, 2, 3) = 6
+and the memory of a (3, 2, 3)-MDS code is m = 2, see Theorem 3.3(b). From Theorem 3.7 we
+obtain q ≥3 for the ﬁeld size. Taking q = 3 we have
+ d
+q2
+
+= 1 so that indeed the lower bound
+for the ﬁeld size cannot be improved. The existence of a (3, 2, 3; 2)3-MDS code requires the
+existence of (3(2 + i), 1 + 2i)3-block codes with distance at least 6 for all i ∈N0. Such codes
+do indeed exist1. However, the block codes have to have some additional structure in order to
+be part of a convolutional code. To see this, let G ∈F3[z]2×3 be a minimal generator matrix
+of the desired convolutional code C. Write
+G =
+g1
+g2
+
++ z
+g3
+g4
+
++ z2
+g5
+0
+
+where gi ∈F3
+3.
+Recall from the proof of Theorem 3.4 that our arguments are based in particular on the block
+code C1 := {(u1, u2 + u3z)G | u1, u2, u3 ∈F3}. Comparing like powers of z one observes that
+this code is isomorphic to
+ˆC1 = im
+
+
+g1
+g3
+g5
+g2
+g4
+0
+0
+g2
+g4
+
+⊆F9
+3.
+Using elementary row operations on the polynomial matrix G we may assume that the entry
+of G at the position (1, 1) is a constant. Furthermore, after rescaling the columns of G we
+may assume g4 = (1, 1, 1). Finally, due to non-catastrophicity, the entries of g2 are not all the
+same and because of dist( ˆC1) = 6, all nonzero. This gives us (up to block code equivalence)
+the two options
+im
+
+
+a1
+a2
+a3
+0
+a4
+a5
+0
+a6
+a7
+1
+1
+2
+1
+1
+1
+0
+0
+0
+0
+0
+0
+1
+1
+2
+1
+1
+1
+
+or
+im
+
+
+a1
+a2
+a3
+0
+a4
+a5
+0
+a6
+a7
+1
+2
+2
+1
+1
+1
+0
+0
+0
+0
+0
+0
+1
+2
+2
+1
+1
+1
+
+
+for ˆC1. Going through some tedious calculations one can show that no such code in F9
+3 with
+distance 6 exists. Hence no (3, 2, 3)3-MDS convolutional code exists.
+In the next section we will give examples of MDS codes over ﬁelds Fq where q attains the
+lower bound in all cases except for the case km = δ + 1.
+4
+Examples of Some Optimal Convolutional Codes
+In this section we present some convolutional codes with distance reaching the Griesmer
+bound. To the best of our knowledge it was for most of the parameters, if not all, not known
+before whether such codes existed.
+1For small i these codes can be found in tables listing ternary codes. For the general case we wish to thank
+H.-G. Quebbemann who pointed out to us a construction of such codes for suﬃciently large i using direct
+products of ﬁnitely many “short” MDS-codes over F33 and mapping them into ternary codes.
+10
+
+=====PAGE 11=====
+In the ﬁrst column of the tables below the parameters of the given code are listed. In the
+second column we give the Griesmer bound g := Gq(n, k, δ; m) for these parameters. The
+third column gives a code reaching this bound. In all examples the distance of the code
+has been computed via a program. In each case the code is given by a minimal generator
+matrix. Thus, in particular all matrices given below are right invertible. In the forth column
+we present the index of the ﬁrst column distance that reaches the free distance, cf. (2.4).
+In the last column we indicate whether the code is a cyclic convolutional code in the sense
+of Section 5. At the moment this additional structure is not important. We only want to
+mention that cyclic convolutional codes do not exist for all sets of parameters, in particular
+the length and the characteristic of the ﬁeld have to be coprime (just like for block codes).
+Moreover, the shortest binary cyclic convolutional codes with complexity δ > 0 have length
+n = 7 or n = 15.
+The ﬁelds being used in the tables are F2 = {0, 1}, F4 = {0, 1, α, α2} where α2 + α + 1 = 0,
+F8 = {0, 1, β, . . . , β6} where β3 +β +1 = 0, and F16 = {0, 1, γ, . . . , γ14} where γ4 +γ +1 = 0.
+The generator matrix ˆG3 of the (15, 4, 12; 3)2-code in Table I is given by
+ˆG3T =
+
+
+1 + z2
+1 + z + z3
+z + z2
+1 + z + z3
+1 + z + z2
+1 + z + z2 + z3
+1 + z + z2 + z3
+z
+1 + z + z3
+1 + z + z2
+1 + z + z2
+1 + z2 + z3
+z
+1 + z + z3
+1
+1 + z + z2
+z
+z2
+1 + z
+1 + z3
+z2
+z + z3
+z3
+1 + z + z2 + z3
+1 + z + z3
+z2 + z3
+z + z2 + z3
+z
+z3
+1 + z + z2
+z + z3
+z2
+z + z2 + z3
+z + z2
+1 + z3
+z2 + z3
+1 + z + z2 + z3
+z2 + z3
+z2
+1 + z + z2
+1
+1
+z + z2 + z3
+z2
+z2 + z3
+1 + z
+1
+0
+1 + z
+0
+1 + z2 + z3
+1 + z3
+z2 + z3
+1 + z2 + z3
+z3
+1 + z + z3
+1 + z2 + z3
+z3
+1 + z + z2
+z + z2 + z3
+
+
+.
+Some additional explanations and remarks will follow the tables.
+11
+
+=====PAGE 12=====
+Table I
+(n, k, δ; m)q
+g
+code meeting the Griesmer bound
+dc
+i cy
+(5, 3, 4; 2)2
+6
+
+
+1 + z2
+1 + z
+z
+1 + z2
+z + z2
+1 + z
+z
+1 + z
+1
+z
+z
+1
+1 + z
+1 + z
+1
+
+
+(not even)
+7
+(5, 2, 6; 3)2
+12
+z3 + z2 + 1
+z2 + z
+z3 + z + 1
+z2 + z
+z3 + 1
+z + 1
+z3 + z2 + 1
+z3 + z2
+z3 + z + 1 z2 + z
+
+(even)
+10
+(5, 2, 6; 4)2
+12
+1 + z3 + z4
+1 + z + z4
+1 + z3
+1 + z2 + z3
+z + z3 + z4
+1 + z2
+1 + z
+z2 + z
+z2 + z + 1
+z2 + z + 1
+
+(even)
+10
+(9, 3, 1; 1)8
+8∗•
+
+
+z + 1
+z + β
+z
+z + β2
+z + β3
+z + β6
+z + 1
+z
+z + β
+1
+β2
+β5
+β6
+β6
+β5
+β2
+1
+0
+0
+1
+β2
+β5
+β6
+β6
+β5
+β2
+1
+
+
+1
+(3, 2, 2; 1)5
+5∗•
+2 + 3z
+3z
+4 + 4z
+4 + 2z
+1 + 3z
+2z
+
+5
+(7, 3, 3; 1)2
+8
+G1 =
+
+
+1
+z
+1 + z
+1 + z
+1
+z
+0
+z
+1 + z
+0
+1 + z
+1
+1
+z
+0
+z
+1
+0
+1 + z
+1 + z
+1 + z
+
+
+(even)
+2 ×
+(7, 3, 6; 2)2
+12
+G2 =
+
+
+1 + z2
+z + z2
+1 + z
+1 + z
+1 + z2
+z
+z2
+z
+1 + z + z2
+0
+1 + z + z2
+1 + z2
+1 + z2
+z
+z2
+z + z2
+1 + z2
+0
+1 + z
+1 + z + z2
+1 + z
+
+
+(even)
+5 ×
+(7, 3, 9; 3)2
+16
+
+
+1 + z2 + z3
+z + z2
+1 + z + z3
+1 + z
+1 + z2
+z + z3
+z2 + z3
+z
+1 + z + z2 + z3
+0
+1 + z + z2
+1 + z2 + z3
+1 + z2 + z3
+z + z3
+z2 + z3
+z + z2
+1 + z2
+z3
+1 + z + z3
+1 + z + z2 + z3
+1 + z
+
+
+(even?)
+9 ×
+(7, 3, 12; 4)2 20
+
+
+1 + z + z3 + z4
+1 + z3 + z4
+1 + z2
+z + z2 + z4
+1 + z2 + z3
+z
+z + z2 + z3 + z4
+z2 + z3
+1 + z + z2 + z4
+1 + z4
+1 + z + z2 + z3 + z4
+z
+1 + z + z3 + z4
+z2 + z3
+z2 + z4
+z
+1 + z + z3
+1 + z + z2 + z4
+1 + z2 + z3 + z4
+z2 + z3 + z4
+1 + z + z3
+
+
+(doubly even?)
+14 ×
+(15, 4, 4; 1)2 16
+ˆG1 =
+
+
+z
+0
+z
+1 + z
+0
+0
+1 + z
+1
+0
+1
+z
+1 + z
+1 + z
+1 + z
+1
+1
+0
+z
+0
+1
+0
+z
+1 + z
+1 + z
+z
+1
+z
+1
+1 + z
+1 + z
+1
+1
+z
+z
+z
+1 + z
+0
+z
+1
+1 + z
+z
+1
+0
+1 + z
+1
+1 + z
+1 + z
+1
+z
+0
+z
+1 + z
+0
+0
+1 + z
+1
+0
+1
+z
+1 + z
+
+
+(even)
+2 ×
+(15, 4, 8; 2)2 24 ˆG2=
+
+
+1 + z2 1 + z + z2
+1 + z
+z
+z
+z2
+1 + z
+0
+z + z2 1 + z + z2
+1
+z2
+1 + z
+z2
+1 + z2
+1 + z 1 + z + z2 1 + z + z2
+1 + z
+z2
+z
+z2
+1 + z + z2 z + z2
+z2
+1
+1 + z
+0
+1 + z2
+0
+z + z2 1 + z + z2 1 + z + z2
+1
+1 + z
+0
+z + z2
+z
+1
+z2
+z + z2
+1
+1 + z2
+0
+1 + z + z2
+1 + z
+z
+1 + z2
+1 + z + z2
+1
+1 + z + z2
+z
+z2
+z2
+1 + z + z2
+z2
+0
+1
+1 + z
+z + z2
+
+5 ×
+(even?)
+(15, 4, 12; 3)2 32
+see ˆG3 above,
+(even?)
+×
+12
+
+=====PAGE 13=====
+Table II
+(n, k, δ; m)q
+g
+code meeting the Griesmer bound
+dc
+i cy
+(3, 1, 1; 1)4
+6∗
+[α + αz, α2 + αz, 1 + αz]
+2∗∗×
+(3, 1, 2; 2)4
+9∗
+[α + αz + z2, α2 + αz + α2z2, 1 + αz + αz2]
+5 ×
+(3, 1, 3; 3)4 12∗•
+[α + αz + z2 + α2z3, α2 + αz + α2z2 + z3, 1 + αz + αz2 + αz3]
+7 ×
+(3, 1, 4; 4)4
+14
+[α + αz + z2 + α2z3 + αz4, α2 + αz + α2z2 + z3 + αz4, 1 + αz + αz2 + αz3 + αz4]
+10 ×
+(3, 1, 5; 5)4
+16
+[α + αz + z2 + α2z3 + αz4 + αz5, α2 + αz + α2z2 + z3 + αz4 + z5, 1 + αz + αz2 + αz3 + αz4 + α2z5]
+11 ×
+(5, 2, 2; 1)4
+8
+
+0
+α + z
+α2 + α2z
+α2 + α2z
+α + z
+α + α2z
+z
+α
+α2 + z
+α2 + α2z
+
+2 ×
+(5, 2, 4; 2)4
+12
+
+0
+α + z + αz2
+α2 + α2z + α2z2
+α2 + α2z + α2z2
+α + z + αz2
+α + α2z + αz2
+z + α2z2
+α + α2z2
+α2 + z + αz2
+α2 + α2z
+
+5 ×
+(5, 2, 6; 3)4
+16
+
+0
+α2 + α2z + αz2 + z3
+1 + αz + α2z2 + α2z3
+1 + αz + α2z2 + α2z3
+α2 + α2z + αz2 + z3
+α2 + αz + αz2 + α2z3
+α2z + α2z2 + α2z3
+α2 + α2z2 + z3
+1 + α2z + αz2
+1 + αz + z3
+
+9 ×
+(3, 2, 2; 1)16
+5∗
+ γ5 + γ4z
+γ3 + γ8z
+γ9 + γ2z
+γ9 + γ12z
+γ5 + γ14z
+γ3 + γ3z
+
+3∗∗×
+(3, 2, 3; 2)16
+6∗
+γ + γz + z2
+γ6 + γz + γ10z2
+γ11 + γz + γ5z2
+1 + z
+γ10 + γ5z
+γ5 + γ10z
+
+5 ×
+(5, 1, 1; 1)16 10∗
+[γ + γz, γ13 + γ10z, γ10 + γ4z, γ7 + γ13z, γ4 + γ7z]
+2∗∗×
+(5, 1, 2; 2)16 15∗
+[γ + γ4z + γz2, γ7 + γz + γ10z2, γ13 + γ13z + γ4z2, γ4 + γ10z + γ13z2, γ10 + γ7z + γ7z2]
+3∗∗×
+(5, 1, 3; 3)16 20∗
+[γ + z + γ2z2 + z3, γ7 + γ12z + γ11z2 + γ3z3, γ13 + γ9z + γ5z2 + γ6z3, γ4 + γ6z + γ14z2 + γ9z3, γ10 + γ3z + γ8z2 + γ12z3]
+5 ×
+(5, 2, 2; 1)16
+9∗
+ γ + γz
+γ13 + γ10z
+γ10 + γ4z
+γ7 + γ13z
+γ4 + γ7z
+1 + γ5z
+γ3 + γ11z
+γ6 + γ2z
+γ9 + γ8z
+γ12 + γ14z
+
+2∗∗×
+(7, 1, 1; 1)8 14∗
+[β + βz, β3 + z, β5 + β6z, 1 + β5z, β2 + β4z, β4 + β3z, β6 + β2z]
+2∗∗×
+(7, 1, 2; 2)8 21∗
+[β2 + βz + z2, β5 + β3z + β6z2, β + β5z + β5z2, β4 + z + β4z2, 1 + β2z + β3z2, β3 + β4z + β2z2, β6 + β6z + βz2]
+3∗∗×
+(7, 1, 3; 3)8 28∗[1+βz+β6z2+z3, 1+β5z+β5z2+β5z3, 1+β2z+β4z2+β3z3, 1+β6z+β3z2+βz3, 1+β3z+β2z2 + β6z3, 1+z+βz2 + β4z3, 1+β4z+z2+β2z3] 5 ×
+(7, 2, 3; 2)8 14∗
+1 + z + β4z2
+β4 + β5z + β5z2
+β + β3z + β6z2
+β5 + βz + z2
+β2 + β6z + βz2
+β6 + β4z + β2z2
+β3 + β2z + β3z2
+β + βz
+β3 + z
+β5 + β6z
+1 + β5z
+β2 + β4z
+β4 + β3z
+β6 + β2z
+
+3 ×
+13
+
+=====PAGE 14=====
+Table III
+(n, k, δ; m)q
+g
+code meeting the Griesmer bound
+dc
+i
+cy
+(6, 3, 3; 1)2
+6
+columns 1, 2, 3, 5, 6, 7 of G1
+(even)
+3
+(6, 3, 6; 2)2
+10
+columns 1, 2, 4, 5, 6, 7 of G2
+(even)
+3
+(14, 4, 4; 1)2
+14
+columns 1 – 14 of ˆG1
+(not even)
+3
+(13, 4, 4; 1)2
+13
+columns 1, 2, 4 – 14 of ˆG1
+(not even)
+3
+(12, 4, 4; 1)2
+12
+columns 1, 2, 4 – 12, 14 of ˆG1
+(even)
+3
+(10, 4, 4; 1)2
+10
+columns 1, 2, 4, 6 – 11, 14 of ˆG1
+(even)
+4
+(8, 4, 4; 1)2
+8
+columns 1, 2, 4, 5, 8, 11, 13, 14 of ˆG1
+(not even)
+4
+(14, 4, 8; 2)2
+22
+columns 2 – 15 of ˆG2
+(even?)
+6
+(13, 4, 8; 2)2
+20
+columns 1 – 4, 7 – 15 of ˆG2
+(even?)
+6
+(12, 4, 8; 2)2
+18
+columns 1, 2, 4, 7 – 15 of ˆG2
+(not even)
+6
+(10, 4, 8; 2)2
+16
+columns 1, 2, 4, 5, 7, 8, 10, 11, 13, 14 of ˆG2
+(even?)
+7
+(8, 4, 8; 2)2
+12
+columns 1, 2, 6, 9, 12 – 15 of ˆG2 (even?)
+9
+It remains to explain some additional notation of the tables. We also make some further
+comments illustrating the contents of the tables.
+Remark 4.1 (a) A ∗attached to the bounds in the second column indicate that these
+numbers are identical to the generalized Singleton bound.
+Hence the corresponding
+codes are even MDS codes.
+(b) An additional supscript • attached to the bound g indicates that the code is an MDS
+code where the ﬁeld size reaches the lower bound of Theorem 3.7. This gives us examples
+for the three cases k = 1, km > δ + 1, and km = δ. We did not ﬁnd an example of an
+(n, k, δ)q-MDS code where km = δ + 1 and q =
+d
+n−k+1.
+(c) In [4, Prop. 2.3] it has been shown that the jth column distance of an (n, k, δ)q-code
+satisﬁes dc
+j ≤(n −k)(j + 1) + 1. From this it follows that the earliest column distance
+of an MDS code that can reach the free distance has index M :=
+ δ
+k
+
++
+
+δ
+n−k
+
+, see [4,
+Prop. 2.6]. In the same paper an MDS code is called strongly MDS if the Mth column
+distance is equal to the free distance.
+We attached a ∗∗to the index of the column
+distance in the second last column of the tables in order to indicate the strongly MDS
+codes. As far as we know no upper bound for the column distances is known that also
+takes the ﬁeld sizes into account. However, using the estimate dc
+j ≤(n −k)(j + 1) + 1
+one observes that the (5, 2, 2; 1)4- and the (9, 3, 1; 1)8-code are also optimal in the sense
+that no code with the same parameters exists where an earlier column distance reaches
+the free distance. We did not investigate whether any of the other codes is optimal in
+this sense.
+(d) We investigated the binary codes with respect of being even, that is, whether all code-
+words have even weight. This can be done by computing the weight distribution (see [17]
+or [9, Sec. 3.10]). Evenness of a code is indicated by an (even) attached to the generator
+matrix. Since the computation of the full weight distribution is very complex for larger
+complexity, we did not fully check the binary codes having complexity bigger than 6. In
+14
+
+=====PAGE 15=====
+those cases we checked the weight of codewords associated with message words of small
+degree. In case this weight is always even we think there is strong evidence that the
+code is even and attached an (even?) to the generator matrix. In this sense there is also
+evidence that the (7, 3, 12; 4)2-code is doubly even, that is, all codewords have weight
+divisible by 4. Further investigation is necessary in order to understand whether (and
+why) all the binary cyclic convolutional codes of length 7 and 15 are even.
+(e) The second and third code of Table I show that a code meeting the Griesmer bound
+need not have evenly distributed Forney indices. In other words, such a code need not
+be compact in the sense of Theorem 3.3(b). For both codes in Table I the free distance is
+attained by the 10th column distance. Only the full weight distribution shows that the
+code with Forney indices 3, 3 is better than the code with indices 4, 2. The ﬁrst one has
+weight distribution
+W1(T) = 10T 12 + 12T 14 + 71T 16 + 248T 18 + 873T 20 + . . . ,
+saying that there are 10 molecular codewords of weight 12 and 12 molecular codewords of
+weight 14, etc. (for the deﬁnition of molecular codewords, see [17]; for weight distributions
+see also [9, Sec. 3.10]). The weight distribution of the second code is
+W2(T) = 10T 12 + 27T 14 + 99T 16 + 350T 18 + 1280T 20 + . . . .
+(f) It is worth being mentioned that the codes with parameters (7, 3, 3; 1)2, (7, 3, 6; 2)2, and
+(7, 3, 9; 3)2 form a sequence in the sense that if one deletes z3 (resp. z2) in the last
+(resp. second) of the according generator matrices then one obtains the previous code.
+The same applies to the codes with parameters (3, 1, 1; 1)4, . . . , (3, 1, 5; 5)4 as well as to
+the (5, 2, 2; 1)4- and (5, 2, 4; 2)4-codes.
+(g) The codes with parameters (7, 3, 3; 1)2, (7, 3, 6; 2)2, (15, 4, 4; 1)2 and (15, 4, 8; 2)2 are ex-
+tremely robust against puncturing in the sense of cutting columns of the according gen-
+erator matrix (this is not puncturing in the sense of [16, Sec. 8]). This way we do not
+only obtain right invertible matrices again, but even minimal matrices and, by doing
+this appropriately, codes reaching the Griesmer bound. We have cut one column of the
+codes of length 7 and up to 7 columns of the codes of length 15. The results are given
+in Table III. The only cases where we did not get codes reaching the Griesmer bound
+are for (11, 4, 4; 1)2 and for (9, 4, 8; 2)2. We do not know if for these parameters there
+exist any codes at all that reach the bound. Since G2(9, 4, 4; 1) = 8 = G2(8, 4, 4; 1) and
+G2(11, 4, 8; 2) = 16 = G2(10, 4, 8; 2) we skipped in both cases the bigger length. Punc-
+turing the code of length 7 and memory bigger than 2 did not result in a code meeting
+the Griesmer bound. We did not puncture the code of length 15 and memory 3.
+(h) Consider the (8, 4, 4; 1)2-code given in Table III. There are other codes with exactly these
+parameters given in the literature. Indeed, in [8] some (doubly-even self-dual) (8, 4, 4; 1)2-
+codes are presented. Our code is not even, which can easily be seen by writing down the
+generator matrix. We also computed the weight distribution and obtained
+W(T) =11T 8 + 28T 9 + 39T 10 + 101T 11 + 206T 12 + 565T 13 + 1374T 14 + 3033T 15
++ 7366T 16 + 16984T 17 + 40510T 18 + 95617T 19 + 22348T 20 + . . . ,
+which is better than the weight distribution of the self-dual code given in [8, Eq. (10)].
+15
+
+=====PAGE 16=====
+5
+Cyclic Convolutional Codes
+The ﬁrst two tables of the last section list plenty of optimal codes that we have declared as
+cyclic. Moreover, they gave rise to further sets of optimal codes as listed in Table III. In this
+section we want to brieﬂy describe the notion of cyclicity for convolutional codes. The ﬁrst
+investigations in this direction have been made in the seventies by Piret [18] and Roos [19]. In
+both papers it has been shown (with diﬀerent methods and in diﬀerent contexts) that cyclicity
+of convolutional codes must not be understood in the usual sense, i. e. invariance under the
+cyclic shift, if one wants to go beyond the theory of cyclic block codes (see Theorem 5.2 below).
+As a consequence, Piret suggested a more complex notion of cyclicity which then has been
+further generalized by Roos. In both papers some nontrivial examples of cyclic convolutional
+codes in this new sense are presented along with their distances. All this indicates that the new
+notion of cyclicity seems to be the appropriate one in the convolutional case. Unfortunately,
+the papers [18, 19] did not get much attention at that time and the topic came to a halt.
+Only recently it has been resumed in [5]. Therein, an algebraic theory of cyclic convolutional
+codes has been established which goes well beyond the results of the seventies. On the one
+hand it leads to a nice, yet nontrivial, generalization of the theory of cyclic block codes, on
+the other hand it gives a very powerful toolbox for constructing cyclic convolutional codes.
+We will now give a very brief description of these results and refer to [5] for the details.
+Just like for cyclic block codes we assume from now on that the length n and the ﬁeld size q
+are coprime. Let F = Fq be a ﬁeld of size q. Recall that a block code C ⊆Fn is called cyclic
+if it is invariant under the cyclic shift, i. e.
+(v0, . . . , vn−1) ∈C =⇒(vn−1, v0, . . . , vn−2) ∈C
+(5.1)
+for all (v0, . . . , vn−1) ∈Fn. It is well-known that this is the case if and only if C is an ideal in
+the quotient ring
+A := F[x]/⟨xn −1⟩=
+n n−1
+X
+i=0
+fixi mod (xn −1)
+ f0, . . . , fn−1 ∈F
+o
+,
+(5.2)
+identiﬁed with Fn in the canonical way via
+p : Fn −→A,
+(v0, . . . , vn−1) 7−→
+n−1
+X
+i=0
+vixi.
+At this point it is important to recall that the cyclic shift in Fn translates into multiplication
+by x in A, i. e.
+p(vn−1, v0, . . . , vn−2) = xp(v0, . . . , vn−1)
+(5.3)
+for all (v0, . . . , vn−1) ∈Fn. Furthermore, it is well-known that each ideal I ⊆A is principal,
+hence there exists some g ∈A such that I = ⟨g⟩. One can even choose g as a monic divisor
+of xn −1, in which case it is usually called the generator polynomial of the code p−1(I) ⊆Fn.
+It is our aim to extend this structure to the convolutional setting. The most convenient way
+to do so is by using only the polynomial part C ∩F[z]n of the convolutional code C ⊆F((z))n.
+Recall from (2.2) that this uniquely determines the full code. Hence imposing some additional
+structure on the polynomial part (that is, on the generator matrix) will also impose some
+additional structure on the full code. In Remark 5.6 below we will see from hindsight that one
+can just as well proceed directly with the full code. The polynomial part of a convolutional
+16
+
+=====PAGE 17=====
+code is always a submodule of the free module F[z]n. Due to the right invertibility of the
+generator matrix not every submodule of F[z]n arises as polynomial part of a convolutional
+code. It is easy to see [5, Prop. 2.2] that we have
+Remark 5.1 A submodule S ⊆F[z]n is the polynomial part of some convolutional code if
+and only if S is a direct summand of F[z]n, i.e. S ⊕S′ = F[z]n for some submodule S′ ⊆F[z]n.
+In order to extend the situation of cyclic block codes to the convolutional setting, we have
+to replace the vector space Fn by the free module F[z]n and, consequently, the ring A by the
+polynomial ring
+A[z] :=
+n N
+X
+j=0
+zjaj
+ N ∈N0, aj ∈A
+o
+over A. Then we can extend the map p above coeﬃcientwise to polynomials, thus
+p : F[z]n −→A[z],
+N
+X
+j=0
+zjvj 7−→
+N
+X
+j=0
+zjp(vj),
+(5.4)
+where, of course, vj ∈Fn and thus p(vj) ∈A for all j. This map is an isomorphism of
+F[z]-modules. Again, by construction the cyclic shift in F[z]n corresponds to multiplication
+by x in A[z], that is, we have (5.3) for all (v0, . . . , vn−1) ∈F[z]n. At this point it is quite
+natural to call a convolutional code C ⊆F((z))n cyclic if it is invariant under the cyclic shift,
+i. e. if (5.1) holds true for all (v0, . . . , vn−1) ∈F((z))n. This, however, does not result in any
+codes other than block codes due to the following result, see [18, Thm. 3.12] and [19, Thm. 6].
+An elementary proof can be found at [5, Prop. 2.7].
+Theorem 5.2 Let C ⊆F((z))n be an (n, k, δ)-convolutional code such that (5.1) holds true
+for all (v0, . . . , vn−1) ∈F[z]n. Then δ = 0, hence C is a block code.
+This result has led Piret [18] to suggest a diﬀerent notion of cyclicity for convolutional codes.
+We will present this notion in the slightly more general version as it has been introduced by
+Roos [19].
+In order to do so notice that F can be regarded as a subﬁeld of the ring A in a natural way.
+As a consequence, A is an F-algebra, i. e., a ring and a vector space over the ﬁeld F and the
+two structures are compatible. In the sequel the automorphisms of A with respect to this
+algebra structure will play an important role. Therefore we deﬁne
+AutF(A) :=
+
+σ : A →A
+ σ|F = idF, σ is bijective, σ(a+· b) = σ(a)+· σ(b) for all a, b ∈A
+	
+.
+It is clear that each automorphism σ ∈AutF(A) is uniquely determined by the single value
+σ(x) ∈A. But not every choice for σ(x) determines an automorphism on A. Since x generates
+the F-algebra A, the same has to be true for σ(x) and, more precisely, we obtain for a ∈A
+σ(x) = a determines an
+automorphism on A
+
+⇐⇒
+ 1, a, . . . , an−1 are linearly independent over F
+and an = 1.
+(5.5)
+Of course, σ(x) = x determines the identity map on A. It should be mentioned that there is
+a better way to determine the automorphism group of A by using the fact that the ring is
+direct product of ﬁelds. This is explained in [5, Sec. 3].
+The main idea of Piret was to impose a new ring structure on A[z] and to call a code cyclic
+if it is a left ideal with respect to that ring structure. The new structure is non-commutative
+and based on an (arbitrarily chosen) automorphism on A. In detail, this looks as follows.
+17
+
+=====PAGE 18=====
+Deﬁnition 5.3 Let σ ∈AutF(A).
+(1) On the set A[z] we deﬁne addition as usual and multiplication via
+N
+X
+j=0
+zjaj ·
+M
+X
+l=0
+zlbl =
+N+M
+X
+t=0
+zt X
+j+l=t
+σl(aj)bl for all N, M ∈N0 and aj, bl ∈A.
+This turns A[z] into a non-commutative ring which is denoted by A[z; σ].
+(2) Consider the map p : F[z]n →A[z; σ] as in (5.4), where now the images p(v)=PN
+j=0 zjp(vj)
+are regarded as elements of A[z; σ]. A direct summand S ⊆F[z]n is said to be σ-cyclic if
+p(S) is a left ideal in A[z; σ].
+(3) A convolutional code C ⊆F((z))n is said to be σ-cyclic if C ∩F[z]n is a σ-cyclic direct
+summand.
+A few comments are in order. First of all, notice that multiplication is determined by the
+rule
+az = zσ(a) for all a ∈A
+(5.6)
+along with the rules of a (non-commutative) ring. Hence, unless σ is the identity, the inde-
+terminate z does not commute with its coeﬃcients. Consequently, it becomes important to
+distinguish between left and right coeﬃcients of z. Of course, the coeﬃcients can be moved
+to either side by applying the rule (5.6) since σ is invertible. Multiplication inside A remains
+the same as before. Hence A is a commutative subring of A[z; σ]. Moreover, since σ|F = idF,
+the classical polynomial ring F[z] is a commutative subring of A[z; σ], too. As a consequence,
+A[z; σ] is a left and right F[z]-module and the map p : F[z]n →A[z; σ] is an isomorphism of
+left F[z]-modules (but not of right F[z]-modules). In the special case where σ = idA the ring
+A[z; σ] is the classical commutative polynomial ring and we know from Theorem 5.2 that no
+σ-cyclic convolutional codes with nonzero complexity exist.
+Example 5.4 Let us consider the case where F = F2 and n = 7. Thus A = F[x]/⟨x7 −1⟩.
+Using (5.5) one obtains 18 automorphisms, also listed at [19, p. 680, Table II] (containing
+one typo: the last element of that table has to be x2 + x3 + x4 + x5 + x6 rather than
+x + x3 + x4 + x5 + x6).
+Let us choose the automorphism σ ∈AutF(A) deﬁned by σ(x) = x5.
+Furthermore, we
+consider the polynomial
+g := 1 + x2 + x3 + x4 + z(x + x2 + x3 + x5) ∈A[z; σ]
+and denote by
+•⟨g ⟩:= {fg | f ∈A[z; σ]} the left ideal generated by g in A[z; σ]. Moreover,
+put S := p−1(
+•⟨g ⟩) ⊆F[z]7. We will show now that S is a direct summand of F[z]7, hence
+S = C ∩F[z]7 for some convolutional code C ⊆F((z))7, see Remark 5.1. In order to do so we
+ﬁrst notice that
+•⟨g ⟩= span F[z]
+
+g, xg, . . . , x6g
+	
+and therefore
+S =
+
+uM
+ u ∈F[z]7	
+where M =
+
+
+p−1(g)
+p−1(xg)
+...
+p−1(x6g)
+
+.
+18
+
+=====PAGE 19=====
+Thus we have to compute xig for i = 1, . . . , 6. Using the multiplication rule in (5.6) we obtain
+xg = x + x3 + x4 + x5 + z(1 + x + x3 + x6),
+x2g = x2 + x4 + x5 + x6 + z(x + x4 + x5 + x6),
+x3g = 1 + x3 + x5 + x6 + z(x2 + x3 + x4 + x6)
+= g + x2g.
+Since x3g is in the F-span of the previous elements, we obtain
+•⟨g ⟩= span F[z]
+
+g, xg, x2g
+	
+and, since p is an isomorphism,
+S =
+
+uG
+ u ∈F[z]3	
+,
+where
+G =
+
+
+p−1(g)
+p−1(xg)
+p−1(x2g)
+
+=
+
+
+1
+z
+1 + z
+1 + z
+1
+z
+0
+z
+1 + z
+0
+1 + z
+1
+1
+z
+0
+z
+1
+0
+1 + z
+1 + z
+1 + z
+
+.
+One can easily check that the matrix G is right invertible. Hence S is indeed a direct summand
+of F[z]7 and thus we have obtained a σ-cyclic convolutional code C = im G ⊆F((z))7. This is
+exactly the (7, 3, 3; 1)2-code given in Table I of the last section.
+The other cyclic convolutional codes in Tables I and II are obtained in a similar way. Since
+the underlying automorphism cannot easily be read oﬀfrom the generator matrix of a cyclic
+convolutional code we will, for sake of completeness, present them explicitly in the following
+table. All those codes come from principal left ideals in A[z; σ] and, except for the codes with
+parameters (3, 2, 3; 2)16, (5, 2, 2; 1)16, (7, 2, 3; 2)8, the generator polynomial can be recovered
+from the given data by applying the map p to the ﬁrst row of the respective generator matrix.
+The generator matrices of the remaining three codes are built in a slightly diﬀerent way. In
+those cases each row of the given matrix generates a 1-dimensional cyclic code and thus each
+of those three codes is the direct sum of two 1-dimensional cyclic codes.
+In each case a
+generator polynomial of the associated principal left ideal is obtained by applying p to the
+sum of the two rows of the respective generator matrix.
+Table IV
+(n, k, δ; m)q-code of Tables I and II
+automorphism given by
+(7, 3, 3m; m)2, m = 1, . . . , 4
+σ(x) = x5
+(15, 4, 4; 1)2
+σ(x) = x + x7 + x10
+(15, 4, 4m; m)2, m = 2, 3
+σ(x) = x3 + x5 + x7 + x10 + x12 + x13 + x14
+(3, 1, δ; δ)4, δ = 1, . . . , 5
+σ(x) = α2x
+(5, 2, 2m; m)4, m = 1, 2, 3
+σ(x) = x2
+(3, 2, 2; 1)16 and (3, 2, 3; 2)16
+σ(x) = γ10x
+(5, 1, δ; δ)16, δ = 1, 2, 3 and (5, 2, 2; 1)16
+σ(x) = x3
+(7, 1, δ; δ)8, δ = 1, 2 and (7, 2, 3; 2)8
+σ(x) = x5
+(7, 1, 3; 3)8
+σ(x) = βx + βx2 + β3x3 + β3x4 + β3x5 + β2x6
+The fact that all the cyclic convolutional codes above come from principal left ideals in A[z; σ]
+is not a restriction since we have the following important result.
+19
+
+=====PAGE 20=====
+Theorem 5.5 Let σ ∈AutF(A). If S ⊆F[z]n is a σ-cyclic direct summand, then p(S) is
+a principal left ideal of A[z; σ], that is, there exists some polynomial g ∈A[z; σ] such that
+p(S) =
+•⟨g ⟩. We call g a generator polynomial of both S and the σ-cyclic convolutional code
+C ⊆F((z))n determined by S, see Remark 5.1 and (2.2).
+The generator polynomial of a σ-cyclic convolutional code can be translated into vector
+notation and leads to a generalized circulant matrix. This looks as follows. Let S ⊆F[z]n be
+a σ-cyclic direct summand and let p(S) =
+•⟨g ⟩. Deﬁne
+Mσ(g) =
+
+
+p−1(g)
+p−1(xg)
+...
+p−1(xn−1g)
+
+∈F[z]n×n.
+Then it is easy to see that p
+ uMσ(g)
+
+= p(u)g for all u ∈F[z]n (see [5, Prop. 6.8(b)]) and
+therefore, S =
+
+uMσ(g)
+ u ∈F[z]n	
+. We call Mσ(g) the σ-circulant associated with g.
+Remark 5.6 Using the identities above we can now easily see that σ-cyclic structure can
+also be considered without restricting to the polynomial part. Just like the polynomial ring
+A[z] we can turn the set A((z)) of formal Laurent series over A into a non-commutative ring by
+deﬁning addition as usual and multiplication via (5.6). We will denote the ring obtained this
+way by A((z; σ)). Furthermore, we can extend the map p to Laurent series in the canonical
+way, see also (5.4). Then one can easily show that just like in the polynomial case
+p
+ uMσ(g)
+
+= p(u)g for all u ∈F((z))n
+for each g ∈A[z; σ]. Using the fact that a code C ⊆F((z))n is uniquely determined by its
+polynomial part (see (2.2)), and that the latter is a principal left ideal in A[z; σ] due to
+Theorem 5.5, one can now derive the equivalence
+C ⊆F((z))n is σ-cyclic ⇐⇒p(C) is a left ideal in A((z; σ)).
+Moreover, if C is σ-cyclic, a generator polynomial of the ideal p(C ∩F[z]n) in A[z; σ] is also a
+principal generator of the ideal p(C) in A((z; σ)). This justiﬁes to call g a generator polynomial
+of the full code C as we did in Theorem 5.5.
+At this point the question arises as to how a (right invertible) generator matrix can be
+obtained from the σ-circulant Mσ(g). Notice that in Example 5.4 the generator matrix of
+the code is simply given by the ﬁrst three rows of the circulant. This is indeed in general
+the case, but requires a careful choice of the generator polynomial g of the code. Recall
+that, due to zero divisors in A[z; σ], the generators of a principal left ideal, are highly non
+unique. The careful choice of the generator polynomial is based on a Gr¨obner basis theory
+that can be established in the non-commutative polynomial ring A[z; σ]. This is a type of
+reduction procedure resulting in unique generating sets of left ideals which in turn produce
+very powerful σ-circulants. The details of this theory goes beyond the scope of this paper and
+we refer the reader to [5] for the details, in particular to [5, Thm. 7.8, Thm. 7.18]. Therein
+it has been shown that a reduced generator polynomial also reﬂects the parameters of the
+code, i. e., the dimension and the complexity, and even leads to a minimal generator matrix
+through σ-circulants. Only with these results it becomes clear that cyclic convolutional codes
+can have only very speciﬁc parameters (length, dimension, and complexity) depending on the
+20
+
+=====PAGE 21=====
+chosen ﬁeld Fq. Furthermore, the notions of parity check polynomial and associated parity
+check matrix have been discussed in detail in [5], leading to a generalization of the block code
+situation.
+As for the cyclic codes of the last section we only would like to mention that their generator
+polynomials obtained as explained right before Table IV are all reduced in the sense above.
+So far we do not have any estimates for the distance of a cyclic convolutional code in terms of
+its (reduced) generator polynomial and the chosen automorphism. The examples given in the
+last section have been found simply by trying some promising reduced generator polynomials
+(using the algebraic theory of [5]). Except for the puncturing in Table III we did not perform
+a systematic search for optimal codes.
+Conclusion
+In this paper we gave many examples of cyclic convolutional codes that all reach the Griesmer
+bound. The examples indicate that this class of convolutional codes promises to contain
+many excellent codes and therefore deserves further investigation. As one of the next steps
+the relation between the (reduced) generator polynomial and the automorphism on the one
+hand and the distance on the other hand should be investigated in detail.
+References
+[1] A. Betten and other. Codierungstheorie: Konstruktion und Anwendung linearer Codes.
+Springer, Berlin, 1998.
+[2] G. D. Forney Jr.
+Convolutional codes I: Algebraic structure.
+IEEE Trans. Inform.
+Theory, 16:720–738, 1970. (see also corrections in IEEE Trans. Inf. Theory, vol. 17,1971,
+p. 360).
+[3] G. D. Forney Jr. Minimal bases of rational vector spaces, with applications to multi-
+variable linear systems. SIAM J. on Contr., 13:493–520, 1975.
+[4] H. Gluesing-Luerssen, J. Rosenthal, and R. Smarandache. Strongly MDS convolutional
+codes. 2003. Submitted. Available at http://front.math.ucdavis.edu/ with ID-number
+RA/0303254.
+[5] H. Gluesing-Luerssen and W. Schmale. On cyclic convolutional codes. Preprint 2002.
+Submitted. Available at http://front.math.ucdavis.edu/ with ID-number RA/0211040.
+[6] H. Gluesing-Luerssen, W. Schmale, and M. Striha.
+Some small cyclic convolutional
+codes. In Electronic Proceedings of the 15th International Symposium on the Mathemat-
+ical Theory of Networks and Systems, Notre Dame, IN (USA), 2002. (8 pages).
+[7] J. A. Heller. Short constraint length convolutional codes. Jet Propulsion Lab., California
+Inst. Technol., Pasadena, Space Programs Summary 37–54, 3:171–177.
+[8] R. Johannesson, P. St˚ahl, and E. Wittenmark. A note on type II convolutional codes.
+IEEE Trans. Inform. Theory, IT-46:1510–1514, 2000.
+21
+
+=====PAGE 22=====
+[9] R. Johannesson and K. S. Zigangirov. Fundamentals of Convolutional Coding. IEEE
+Press, New York, 1999.
+[10] J. Justesen. New convolutional code constructions and a class of asymptotically good
+time-varying codes. IEEE Trans. Inform. Theory, IT-19:220–225, 1973.
+[11] J. Justesen. Algebraic construction of rate 1/ν convolutional codes. IEEE Trans. Inform.
+Theory, IT-21:577–580, 1975.
+[12] K. J. Larsen. Short convolutional codes with maximal free distance for rates 1/2, 1/3,
+and 1/4. IEEE Trans. Inform. Theory, IT-19:371–372, 1973.
+[13] J. Lint. Introduction to Coding Theory. Springer, 3. edition, 1999.
+[14] F. J. MacWilliams and N. J. A. Sloane. The Theory of Error-Correcting Codes. North-
+Holland, 1977.
+[15] J. L. Massey, D. J. Costello, and J. Justesen. Polynomial weights and code constructions.
+IEEE Trans. Inform. Theory, IT-19:101–110, 1973.
+[16] R. J. McEliece. The algebraic theory of convolutional codes. In V. Pless and W. Huﬀman,
+editors, Handbook of Coding Theory, Vol. 1, pages 1065–1138. Elsevier, Amsterdam,
+1998.
+[17] R. J. McEliece. How to compute weight enumerators for convolutional codes. In M. Dar-
+nell and B. Honory, editors, Communications and Coding (P. G. Farrell 60th birthday
+celebration), pages 121–141. Wiley, New York, 1998.
+[18] P. Piret. Structure and constructions of cyclic convolutional codes. IEEE Trans. Inform.
+Theory, 22:147–155, 1976.
+[19] C. Roos. On the structure of convolutional and cyclic convolutional codes. IEEE Trans.
+Inform. Theory, 25:676–683, 1979.
+[20] J. Rosenthal. Connections between linear systems and convolutional codes. In B. Marcus
+and J. Rosenthal, editors, Codes, Systems, and Graphical Models, pages 39–66. Springer,
+Berlin, 2001.
+[21] J. Rosenthal, J. M. Schumacher, and E. V. York. On behaviors and convolutional codes.
+IEEE Trans. Inform. Theory, 42:1881–1891, 1996.
+[22] J. Rosenthal and R. Smarandache. Maximum distance separable convolutional codes.
+Appl. Algebra Engrg. Comm. Comput., 10:15–32, 1999.
+[23] R. Smarandache, H. Gluesing-Luerssen, and J. Rosenthal.
+Constructions of MDS-
+convolutional codes. IEEE Trans. Inform. Theory, 47(5):2045–2049, 2001.
+22

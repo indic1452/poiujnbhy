@@ -1,0 +1,367 @@
+
+=====PAGE 1=====
+ 
+Distribution Control Number:  TC 22-11 
+ 
+Reference Number:  CCSDS 131.31-O-1 Cor. 1 
+ 
+NOTE 
+– 
+Current versions of CCSDS documents are maintained at the CCSDS Web site: 
+ 
+https://public.ccsds.org/ 
+ 
+Correspondence regarding CCSDS documents should be addressed to 
+ 
+CCSDS Secretariat 
+National Aeronautics and Space Administration 
+Washington, DC, USA 
+Email: secretariat@mailman.ccsds.org 
+ 
+ 
+ 
+CCSDS Space Link Protocols over ETSI DVB-S2X Standard 
+ 
+TECHNICAL CORRIGENDUM 1 
+ 
+The Management Council of the Consultative Committee for Space Data Systems (CCSDS) has 
+authorized the publication of technical corrigendum 1 to CCSDS 131.31-O-1, issued September 
+2021. 
+ 
+Page D-1, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page C-2, add 
+ 
+SMTF 
+synch-marked transfer frame 
+ 
+Page C-1, Delete 
+ 
+CADU 
+channel access data unit 
+ 
+ 
+ 
+Recommended Standard CCSDS 131.31-O-1
+TECHNICAL CORRIGENDUM 1 
+ 
+Issue Date: April 2022 
+
+=====PAGE 2=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.31-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-11 
+ 
+Reference Number:  CCSDS 131.31-O-1 Cor. 1 
+ 
+ 
+Page 2 of 7 
+Page 5-1, 5.2.2, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 5-1, 5.1 OVERVIEW, first paragraph, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 4-1, NOTES 3 and 4 under 4.2.3, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 4-1, NOTE 1 under 4.2.2, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+
+=====PAGE 3=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.31-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-11 
+ 
+Reference Number:  CCSDS 131.31-O-1 Cor. 1 
+ 
+ 
+Page 3 of 7 
+Page 4-1, 4.2.2, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 4-1, .4.1 OVERVIEW, first paragraph, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 3-1, note at bottom of page, change 
+ 
+from: 
+ 
+“In his book, the CADU” 
+ 
+to: 
+ 
+“The SMTF” 
+ 
+Page 3-1, 3.3.1, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+
+=====PAGE 4=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.31-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-11 
+ 
+Reference Number:  CCSDS 131.31-O-1 Cor. 1 
+ 
+ 
+Page 4 of 7 
+Page 3-1, heading 3.3, change 
+ 
+from: 
+ 
+“3.3 
+CHANNEL ACCESS DATA UNIT” 
+ 
+to: 
+ 
+“3.3 
+SYNCH-MARKED TRANSFER FRAME” 
+ 
+Page 3-1, section heading 3, change 
+ 
+from: 
+ 
+“3 
+CADU STREAM GENERATION” 
+ 
+to: 
+ 
+“3 
+SMTF STREAM GENERATION” 
+ 
+Page 2-4, both bullets under 2.3.2 RECEIVING END, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 2-3, figure 2-2, change 
+ 
+from: 
+ 
+“CADU stream” 
+ 
+to: 
+ 
+“SMTF stream” 
+ 
+
+=====PAGE 5=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.31-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-11 
+ 
+Reference Number:  CCSDS 131.31-O-1 Cor. 1 
+ 
+ 
+Page 5 of 7 
+Page 2-3, 2.3.1.3 DVB-S2(X) Transmission, third paragraph, second bullet, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 2-3, 2.3.1.3 DVB-S2(X) Transmission, first paragraph, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 2-2, under heading 2.3.1.2, at end of paragraph, delete 
+ 
+“ASM and CADU are defined in reference [4].” 
+ 
+Page 2-2, under heading 2.3.1.2, change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 2-2, heading 2.3.1.2, change 
+ 
+from: 
+ 
+“2.3.1.2 CADU Stream Generation” 
+ 
+to: 
+ 
+“2.3.1.2 SMTF Stream Generation” 
+ 
+
+=====PAGE 6=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.31-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-11 
+ 
+Reference Number:  CCSDS 131.31-O-1 Cor. 1 
+ 
+ 
+Page 6 of 7 
+Page 2-1, 2.1 ARCHITECTURE, second paragraph, add at end 
+ 
+“, the latter for what concerns the modulation schemes. CCSDS 401.0-B [11] covers 
+additional features of the Physical Layer, like frequency bands and polarizations, that are 
+not described or referenced here” 
+ 
+Page 1-7, add reference  
+ 
+[11] 
+Radio Frequency and Modulation Systems—Part 1: Earth Stations and Spacecraft. 
+Issue 32. Recommendations for Space Data System Standards (Blue Book), 
+CCSDS 401.0-B-32. Washington, D.C.: CCSDS, October 2021. 
+ 
+[Editorially update references on pages 1-6 and 1-7  to current issues—these changes are not 
+marked.] 
+ 
+Page 1-4, under heading 1.7.1.3, change 
+ 
+from: 
+ 
+“The CADU is defined in reference [4]. In this Experimental Specification, CADU only” 
+ 
+to: 
+ 
+“The SMTF” 
+ 
+Page 1-4, heading 1.7.1.3, change 
+ 
+from: 
+ 
+“1.7.1.3 Definition of CADU” 
+ 
+to: 
+ 
+“1.7.1.3 Definition of SMTF” 
+ 
+
+=====PAGE 7=====
+ 
+TECHNICAL CORRIGENDUM 1 TO CCSDS 131.31-O-1 (Continued) 
+ 
+ 
+ 
+Distribution Control Number:  TC 22-11 
+ 
+Reference Number:  CCSDS 131.31-O-1 Cor. 1 
+ 
+ 
+Page 7 of 7 
+Page 1-2, under heading 1.5 DOCUMENT STRUCTURE, paragraphs beginning ‘Section 3’, 
+‘Section 4’, avd ‘Section 5’ (three instances), change 
+ 
+from: 
+ 
+“CADU” 
+ 
+to: 
+ 
+“SMTF” 
+ 
+Page 1-2, paragraph at top of page, change 
+ 
+from: 
+ 
+“Channel Access Data Unit (CADU)” 
+ 
+to: 
+ 
+“Synch-Marked Transfer Frame (SMTF)” 
+ 
+Page 1-1, 1.2 PURPOSE, add at end of paragraph 
+ 
+“, as long as compliance to CCSDS recommendations for Radio Frequency modulations in 
+[11] is ensured” 
+ 
+ 
+ 
+ 

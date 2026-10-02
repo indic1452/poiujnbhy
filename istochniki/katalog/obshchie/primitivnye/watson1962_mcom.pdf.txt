@@ -1,0 +1,107 @@
+
+=====PAGE 1=====
+Primitive Polynomials (Mod 2)
+By E. J. Watson
+
+The following list contains one example of a primitive polynomial (mod 2) for
+each degree n, 1 S n S 100. It was compiled with the aid of the Mercury computer
+at Manchester University by the following method.
+
+The polynomials P,(x) (mod 2) of degree n were tested in their natural order
+until a primitive polynomial was found. The test comprised three stages. In the
+first stage the small primes, of degree up to 9, were tried as possible factors (mod 2)
+of P, . If no factor was found P, went forward to the second stage, which tested
+whether P,, divides x” — 1, where N = 2” — 1. If it does, and N is prime (a Mer-
+senne prime), this suffices to prove that P, is primitive. If N is composite, however,
+P, might divide x“ — 1, where M isa factor of N, and then P, would not be primi-
+tive. The third stage was, therefore, a trial of this possibility, in which M took the
+values N/p, where p runs through the prime factors of NV.
+
+The two latter stages were carried out by a process in which the computer re-
+peated the operations of squaring, possibly multiplying by x (depending on the
+binary representation of M7), then dividing by P, . The prime factors of N were
+taken from the tables of Kraitchik [1], supplemented by Robinson’s [2] further
+decomposition of 2° — 1. If any more of these ‘prime’ factors should turn out to
+be composite, doubt would be cast on the corresponding P, . Mersenne polynomials
+for n = 107 and 127 are also given. The prime x” + x + 1 was found by Zierler
+[3]. Its nature follows from the general result that if 2a,x” divides 2c,x” (mod p),
+then
+
+Zan,v”” divides 2c,x”” (mod p:).
+
+The primitive character of each polynomial P,,(x) listed has been checked by a
+repetition of the second and third stages on the conjugate polynomial x"P,,(2 ").
+In the list only the degrees of the separate terms in P, are given, thus
+
+127 1 O- standsfor a’ +2+1.
+Department of Mathematics
+University of Manchester
+
+1. M. Kraitcnix, Introduction 4 la Théorie des Nombres, Gauthier-Villars, Paris, 1952.
+
+2. R. M. Rosinson, ‘“‘Some factorizations of numbers of the form 2" + 1,” MTAC, v. 11,
+1957, p. 265-268.
+
+3. N. ZreRLER, ‘Linear recurring sequences,’’ J. Soc. Indust. Appl. Math., v. 7, 1959, p.
+31-48.
+
+Received December 18, 1961.
+
+368
+
+=====PAGE 2=====
+PRIMITIVE POLYNOMIALS (MOD 2) 369
+Primitive Polynomials (mod 2)
+1 0 51 6 3 1 0
+2 1 =O 52 3 #O
+3 1 O 53 6 2 1 0O
+4 1 O 5 |)
+5 2 O 5 0C<“RK“_‘CSS]CldCOO
+6 1 O 56 7 4 2 #0
+7 1 0 bY A? nr: - |)
+8 4 3 2 0 58 6 5 1 =O
+9 4 O 59 6 5 4 38 1 0
+io 3 O 60 1 O
+ll 2 0 61 5 2 1 =O
+122 6 4 1 O 622 6 5 3°0
+133 #4 #3 1 =90 68 1 O
+4 5 3 1 0 64 4 3 1 0
+1 1 O 6 4 #3 ,1 =O
+16 5 3 2 0 66 8 6 5 3 2 0
+177. «633—~C«*OD 67 «©«56—2 1 0O
+1g 5 2 1 O 68 7 #5 1 Oo
+19 5 2 1 90 69 6 5 2 0
+20 3 «O 70 5 8 1 0
+21 #2 O 71 8656 ©63)—6—hUu1tCOOO
+22 1 0 72 #6 4 38 2 1 #0
+23 #5 O 73 #4 3 2 «0
+24 4 #3 21 «0 744 7 4 3 0
+23 3 «=O 75 6 38 1 0
+2 6 2 1 0 7%6 #5 4 2 O
+27 #5 2 1 0 7 #6 5&5 2 0
+28 #3 «=O 78 7 2 1 =O
+29 2 «0 799 64 = 38 = 2 ~«(O
+30 6 4 1 =O 80 7 5 3 2 1 0
+31 3 O 81 4 0
+32 7 #5 38 2 1 0 8 8 7 6 4 1 0
+33 6 4 +1 = « O 8 7 4 2 0O
+347 6 5 2 1 O 8%& 8 7 5 8 1 0
+3 2 O 8 8 2 1 0
+36 6 5 4 2 #1 O 8% 6 5 2 0
+37 5 4 38 2 1 = ==9 '-) rn a) 1 0
+388 6 5 1 0 8 8 5 4 38 1 0
+39 4 #0 89 6 5 3 0
+400 5 4 3 0 9 #5 38 2 0
+44 3 O 91 7 6 5 38 2 0O
+42 5 4 3 2 1 0 92 6 5 2 0
+44 6 4 3 O 93 2 O
+4 6 5 2 0 9 6 «5 1 0
+45 4 38 1 0 9% 6 5 4 2 1 0
+4 8 5 8 2 1 O 9% 7 6 4 38 2 0
+47 5 O 97 6 O
+48 7 5 4 2 1 0 98 7 4 3 2 1 0
+499 6 5 4 O 9 7 5 4 O
+50 4 #3 2 = «O 100 8 7 2 O
+nn
+107 7 #5 3 2 1 0 127 1 0
+NN

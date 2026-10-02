@@ -1,0 +1,2405 @@
+<!DOCTYPE HTML PUBLIC "-//SoftQuad//DTD HoTMetaL PRO 5.0::19981022::extensions to HTML 4.0//EN" "hmpro5.dtd"> 
+ 
+<HTML>
+ 
+<HEAD>
+<TITLE>HD=3 CRC Selection</TITLE>
+</HEAD>
+
+<BODY>
+<H1 ALIGN="CENTER">CRC Polynomial Selection</H1>
+<P ALIGN="CENTER"><B>Philip Koopman, Carnegie Mellon University</B></P>
+<H3><A HREF="index.html">Best CRCs</A> | <A HREF="details.html">CRC
+Selection</A> | <A HREF="crc32.html">CRC Zoo</A> |
+<A HREF="http://checksumcrc.blogspot.com/">Checksum and CRC Blog</A></H3>
+<UL>
+<LI><A HREF="6sub8.html">Good /6sub8 Polynomials</A></LI>
+<LI><B>Good HD=3 Polynomials</B></LI>
+<LI><A HREF="hd4.html">Good HD=4 Polynomials</A></LI>
+<LI><A HREF="hd5.html">Good HD=5 Polynomials</A></LI>
+<LI><A HREF="hd6.html">Good HD=6 Polynomials</A></LI>
+<LI><A HREF="notes.html">Notation</A> and copyright statement</LI>
+</UL>
+<HR>
+<H2><A NAME="hd3">Good HD=3 Polynomials</A></H2>
+<P><U>Selection rules:</U></P>
+<OL>
+<LI>Pick an optimal HD=3 length.</LI>
+<LI>Pick longest secondary property length available for that HD=3 length; in
+case of tie, pick one with lowest HW at that secondary HD.</LI>
+</OL>
+<P>Note that all primitive polynomials annoted as (*p) have HD=3 up to length
+((2**k)-CrcSize-1). Any primitive polynomial is generally good for longer
+lengths than that.</P>
+<TABLE BORDER="1">
+<TR>
+<TD ALIGN="CENTER">&nbsp;<B>CRC</B>&nbsp;<BR>
+<B>Bits</B></TD>
+<TD ALIGN="CENTER">&nbsp;<B>HD=3</B>&nbsp;<BR>
+<B>Length<BR>
+(Bits)</B></TD>
+<TD ALIGN="CENTER"><B>&nbsp;Secondary&nbsp;<BR>
+Property</B></TD>
+<TD ALIGN="CENTER">&nbsp;<B>Polynomial</B>&nbsp;</TD>
+<TD ALIGN="CENTER">&nbsp;<B>Nickname</B>&nbsp;</TD>
+<TD ALIGN="CENTER"><B>HD</B><BR>
+&nbsp;<B>Lengths</B>&nbsp;</TD>
+</TR>
+<TR>
+<TD><A HREF="crc3.html"><B>3</B></A></TD>
+<TD ALIGN="CENTER">4</TD>
+<TD>none</TD>
+<TD>(<A HREF="c03/0x5.txt">0x5</A>; 0xb)</TD>
+<TD>CRC-3K; FP-3 (*p)</TD>
+<TD><A HREF="c03/0x5_len.txt">{<B>4</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc4.html"><B>4</B></A></TD>
+<TD ALIGN="CENTER">11</TD>
+<TD>none</TD>
+<TD>(<A HREF="c04/0x9.txt">0x9</A>; 0x13)</TD>
+<TD>CCITT-4; FP-4 (*p)</TD>
+<TD><A HREF="c04/0x9_len.txt">{<B>11</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc5.html"><B>5</B></A></TD>
+<TD ALIGN="CENTER">26</TD>
+<TD>none</TD>
+<TD>(<A HREF="c05/0x12.txt">0x12</A>; 0x25)</TD>
+<TD>CRC-5-EPC; CRC-5-USB;<BR>
+FP-5 (*p)</TD>
+<TD><A HREF="c05/0x12_len.txt">{<B>26</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc6.html"><B>6</B></A></TD>
+<TD ALIGN="CENTER">57</TD>
+<TD>HD=4@ 5</TD>
+<TD>(<A HREF="c06/0x33.txt">0x33</A>; 0x67)</TD>
+<TD>CRC-6-CDMA2000-A;<BR>
+CRC-6F/3 (*p)</TD>
+<TD><A HREF="c06/0x33_len.txt">{<B>57</B>,<B>5</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc7.html"><B>7</B></A></TD>
+<TD ALIGN="CENTER">120</TD>
+<TD>HD=4@ 14</TD>
+<TD>(<A HREF="c07/0x65.txt">0x65</A>; 0xcb)</TD>
+<TD> CRC-7F/2 (*p)</TD>
+<TD><A HREF="c07/0x65_len.txt">{<B>120</B>,<B>14</B>,3}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc8.html"><B>8</B></A></TD>
+<TD ALIGN="CENTER">247</TD>
+<TD>HD=4@ 19</TD>
+<TD>(<A HREF="c08/0xe7.txt">0xe7</A>; 0x1cf) </TD>
+<TD>CRC-8F/3 (*p)</TD>
+<TD><A HREF="c08/0xe7_len.txt">{<B>247</B>,<B>19</B>,1,1,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc8.html"><B>8</B></A></TD>
+<TD ALIGN="CENTER">247</TD>
+<TD>HD=5@ 6</TD>
+<TD>(<A HREF="c08/0xa6.txt">0xa6</A>; 0x14d)</TD>
+<TD>CRC-8K/3 (*p)</TD>
+<TD><A HREF="c08/0xa6_len.txt">{<B>247</B>,15,<B>6</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc9.html"><B>9</B></A></TD>
+<TD ALIGN="CENTER">502</TD>
+<TD>HD=4@ 52</TD>
+<TD>(<A HREF="c09/0x119.txt">0x119</A>; 0x233)</TD>
+<TD>CRC-9F/3 (*p)</TD>
+<TD><A HREF="c09/0x119_len.txt">{<B>502</B>,<B>52</B>,4}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc9.html"><B>9</B></A></TD>
+<TD ALIGN="CENTER">502</TD>
+<TD>HD=5@ 10</TD>
+<TD>(<A HREF="c09/0x143.txt">0x143</A>; 0x287)</TD>
+<TD> CRC-9K/5</TD>
+<TD><A HREF="c09/0x143_len.txt">{<B>502</B>,10,<B>10</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc9.html"><B>9</B></A></TD>
+<TD ALIGN="CENTER">502</TD>
+<TD>HD=6@ 4</TD>
+<TD>(<A HREF="c09/0x137.txt">0x137</A>; 0x26f)</TD>
+<TD>CRC-9K/6.1</TD>
+<TD><A HREF="c09/0x137_len.txt">{<B>502</B>,4,4,<B>4</B>,1}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc10.html"><B>10</B></A></TD>
+<TD ALIGN="CENTER">1013</TD>
+<TD>HD=4@ 73</TD>
+<TD>(<A HREF="c10/0x327.txt">0x327</A>; 0x64f)</TD>
+<TD>CRC-10F/3 (*p)</TD>
+<TD><A HREF="c10/0x327_len.txt">{<B>1013</B>,<B>73</B>,10,5,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc10.html"><B>10</B></A></TD>
+<TD ALIGN="CENTER">1013</TD>
+<TD>HD=5@ 16</TD>
+<TD> (<A HREF="c10/0x2fd.txt">0x2fd</A>; 0x5fb)</TD>
+<TD> CRC-10F/8.1 (*p)</TD>
+<TD><A HREF="c10/0x2fd_len.txt">{<B>1013</B>,16,<B>16</B>,5,1,1,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc10.html"><B>10</B></A></TD>
+<TD ALIGN="CENTER">1013</TD>
+<TD>HD=6@ 6</TD>
+<TD>(<A HREF="c10/0x2c7.txt">0x2c7</A>; 0x58f)</TD>
+<TD> CRC-10F/6.1 (*p)</TD>
+<TD><A HREF="c10/0x2c7_len.txt">{<B>1013</B>,7,7,<B>6</B>,1}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc11.html"><B>11</B></A></TD>
+<TD ALIGN="CENTER">2036</TD>
+<TD>HD=4@ 132</TD>
+<TD>(<A HREF="c11/0x5db.txt">0x5db</A>; 0xbb7)</TD>
+<TD> | CRC-11F/3 (*p)</TD>
+<TD><A HREF="c11/0x5db_len.txt">{<B>2036</B>,<B>132</B>,16,2,2,2,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc11.html"><B>11</B></A></TD>
+<TD ALIGN="CENTER">2036</TD>
+<TD>HD=5@ 26</TD>
+<TD>(<A HREF="c11/0x5d7.txt">0x5d7</A>; 0xbaf)</TD>
+<TD>CRC-11F/5 (*p)</TD>
+<TD><A HREF="c11/0x5d7_len.txt">{<B>2036</B>,28,<B>26</B>,3,2,2,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc11.html"><B>11</B></A></TD>
+<TD ALIGN="CENTER">2036</TD>
+<TD>HD=6@ 9</TD>
+<TD>(<A HREF="c11/0x473.txt">0x473</A>; 0x8e7)</TD>
+<TD>CRC-11K/3.3 (*p)</TD>
+<TD><A HREF="c11/0x473_len.txt">{<B>2036</B>,46,9,<B>9</B>,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc11.html"><B>11</B></A></TD>
+<TD ALIGN="CENTER">2036</TD>
+<TD>HD=7@ 5</TD>
+<TD>(<A HREF="c11/0x62b.txt">0x62b</A>; 0xc57)</TD>
+<TD>CRC-11K/3.2 (*p)</TD>
+<TD><A HREF="c11/0x62b_len.txt">{<B>2036</B>,53,17,5,<B>5</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc12.html"><B>12</B></A></TD>
+<TD ALIGN="CENTER">4083</TD>
+<TD>HD=4@ 159</TD>
+<TD>(<A HREF="c12/0x987.txt">0x987</A>; 0x130f)</TD>
+<TD>CRC-12F/3 (*p)</TD>
+<TD><A HREF="c12/0x987_len.txt">{<B>4083</B>,<B>159</B>,17,8,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc12.html"><B>12</B></A></TD>
+<TD ALIGN="CENTER">4083</TD>
+<TD>HD=5@ 33</TD>
+<TD>(<A HREF="c12/0xbdf.txt">0xbdf</A>; 0x17bf)</TD>
+<TD>CRC-12K/5.2 (*p)</TD>
+<TD><A HREF="c12/0xbdf_len.txt">{<B>4083</B>,59,<B>33</B>,6,1,1,1,1,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc12.html"><B>12</B></A></TD>
+<TD ALIGN="CENTER">4083</TD>
+<TD>HD=6@ 15</TD>
+<TD>(<A HREF="c12/0x83e.txt">0x83e</A>; 0x107d)</TD>
+<TD>CRC-12F/6.1 (*p)</TD>
+<TD><A HREF="c12/0x83e_len.txt">{<B>4083</B>,22,15,<B>15</B>,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc12.html"><B>12</B></A></TD>
+<TD ALIGN="CENTER">4083</TD>
+<TD>HD=7@ 6</TD>
+<TD>(<A HREF="c12/0xa33.txt">0xa33</A>; 0x1467)</TD>
+<TD>CRC-12K/7 (*p)</TD>
+<TD><A HREF="c12/0xa33_len.txt">{<B>4083</B>,149,10,6,<B>6</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc13.html"><B>13</B></A></TD>
+<TD ALIGN="CENTER">8178</TD>
+<TD>HD=4@ 324</TD>
+<TD>(<A HREF="c13/0x1abf.txt">0x1abf</A>; 0x357f)</TD>
+<TD>CRC-13F/3 (*p)</TD>
+<TD><A HREF="c13/0x1abf_len.txt">{<B>8178</B>,<B>324</B>,31,6,2,2,1,1,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD HEIGHT="23"><A HREF="crc13.html"><B>13</B></A></TD>
+<TD ALIGN="CENTER" HEIGHT="23">8178</TD>
+<TD HEIGHT="23">HD=5@ 50</TD>
+<TD HEIGHT="23">(<A HREF="c13/0x1877.txt">0x1877</A>; 0x30ef) </TD>
+<TD HEIGHT="23"> CRC-13F/5 (*p)</TD>
+<TD HEIGHT="23"><A
+HREF="c13/0x1877_len.txt">{<B>8178</B>,50,<B>50</B>,7,1,1,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc13.html"><B>13</B></A></TD>
+<TD ALIGN="CENTER">8178</TD>
+<TD>HD=6@ 16</TD>
+<TD>(<A HREF="c13/0x112d.txt">0x112d</A>; 0x225b)</TD>
+<TD> CRC-13K/6.2 (*p) </TD>
+<TD><A HREF="c13/0x112d_len.txt">{<B>8178</B>,75,49,<B>16</B>,3}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc13.html"><B>13</B></A></TD>
+<TD ALIGN="CENTER">8178</TD>
+<TD>HD=7@ 9</TD>
+<TD>(<A HREF="c13/0x1495.txt">0x1495</A>; 0x292b)</TD>
+<TD> CRC-13K/7 (*p)</TD>
+<TD><A HREF="c13/0x1495_len.txt">{<B>8178</B>,108,21,15,<B>9</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc13.html"><B>13</B></A></TD>
+<TD ALIGN="CENTER">8178</TD>
+<TD>HD=8@ 7</TD>
+<TD>(<A HREF="c13/0x1747.txt">0x1747</A>; 0x2e8f)</TD>
+<TD>CRC-13F/8.1 (&quot;27217p&quot;) (*p)</TD>
+<TD><A HREF="c13/0x1747_len.txt">{<B>8178</B>,233,34,7,7,<B>7</B>,1}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc14.html"><B>14</B></A></TD>
+<TD ALIGN="CENTER">16369</TD>
+<TD>HD=4@ 459</TD>
+<TD>(<A HREF="c14/0x27cf.txt">0x27cf</A>; 0x4f9f)</TD>
+<TD>CRC-14F/3 (*p)</TD>
+<TD><A HREF="c14/0x27cf_len.txt">{<B>16369</B>,<B>459</B>,17,5,1,1,1,1,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc14.html"><B>14</B></A></TD>
+<TD ALIGN="CENTER">16369</TD>
+<TD>HD=5@ 69</TD>
+<TD>(<A HREF="c14/0x37ef.txt">0x37ef</A>; 0x6fdf)</TD>
+<TD>CRC-14F/11 (*p)</TD>
+<TD><A
+HREF="c14/0x37ef_len.txt">{<B>16369</B>,260,<B>69</B>,19,1,1,1,1,1,1,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc14.html"><B>14</B></A></TD>
+<TD ALIGN="CENTER">16369</TD>
+<TD>HD=6@ 26</TD>
+<TD>(<A HREF="c14/0x2769.txt">0x2769</A>; 0x4ed3)</TD>
+<TD>CRC-14K/3.1 (*p)</TD>
+<TD><A HREF="c14/0x2769_len.txt">{<B>16369</B>,134,32,<B>26</B>,4,3,3}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc14.html"><B>14</B></A></TD>
+<TD ALIGN="CENTER">16369</TD>
+<TD>HD=7@ 13</TD>
+<TD>(<A HREF="c14/0x28a9.txt">0x28a9</A>; 0x5153)</TD>
+<TD>CRC-14F/7 (*p)</TD>
+<TD><A HREF="c14/0x28a9_len.txt">{<B>16369</B>,317,46,14,<B>13</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc14.html"><B>14</B></A></TD>
+<TD ALIGN="CENTER">16369</TD>
+<TD>HD=8@ 6</TD>
+<TD>(<A HREF="c14/0x2a4f.txt">0x2a4f</A>; 0x549f)</TD>
+<TD>CRC-14K/3.2 (*p)</TD>
+<TD><A HREF="c14/0x2a4f_len.txt">{<B>16369</B>,24,24,8,7,<B>6</B>,2}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER">32752</TD>
+<TD>HD=4@ 786</TD>
+<TD>(<A HREF="c15/0x4f23.txt">0x4f23</A>; 0x9e47)</TD>
+<TD>CRC-15F/3 (*p)</TD>
+<TD><A HREF="c15/0x4f23_len.txt">{<B>32752</B>,<B>786</B>,45,12,9,8,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER">32752</TD>
+<TD>HD=5@ 94</TD>
+<TD>(<A HREF="c15/0x4d3c.txt">0x4d3c</A>; 0x9a79)</TD>
+<TD>CRC-15K/5 (*p)</TD>
+<TD><A HREF="c15/0x4d3c_len.txt">{<B>32752</B>,190,<B>94</B>,10,10,3,3}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER">32752</TD>
+<TD>HD=6@ 36</TD>
+<TD>(<A HREF="c15/0x4bf9.txt">0x4bf9</A>; 0x97f3)</TD>
+<TD>CRC-15K/6 (*p)</TD>
+<TD><A HREF="c15/0x4bf9_len.txt">{<B>32752</B>,195,36,<B>36</B>,9,6,1,1,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER">32752</TD>
+<TD>HD=7@ 16</TD>
+<TD>(<A HREF="c15/0x5b57.txt">0x5b57</A>; 0xb6af)</TD>
+<TD>CRC-15F/7 (*p)</TD>
+<TD><A HREF="c15/0x5b57_len.txt">{<B>32752</B>,270,52,18,<B>16</B>,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER">32752</TD>
+<TD>HD=8@ 8</TD>
+<TD>(<A HREF="c15/0x54d6.txt">0x54d6</A>; 0xa9ad)</TD>
+<TD>CRC-15K/3 (*p)</TD>
+<TD><A HREF="c15/0x54d6_len.txt">{<B>32752</B>,54,47,10,8,<B>8</B>,2}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc15.html"><B>15</B></A></TD>
+<TD ALIGN="CENTER">32752</TD>
+<TD>HD=9@ 5</TD>
+<TD>(<A HREF="c15/0x4f51.txt">0x4f51</A>; 0x9ea3)</TD>
+<TD>CRC-15F/9 (&quot;117243p&quot;) (*p)</TD>
+<TD><A HREF="c15/0x4f51_len.txt">{<B>32752</B>,361,48,10,5,5,<B>5</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc16.html"><B>16</B></A></TD>
+<TD ALIGN="CENTER">65519</TD>
+<TD>HD=4@ 1149</TD>
+<TD>(<A HREF="c16/0x8d95.txt">0x8d95</A>; 0x11b2b)</TD>
+<TD>CRC-16F/3 (*p)</TD>
+<TD><A HREF="c16/0x8d95_len.txt">{<B>65519</B>,<B>1149</B>,62,19,9,5,5}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc16.html"><B>16</B></A></TD>
+<TD ALIGN="CENTER">65519</TD>
+<TD>HD=5@ 119</TD>
+<TD>(<A HREF="c16/0x9627.txt">0x9627</A>; 0x12c4f)</TD>
+<TD> CRC-16K/5 (*p)</TD>
+<TD><A HREF="c16/0x9627_len.txt">{<B>65519</B>,390,<B>119</B>,15,11,4,4}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc16.html"><B>16</B></A></TD>
+<TD ALIGN="CENTER">65519</TD>
+<TD>HD=6@ 40</TD>
+<TD>(<A HREF="c16/0x86f2.txt">0x86f2</A>; 0x10de5)</TD>
+<TD>CRC-16K/6 (*p)</TD>
+<TD><A HREF="c16/0x86f2_len.txt">{<B>65519</B>,83,53,<B>40</B>,6,6,5}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc16.html"><B>16</B></A></TD>
+<TD ALIGN="CENTER">65519</TD>
+<TD>HD=7@ 18</TD>
+<TD>(<A HREF="c16/0xb82d.txt">0xb82d</A>; 0x1705b)</TD>
+<TD>CRC-16K/7.2 (*p)</TD>
+<TD><A HREF="c16/0xb82d_len.txt">{<B>65519</B>,221,22,18,<B>18</B>,2,2}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc16.html"><B>16</B></A></TD>
+<TD ALIGN="CENTER">65519</TD>
+<TD>HD=8@ 11</TD>
+<TD>(<A HREF="c16/0x88f9.txt">0x88f9</A>; 0x111f3)</TD>
+<TD>CRC-16F/8.1 (&quot;210763p&quot;) (*p)</TD>
+<TD><A HREF="c16/0x88f9_len.txt">{<B>65519</B>,96,88,20,15,<B>11</B>,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc16.html"><B>16</B></A></TD>
+<TD ALIGN="CENTER">65519</TD>
+<TD>HD=9@ 6</TD>
+<TD>(<A HREF="c16/0xc7ab.txt">0xc7ab</A>; 0x18f57)</TD>
+<TD>CRC-16K/3 (*p)</TD>
+<TD><A HREF="c16/0xc7ab_len.txt">{<B>65519</B>,474,52,16,6,6,<B>6</B>,2,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">131054</TD>
+<TD>HD=4@ 1976</TD>
+<TD>(<A HREF="c17/0x16fa7.txt">0x16fa7</A>; 0x2df4f)</TD>
+<TD>CRC-17/K3.1 (*p)</TD>
+<TD><A
+HREF="c17/0x16fa7_len.txt">{<B>131054</B>,<B>1976</B>,63,16,16,10,6,4,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">131054</TD>
+<TD>HD=5@ 164</TD>
+<TD>(<A HREF="c17/0x1b85b.txt">0x1b85b</A>; 0x370b7)</TD>
+<TD>CRC-17/K3.2 (*p)</TD>
+<TD><A
+HREF="c17/0x1b85b_len.txt">{<B>131054</B>,440,<B>164</B>,23,5,2,2,2,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">131054</TD>
+<TD>HD=6@ 59</TD>
+<TD>(<A HREF="c17/0x19f57.txt">0x19f57</A>; 0x33eaf)</TD>
+<TD>CRC-17K/3.3 (*p)</TD>
+<TD><A HREF="c17/0x19f57_len.txt">
+{<B>131054</B>,420,70,<B>59</B>,7,7,3,3,1,1,1} </A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">131054</TD>
+<TD>HD=7@ 26</TD>
+<TD>(<A HREF="c17/0x10c29.txt">0x10c29</A>; 0x21853)</TD>
+<TD>CRC-17K/3.4 (*p)</TD>
+<TD><A HREF="c17/0x10c29_len.txt">{<B>131054</B>,358,55,28,<B>26</B>}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">131054</TD>
+<TD>HD=8@ 15</TD>
+<TD>(<A HREF="c17/0x15583.txt">0x15583</A>; 0x2ab07)</TD>
+<TD>CRC-17K/3.5 (*p)</TD>
+<TD><A HREF="c17/0x15583_len.txt">{<B>131054</B>,722,122,15,15,<B>15</B>,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">131054</TD>
+<TD>HD=9@ 8</TD>
+<TD> (<A HREF="c17/0x123bd.txt">0x123bd</A>; 0x2477b)</TD>
+<TD>CRC-17K/3.6 (*p)</TD>
+<TD><A HREF="c17/0x123bd_len.txt">{<B>131054</B>,8,8,8,8,8,<B>8</B>,4,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc17.html"><B>17</B></A></TD>
+<TD ALIGN="CENTER">131054</TD>
+<TD>HD=10@ 5</TD>
+<TD>(<A HREF="c17/0x19d17.txt">0x19d17</A>; 0x33a2f)</TD>
+<TD>CRC-17K/3.7 (*p)</TD>
+<TD><A
+HREF="c17/0x19d17_len.txt">{<B>131054</B>,824,17,17,10,10,5,<B>5</B>,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=4@ 2807</TD>
+<TD>(<A HREF="c18/0x23979.txt">0x23979</A>; 0x472f3)</TD>
+<TD>CRC-18K/3.1 (*p)</TD>
+<TD><A
+HREF="c18/0x23979_len.txt">{<B>262125</B>,<B>2807</B>,85,9,9,9,6,3,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=5@ 207</TD>
+<TD>(<A HREF="c18/0x2bed6.txt">0x2bed6</A>; 0x57dad)</TD>
+<TD>CRC-18K/3.2 (*p)</TD>
+<TD><A HREF="c18/0x2bed6_len.txt">
+{<B>262125</B>,781,<B>207</B>,10,10,5,2,2,2,2,2}</A> </TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=6@ 69</TD>
+<TD>(<A HREF="c18/0x2ee49.txt">0x2ee49</A>; 0x5dc93)</TD>
+<TD>CRC-18K/3.3 (*p)</TD>
+<TD><A
+HREF="c18/0x2ee49_len.txt">{<B>262125</B>,635,93,<B>69</B>,10,3,3,3,3}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=7@ 31</TD>
+<TD>(<A HREF="c18/0x21bab.txt">0x21bab</A>; 0x43757)</TD>
+<TD>CRC-18K/3.4 (*p)</TD>
+<TD><A
+HREF="c18/0x21bab_len.txt">{<B>262125</B>,936,75,43,<B>31</B>,9,6,2,2}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=8@ 16</TD>
+<TD>(<A HREF="c18/0x238be.txt">0x238be</A>; 0x4717d)</TD>
+<TD>CRC-18K/3.5 (*p)</TD>
+<TD><A
+HREF="c18/0x238be_len.txt">{<B>262125</B>,1081,142,34,19,<B>16</B>,5,5,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=9@ 10</TD>
+<TD>(<A HREF="c18/0x2d09f.txt">0x2d09f</A>; 0x5a13f)</TD>
+<TD>CRC-18K/3.6 (*p)</TD>
+<TD><A
+HREF="c18/0x2d09f_len.txt">{<B>262125</B>,994,104,12,12,12,<B>10</B>,5,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=10@ 6</TD>
+<TD> (<A HREF="c18/0x287b9.txt">0x287b9</A>; 0x50f73)</TD>
+<TD>CRC-18K/3.7 (*p)</TD>
+<TD><A HREF="c18/0x287b9_len.txt">{<B>262125</B>,59,59,53,7,7,7,<B>6</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc18.html"><B>18</B></A></TD>
+<TD ALIGN="CENTER">262125</TD>
+<TD>HD=11@ 5</TD>
+<TD>(<A HREF="c18/0x26a3d.txt">0x26a3d</A>; 0x4d47b)</TD>
+<TD>CRC-18K/11 (*p)</TD>
+<TD><A
+HREF="c18/0x26a3d_len.txt">{<B>262125</B>,417,109,9,5,5,5,5,<B>5</B>}</A></TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=4@ 4165</TD>
+<TD>(<A HREF="c19/0x6fb57.txt">0x6fb57</A>; 0xdf6af)</TD>
+<TD>CRC-19K/3.1 (*p)</TD>
+<TD><A
+HREF="c19/0x6fb57_len.txt">{<B>524268</B>,<B>4165</B>,44,44,20,10,6,2,2,2,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=5@ 295</TD>
+<TD>(<A HREF="c19/0x409ba.txt">0x409ba</A>; 0x81375)</TD>
+<TD>CRC-19K/3.2 (*p)</TD>
+<TD><A HREF="c19/0x409ba_len.txt">{<B>524268</B>,1170,<B>295</B>,51,25,5,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=6@ 88</TD>
+<TD>(<A HREF="c19/0x4bacc.txt">0x4bacc</A>; 0x97599)</TD>
+<TD>CRC-19K/3.3 (*p)</TD>
+<TD><A
+HREF="c19/0x4bacc_len.txt">{<B>524268</B>,373,98,<B>88</B>,23,12,10,3,3}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=7@ 40</TD>
+<TD>(<A HREF="c19/0x4f6a2.txt">0x4f6a2</A>; 0x9ed45)</TD>
+<TD>CRC-19K/3.4 (*p)</TD>
+<TD><A
+HREF="c19/0x4f6a2_len.txt">{<B>524268</B>,596,88,41,<B>40</B>,4,4,4,2}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=8@ 20</TD>
+<TD>(<A HREF="c19/0x4809f.txt">0x4809f</A>; 0x9013f)</TD>
+<TD>CRC-19K/3.5 (*p)</TD>
+<TD><A
+HREF="c19/0x4809f_len.txt">{<B>524268</B>,1207,174,48,31,<B>20</B>,1}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=9@ 13</TD>
+<TD>(<A HREF="c19/0x7573f.txt">0x7573f</A>; 0xeae7f)</TD>
+<TD>CRC-19K/3.6 (*p)</TD>
+<TD><A
+HREF="c19/0x7573f_len.txt">{<B>524268</B>,838,187,49,30,15,<B>13</B>,6,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=10@ 8</TD>
+<TD>(<A HREF="c19/0x45f1c.txt">0x45f1c</A>; 0x8be39)</TD>
+<TD>CRC-19K/3.7 (*p)</TD>
+<TD><A
+HREF="c19/0x45f1c_len.txt">{<B>524268</B>,975,182,18,10,9,9,<B>8</B>,1}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc19.html"><B>19</B></A></TD>
+<TD ALIGN="CENTER">524268</TD>
+<TD>HD=11@ 7</TD>
+<TD>(<A HREF="c19/0x6d133.txt">0x6d133</A>; 0xda267)</TD>
+<TD>CRC-19K/3.8 (*p)</TD>
+<TD><A
+HREF="c19/0x6d133_len.txt">{<B>524268</B>,1061,121,40,23,7,7,7,<B>7</B>}</A> 
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=4@ 5061</TD>
+<TD>(<A HREF="c20/0xb5827.txt">0xb5827</A>; 0x16b04f)</TD>
+<TD>CRC-20K/3.1 (*p)</TD>
+<TD><A
+HREF="c20/0xb5827_len.txt">{<B>1048555</B>,<B>5061</B>,195,50,18,11,8,4,4}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=5@ 371</TD>
+<TD>(<A HREF="c20/0xaf56f.txt">0xaf56f</A>; 0x15eadf)</TD>
+<TD>CRC-20K/3.2 (*p)</TD>
+<TD><A
+HREF="c20/0xaf56f_len.txt">{<B>1048555</B>,1080,<B>371</B>,51,27,8,2,2,2,2,2,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=6@ 113</TD>
+<TD>(<A HREF="c20/0xcdef9.txt">0xcdef9</A>; 0x19bdf3)</TD>
+<TD>CRC-20K/3.3 (*p)</TD>
+<TD><A
+HREF="c20/0xcdef9_len.txt">{<B>1048555</B>,766,272,<B>113</B>,20,10,10,4,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=7@ 48</TD>
+<TD>(<A HREF="c20/0xa88c9.txt">0xa88c9</A>; 0x151193)</TD>
+<TD>CRC-20K/3.4 (*p)</TD>
+<TD><A
+HREF="c20/0xa88c9_len.txt">{<B>1048555</B>,285,146,68,<B>48</B>,16,4}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=8@ 27</TD>
+<TD>(<A HREF="c20/0xb46b7.txt">0xb46b7</A>; 0x168d6f) </TD>
+<TD>CRC-20K/3.5 (*p)</TD>
+<TD><A
+HREF="c20/0xb46b7_len.txt">{<B>1048555</B>,2629,72,46,29,<B>27</B>,9,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=9@ 15</TD>
+<TD>(<A HREF="c20/0xba24b.txt">0xba24b</A>; 0x174497)</TD>
+<TD>CRC-20K/3.6 (*p)</TD>
+<TD><A
+HREF="c20/0xba24b_len.txt">{<B>1048555</B>,625,157,41,29,15,<B>15</B>,3,3}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=10@ 11</TD>
+<TD>(<A HREF="c20/0xc4d87.txt">0xc4d87</A>; 0x189b0f)</TD>
+<TD>CRC-20K/3.7 (*p)</TD>
+<TD><A
+HREF="c20/0xc4d87_len.txt">{<B>1048555</B>,1845,281,29,22,11,11,<B>11</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc20.html"><B>20</B></A></TD>
+<TD ALIGN="CENTER">1048555</TD>
+<TD>HD=11@ 7</TD>
+<TD>(<A HREF="c20/0xafcdb.txt">0xafcdb</A>; 0x15f9b7)</TD>
+<TD>CRC-20K/3.8 (*p)</TD>
+<TD><A
+HREF="c20/0xafcdb_len.txt">{<B>1048555</B>,429,85,29,12,12,8,7,<B>7</B>,2,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=4@ 8525</TD>
+<TD>(<A HREF="c21/0x1707ea.txt">0x1707ea</A>; 0x2e0fd5)</TD>
+<TD>CRC-21K/3.1 (*p)</TD>
+<TD><A
+HREF="c21/0x1707ea_len.txt">{<B>2097130</B>,<B>8525</B>,222,68,25,15,2,2,2,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=5@ 510</TD>
+<TD>(<A HREF="c21/0x1c7d73.txt">0x1c7d73</A>; 0x38fae7)</TD>
+<TD>CRC-21K/3.2 (*p)</TD>
+<TD><A
+HREF="c21/0x1c7d73_len.txt">{<B>2097130</B>,2478,<B>510</B>,25,25,16,13,7,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=6@ 137</TD>
+<TD>(<A HREF="c21/0x1d3b83.txt">0x1d3b83</A>; 0x3a7707)</TD>
+<TD>CRC-21K/3.3 (*p)</TD>
+<TD><A
+HREF="c21/0x1d3b83_len.txt">{<B>2097130</B>,1077,223,<B>137</B>,36,3,3,3,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=7@ 57</TD>
+<TD>(<A HREF="c21/0x16ae33.txt">0x16ae33</A>; 0x2d5c67)</TD>
+<TD>CRC-21K/3.4 (*p)</TD>
+<TD><A
+HREF="c21/0x16ae33_len.txt">{<B>2097130</B>,1188,94,89,<B>57</B>,12,12,6,5,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=8 @ 29</TD>
+<TD>(<A HREF="c21/0x113ab8.txt">0x113ab8</A>; 0x227571)</TD>
+<TD>CRC-21K/3.5 (*p)</TD>
+<TD><A
+HREF="c21/0x113ab8_len.txt">{<B>2097130</B>,916,76,76,40,<B>29</B>,4,4,4}</A> 
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=9 @ 19</TD>
+<TD>(<A HREF="c21/0x12ca8e.txt">0x12ca8e</A>; 0x25951d)</TD>
+<TD>CRC-21K/3.6 (*p)</TD>
+<TD><A
+HREF="c21/0x12ca8e_len.txt">{<B>2097130</B>,3088,241,52,19,19,<B>19</B>,5,5}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=10 @ 11</TD>
+<TD>(<A HREF="c21/0x1ab344.txt">0x1ab344</A>;0x356689)</TD>
+<TD>CRC-21K/3.7 (*p)</TD>
+<TD><A
+HREF="c21/0x1ab344_len.txt">{<B>2097130</B>,439,194,65,27,15,11,<B>11</B>,7}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=11 @ 10</TD>
+<TD>(<A HREF="c21/0x138517.txt">0x138517</A>; 0x270a2f)</TD>
+<TD>CRC-21K/3.8 (*p)</TD>
+<TD><A
+HREF="c21/0x138517_len.txt">{<B>2097130</B>,2605,266,66,24,12,11,10,<B>10</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc21.html"><B>21</B></A></TD>
+<TD ALIGN="CENTER">2097130</TD>
+<TD>HD=12 @ 6</TD>
+<TD>(<A HREF="c21/0x132b7a.txt">0x132b7a</A>; 0x2656f5)</TD>
+<TD>CRC-21K/3.9 (*p)</TD>
+<TD><A
+HREF="c21/0x132b7a_len.txt">{<B>2097130</B>,440,364,92,16,16,12,8,6,<B>6</B>,2}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=4@ 12077</TD>
+<TD>(<A HREF="c22/0x308fd3.txt">0x308fd3</A>; 0x611fa7)</TD>
+<TD>CRC-22K/3.1 (*p)</TD>
+<TD><A
+HREF="c22/0x308fd3_len.txt">{<B>4194281</B>,<B>12077</B>,186,100,39,9,9,5,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=5@ 632</TD>
+<TD>(<A HREF="c22/0x3bc316.txt">0x3bc316</A>; 0x77862d)</TD>
+<TD>CRC-22K/3.2(*p)</TD>
+<TD><A
+HREF="c22/0x3bc316_len.txt">{<B>4194281</B>,2153,<B>632</B>,70,14,14,14,6,5,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=6@164</TD>
+<TD>(<A HREF="c22/0x25ef7d.txt">0x25ef7d</A>; 0x4bdefb)</TD>
+<TD>CRC-22K/3.3 (*p)</TD>
+<TD><A
+HREF="c22/0x25ef7d_len.txt">{<B>4194281</B>,715,197,<B>164</B>,50,4,4,4,3,3,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=7@ 69</TD>
+<TD>(<A HREF="c22/0x3ef8b1.txt">0x3ef8b1</A>; 0x7df163)</TD>
+<TD>CRC-22K/3.4 (*p)</TD>
+<TD><A
+HREF="c22/0x3ef8b1_len.txt">{<B>4194281</B>,1986,300,78,<B>69</B>,17,12,4,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=8@ 37</TD>
+<TD>(<A HREF="c22/0x36e400.txt">0x36e400</A>; 0x6dc801)</TD>
+<TD>CRC-22K/3.5 (*p)</TD>
+<TD><A
+HREF="c22/0x36e400_len.txt">{<B>4194281</B>,6553,67,67,45,<B>38</B>,3}</A></TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=9@ 21</TD>
+<TD>(<A HREF="c22/0x38b0d2.txt">0x38b0d2</A>; 0x7161a5)</TD>
+<TD>CRC-22K/3.6 (*p)</TD>
+<TD><A
+HREF="c22/0x38b0d2_len.txt">{<B>4194281</B>,641,292,110,37,22,<B>21</B>,9,7}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=10@ 15</TD>
+<TD>(<A HREF="c22/0x294d54.txt">0x294d54</A>; 0x529aa9) </TD>
+<TD>CRC-22K/3.7 (*p)</TD>
+<TD><A
+HREF="c22/0x294d54_len.txt">{<B>4194281</B>,4583,195,31,31,19,15,<B>15</B>,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=11@ 12</TD>
+<TD>(<A HREF="c22/0x36e098.txt">0x36e098</A>; 0x6dc131)</TD>
+<TD>CRC-22K/3.8 (*p)</TD>
+<TD><A
+HREF="c22/0x36e098_len.txt">{<B>4194281</B>,577,387,65,35,12,12,12,<B>12</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=12@ 8</TD>
+<TD>(<A HREF="c22/0x2729b5.txt">0x2729b5</A>; 0x4e536b)</TD>
+<TD>CRC-22K/3.9 (*p)</TD>
+<TD><A
+HREF="c22/0x2729b5_len.txt">{<B>4194281</B>,3089,394,44,41,12,8,8,8,<B>8</B>,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc22.html"><B>22</B></A></TD>
+<TD ALIGN="CENTER">4194281</TD>
+<TD>HD=13@ 5</TD>
+<TD> (<A HREF="c22/0x3915e9.txt">0x3915e9</A>; 0x722bd3)</TD>
+<TD>CRC-22K/3.10 (*p)</TD>
+<TD><A
+HREF="c22/0x3915e9_len.txt">{<B>4194281</B>,3745,6,6,6,6,6,6,6,5,<B>5</B>}</A> 
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=4@ 18926</TD>
+<TD>(<A HREF="c23/0x540df0.txt">0x540df0</A>; 0xa81be1)</TD>
+<TD>CRC-23K/3.1 (*p)</TD>
+<TD><A
+HREF="c23/0x540df0_len.txt">{<B>8388584</B>,<B>18926</B>,420,96,36,7,7,7,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=5@ 823</TD>
+<TD>(<A HREF="c23/0x424f3b.txt">0x424f3b</A>; 0x849e77)</TD>
+<TD>CRC-23K/3.2 (*p)</TD>
+<TD><A
+HREF="c23/0x424f3b_len.txt">{<B>8388584</B>,3180,<B>823</B>,62,38,28,13,6,6,3,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=6@ 208</TD>
+<TD>(<A HREF="c23/0x46b1ab.txt">0x46b1ab</A>; 0x8d6357) </TD>
+<TD>CRC-23K/3.3 (*p)</TD>
+<TD><A
+HREF="c23/0x46b1ab_len.txt">{<B>8388584</B>,3590,301,<B>208</B>,28,14,13,4,4,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=7@ 81</TD>
+<TD>(<A HREF="c23/0x4b5858.txt">0x4b5858</A>; 0x96b0b1)</TD>
+<TD>CRC-23K/3.4 (*p)</TD>
+<TD><A
+HREF="c23/0x4b5858_len.txt">{<B>8388584</B>,6142,374,83,<B>81</B>,15,10,10,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=8@ 42</TD>
+<TD>(<A HREF="c23/0x4297b0.txt">0x4297b0</A>; 0x852f61)</TD>
+<TD>CRC-23K/3.5 (*p)</TD>
+<TD><A
+HREF="c23/0x4297b0_len.txt">{<B>8388584</B>,3560,487,130,47,<B>42</B>,5,5,5}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=9@ 26</TD>
+<TD>(<A HREF="c23/0x5b3ca4.txt">0x5b3ca4</A>; xb67949)</TD>
+<TD>CRC-23K/3.6 (*p)</TD>
+<TD><A
+HREF="c23/0x5b3ca4_len.txt">{<B>8388584</B>,5982,134,106,27,27,<B>26</B>,8,3,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=10@ 14</TD>
+<TD>(<A HREF="c23/0x5e7b23.txt">0x5e7b23</A>; 0xbcf647)</TD>
+<TD>CRC-23K/3.7 (*p)</TD>
+<TD><A
+HREF="c23/0x5e7b23_len.txt">{<B>8388584</B>,3015,312,77,28,28,17,<B>14</B>,14,3,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=11@ 14</TD>
+<TD>(<A HREF="c23/0x5e7b23.txt">0x5e7b23</A>; 0xbcf647)</TD>
+<TD>CRC-23K/3.7 (*p)</TD>
+<TD><A
+HREF="c23/0x5e7b23_len.txt">{<B>8388584</B>,3015,312,77,28,28,17,14,<B>14</B>,3,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=12@ 10</TD>
+<TD>(<A HREF="c23/0x673171.txt">0x673171</A>; 0xce62e3) </TD>
+<TD>CRC-23K/3.8 (*p)</TD>
+<TD><A
+HREF="c23/0x673171_len.txt">{<B>8388584</B>,5142,435,86,42,11,11,10,<B>10</B>,10,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc23.html"><B>23</B></A></TD>
+<TD ALIGN="CENTER">8388584</TD>
+<TD>HD=13@ 10</TD>
+<TD>(<A HREF="c23/0x673171.txt">0x673171</A>; 0xce62e3) </TD>
+<TD>CRC-23K/3.8(*p)</TD>
+<TD><A
+HREF="c23/0x673171_len.txt">{<B>8388584</B>,5142,435,86,42,11,11,10,10,<B>10</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>&nbsp;HD=4@ 22868&nbsp;</TD>
+<TD>(<A HREF="c24/0x8f90e3.txt">0x8f90e3</A>; 0x11f21c7)&nbsp; </TD>
+<TD>CRC-24K/3.2 (*p)</TD>
+<TD><A
+HREF="c24/0x8f90e3_len.txt">{<B>16777191</B>,<B>22868</B>,599,47,37,33,12,10,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=5@ 1060</TD>
+<TD>(<A HREF="c24/0x93cb4f.txt">0x93cb4f</A>; 0x127969f)</TD>
+<TD>CRC-24K/3.3 (*p)</TD>
+<TD><A
+HREF="c24/0x93cb4f_len.txt">{<B>16777191</B>,8880,<B>1060</B>,52,39,19,9,9,7,4,3,3,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=6@ 248</TD>
+<TD>(<A HREF="c24/0xa2e4ce.txt">0xa2e4ce</A>; 0x145c99d)</TD>
+<TD>CRC-24K/3.4 (*p)</TD>
+<TD><A
+HREF="c24/0xa2e4ce_len.txt">{<B>16777191</B>,2562,457,<B>248</B>,70,30,11,9,9,6,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=7@ 97</TD>
+<TD>(<A HREF="c24/0x8d3c72.txt">0x8d3c72</A>; 0x11a78e5)&nbsp; </TD>
+<TD>CRC-24K/3.5 (*p)</TD>
+<TD><A
+HREF="c24/0x8d3c72_len.txt">{<B>16777191</B>,415,415,135,<B>97</B>,16,11,11,9,4,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=8@ 48</TD>
+<TD>(<A HREF="c24/0x941356.txt">0x941356</A>; 0x12826ad)</TD>
+<TD>CRC-24K/3.6 (*p)</TD>
+<TD><A
+HREF="c24/0x941356_len.txt">{<B>16777191</B>,7497,179,127,60,<B>48</B>,18,11,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=9@ 30</TD>
+<TD>(<A HREF="c24/0xb75eab.txt">0xb75eab</A>; 0x16ebd57)</TD>
+<TD>CRC-24K/3.7 (*p)</TD>
+<TD><A
+HREF="c24/0xb75eab_len.txt">{<B>16777191</B>,8310,368,111,29,29,<B>29</B>,8,2,2,2,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=10@ 19</TD>
+<TD>(<A HREF="c24/0xbda4d5.txt">0xbda4d5</A>; 0x17b49ab)</TD>
+<TD>CRC-24K/3.8 (*p)</TD>
+<TD><A
+HREF="c24/0xbda4d5_len.txt">{<B>16777191</B>,10152,323,146,43,33,19,<B>19</B>,7,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=11@ 15</TD>
+<TD>(<A HREF="c24/0xa735a7.txt">0xa735a7</A>; 0x14e6b4f) </TD>
+<TD>CRC-24K/3.9 (*p)</TD>
+<TD><A
+HREF="c24/0xa735a7_len.txt">{<B>16777191</B>,5954,259,135,29,17,15,15,<B>15</B>,3,3,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=12@ 12</TD>
+<TD>(<A HREF="c24/0xb87515.txt">0xb87515</A>; 0x170ea2b) </TD>
+<TD>CRC-24K/3.10 (*p)</TD>
+<TD><A
+HREF="c24/0xb87515_len.txt">{<B>16777191</B>,4821,432,88,40,31,18,12,12,<B>12</B>,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc24.html"><B>24</B></A></TD>
+<TD ALIGN="CENTER">16777191</TD>
+<TD>HD=13@ 6</TD>
+<TD>(<A HREF="c24/0xa35677.txt">0xa35677</A>; 0x146acef) </TD>
+<TD>&nbsp;CRC-24K/3.11 (*p)&nbsp;</TD>
+<TD><A
+HREF="c24/0xa35677_len.txt">{<B>16777191</B>,3349,531,72,6,6,6,6,6,6,<B>6</B>,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=4@ 38912</TD>
+<TD>(<A HREF="c25/0x101690c.txt">0x101690c</A>; 0x202d219)</TD>
+<TD>CRC-25K/3.1 (*p)</TD>
+<TD><A
+HREF="c25/0x101690c_len.txt">{<B>33554406</B>,<B>38912</B>,604,128,72,13,13}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=5@ 1494</TD>
+<TD>(<A HREF="c25/0x1d7938c.txt">0x1d7938c</A>; 0x3af2719)</TD>
+<TD>CRC-25K/3.2 (*p)</TD>
+<TD><A
+HREF="c25/0x1d7938c_len.txt">{<B>33554406</B>,13554,<B>1494</B>,115,25,22,19,13,10,4,4,3,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=6@ 297</TD>
+<TD>(<A HREF="c25/0x1a4072f.txt">0x1a4072f</A>; 0x3480e5f)</TD>
+<TD>CRC-25K/3.3 (*p)</TD>
+<TD><A
+HREF="c25/0x1a4072f_len.txt">{<B>33554406</B>,7699,422,<B>297</B>,86,28,21,11,4,4,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=7@ 115</TD>
+<TD>(<A HREF="c25/0x161d083.txt">0x161d083</A>; 0x2c3a107)</TD>
+<TD>CRC-25K/3.4 (*p)</TD>
+<TD><A
+HREF="c25/0x161d083_len.txt">{<B>33554406</B>,7613,612,157,<B>115</B>,29,16,12,9}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=8@ 60</TD>
+<TD>(<A HREF="c25/0x173877d.txt">0x173877d</A>; 0x2e70efb)</TD>
+<TD>CRC-25K/3.5 (*p)</TD>
+<TD><A
+HREF="c25/0x173877d_len.txt">{<B>33554406</B>,4640,707,203,92,<B>60</B>,12,5,5}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=9@ 34</TD>
+<TD>(<A HREF="c25/0x15b20e9.txt">0x15b20e9</A>; 0x2b641d3)</TD>
+<TD>CRC-25K/3.6 (*p)</TD>
+<TD><A
+HREF="c25/0x15b20e9_len.txt">{<B>33554406</B>,11629,334,166,43,34,<B>34</B>,6,6,6,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=10@ 22</TD>
+<TD>(<A HREF="c25/0x1519353.txt">0x1519353</A>; 0x2a326a7)</TD>
+<TD>CRC-25K/3.7 (*p)</TD>
+<TD><A
+HREF="c25/0x1519353_len.txt">{<B>33554406</B>,8849,563,185,64,35,23,<B>22</B>,8,5,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=11@ 16</TD>
+<TD>(<A HREF="c25/0x1685921.txt">0x1685921</A>; 0x2d0b243)</TD>
+<TD>CRC-25K/3.8 (*p)</TD>
+<TD><A
+HREF="c25/0x1685921_len.txt">{<B>33554406</B>,7086,569,136,59,36,22,16,<B>16</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=12@ 13</TD>
+<TD>(<A HREF="c25/0x1cb9e8f.txt">0x1cb9e8f</A>; 0x3973d1f)</TD>
+<TD>CRC-25K/3.9 (*p)</TD>
+<TD><A
+HREF="c25/0x1cb9e8f_len.txt">{<B>33554406</B>,11039,795,155,56,28,14,14,13,<B>13</B>,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=13@ 8</TD>
+<TD>(<A HREF="c25/0x1b4562f.txt">0x1b4562f</A>; 0x368ac5f)</TD>
+<TD>CRC-25K/3.10 (*p)</TD>
+<TD><A
+HREF="c25/0x1b4562f_len.txt">{<B>33554406</B>,15206,8,8,8,8,8,8,8,8,<B>8</B>,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=14@ 6</TD>
+<TD>(<A HREF="c25/0x17448fb.txt">0x17448fb</A>; 0x2e891f7)</TD>
+<TD>CRC-25K/3.11 (*p)</TD>
+<TD><A
+HREF="c25/0x17448fb_len.txt">{<B>33554406</B>,3930,362,120,56,45,21,12,7,7,6,<B>6</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc25.html"><B>25</B></A></TD>
+<TD ALIGN="CENTER">33554406</TD>
+<TD>HD=15@ 4</TD>
+<TD>(<A HREF="c25/0x13db8a9.txt">0x13db8a9</A>; 0x27b7153)</TD>
+<TD>CRC-25K/3.12 (*p)</TD>
+<TD><A
+HREF="c25/0x13db8a9_len.txt">{<B>33554406</B>,5940,681,103,64,35,20,10,10,7,6,4,<B>4</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=4@ 51801</TD>
+<TD>(<A HREF="c26/0x33c19ef.txt">0x33c19ef</A>; 0x67833df)</TD>
+<TD>CRC-26K/3.1 (*p)</TD>
+<TD><A
+HREF="c26/0x33c19ef_len.txt">{<B>67108837</B>,<B>51801</B>,451,97,75,35,7,7,1,1,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=5@ 1765</TD>
+<TD>(<A HREF="c26/0x364aacb.txt">0x364aacb</A>; 0x6c95597)</TD>
+<TD>CRC-26K/3.2 (*p)</TD>
+<TD><A
+HREF="c26/0x364aacb_len.txt">{<B>67108837</B>,11792,<B>1765</B>,155,82,24,9,8,8,3,3,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=6@ 374</TD>
+<TD> (<A HREF="c26/0x2d83b9f.txt">0x2d83b9f</A>; 0x5b0773f)</TD>
+<TD>CRC-26K/3.3 (*p)</TD>
+<TD><A
+HREF="c26/0x2d83b9f_len.txt">{<B>67108837</B>,5825,871,<B>374</B>,67,39,23,23,6,6,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=7@ 135</TD>
+<TD>(<A HREF="c26/0x294f79e.txt">0x294f79e</A>; 0x529ef3d)</TD>
+<TD>CRC-26K/3.4 (*p)</TD>
+<TD><A
+HREF="c26/0x294f79e_len.txt">{<B>67108837</B>,6915,299,255,<B>135</B>,25,18,4,4,3,3,3,2,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=8@ 68</TD>
+<TD>(<A HREF="c26/0x3b61467.txt">0x3b61467</A>; 0x76c28cf)</TD>
+<TD>CRC-26K/3.5 (*p)</TD>
+<TD><A
+HREF="c26/0x3b61467_len.txt">{<B>67108837</B>,11347,647,194,69,<B>68</B>,24,7,5,5,5,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=9@ 41</TD>
+<TD>(<A HREF="c26/0x3a66e4f.txt">0x3a66e4f</A>; 0x74cdc9f)</TD>
+<TD>CRC-26K/3.6 (*p)</TD>
+<TD><A
+HREF="c26/0x3a66e4f_len.txt">{<B>67108837</B>,18147,510,115,65,44,<B>41</B>,7,7,3,3,3,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=10@ 26</TD>
+<TD>(<A HREF="c26/0x290a2fa.txt">0x290a2fa</A>; 0x52145f5)</TD>
+<TD>CRC-26K/3.7 (*p)</TD>
+<TD><A
+HREF="c26/0x290a2fa_len.txt">{<B>67108837</B>,14375,405,169,72,48,26,<B>26</B>,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=11@ 19</TD>
+<TD>(<A HREF="c26/0x2e80fa7.txt">0x2e80fa7</A>; 0x5d01f4f)</TD>
+<TD>CRC-26K/3.8 (*p)</TD>
+<TD><A
+HREF="c26/0x2e80fa7_len.txt">{<B>67108837</B>,6451,226,207,71,30,23,19,<B>19</B>,3,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=12@ 17</TD>
+<TD>(<A HREF="c26/0x306fe75.txt">0x306fe75</A>; 0x60dfceb</TD>
+<TD>CRC-26K/3.9 (*p)</TD>
+<TD><A
+HREF="c26/0x306fe75_len.txt">{<B>67108837</B>,2120,763,155,43,20,17,17,17,<B>17</B>,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=13@ 9</TD>
+<TD>(<A HREF="c26/0x3a4be4f.txt">0x3a4be4f</A>; 0x7497c9f) </TD>
+<TD>CRC-26K/3.10 (*p)</TD>
+<TD><A
+HREF="c26/0x3a4be4f_len.txt">{<B>67108837</B>,3754,757,105,83,9,9,9,9,9,<B>9</B>,3,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=14@ 7</TD>
+<TD>(<A HREF="c26/0x27eb7b3.txt">0x27eb7b3</A>; 0x4fd6f67)</TD>
+<TD>CRC-26K/3.11 (*p)</TD>
+<TD><A
+HREF="c26/0x27eb7b3_len.txt">{<B>67108837</B>,15247,210,163,71,48,11,10,7,7,7,<B>7</B>,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc26.html"><B>26</B></A></TD>
+<TD ALIGN="CENTER">67108837</TD>
+<TD>HD=15@ 5</TD>
+<TD>(<A HREF="c26/0x3e9912b.txt">0x3e9912b</A>; 0x7d32257) </TD>
+<TD>CRC-26K/3.12 (*p)</TD>
+<TD><A
+HREF="c26/0x3e9912b_len.txt">{<B>67108837</B>,8355,809,230,89,12,12,12,10,9,6,5,<B>5</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=4@ 75090</TD>
+<TD>(<A HREF="c27/0x5e04635.txt">0x5e04635</A>; 0xbc08c6b)</TD>
+<TD>CRC-27K/3.1 (*p)</TD>
+<TD> <A
+HREF="c27/0x5e04635_len.txt">{<B>134217700</B>,<B>75090</B>,1050,204,43,41,28,16,11,4,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=5@ 2312 </TD>
+<TD>(<A HREF="c27/0x43cdaed.txt">0x43cdaed</A>; 0x879b5db)</TD>
+<TD>CRC-27K/3.2 (*p)</TD>
+<TD><A
+HREF="c27/0x43cdaed_len.txt">{<B>134217700</B>,30670,<B>2312</B>,256,93,45,25,8,8,2,2,2,2,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=6@ 446</TD>
+<TD>(<A HREF="c27/0x638e897.txt">0x638e897</A>; 0xc71d12f)</TD>
+<TD>CRC-27K/3.3 (*p)</TD>
+<TD><A
+HREF="c27/0x638e897_len.txt">{<B>134217700</B>,27260,653,<B>446</B>,91,54,29,20,8,8,5,4,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=7@ 161</TD>
+<TD>(<A HREF="c27/0x6ae846d.txt">0x6ae846d</A>; 0xd5d08db)</TD>
+<TD>CRC-27K/3.4 (*p)</TD>
+<TD><A
+HREF="c27/0x6ae846d_len.txt">{<B>134217700</B>,24977,391,172,<B>161</B>,41,16,16,15,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=8@ 83</TD>
+<TD>(<A HREF="c27/0x4f2e9e6.txt">0x4f2e9e6</A>; 0x9e5d3cd)</TD>
+<TD>CRC-27K/3.5 (*p)</TD>
+<TD><A
+HREF="c27/0x4f2e9e6_len.txt">{<B>134217700</B>,22817,853,244,87,<B>83</B>,30,20,5,3,3,3,3,3,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=9@ 48</TD>
+<TD>(<A HREF="c27/0x4429686.txt">0x4429686</A>; 0x8852d0d)</TD>
+<TD>CRC-27K/9 (*p)</TD>
+<TD><A
+HREF="c27/0x4429686_len.txt">{<B>134217700</B>,27028,624,270,112,48,<B>48</B>,17,11}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=10@ 30</TD>
+<TD>(<A HREF="c27/0x4f70bd9.txt">0x4f70bd9</A>; 0x9ee17b3)</TD>
+<TD>CRC-27K/3.6 (*p)</TD>
+<TD><A
+HREF="c27/0x4f70bd9_len.txt">{<B>134217700</B>,9144,804,39,39,39,37,<B>30</B>,5,5,5,3,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=11@ 20</TD>
+<TD>(<A HREF="c27/0x7464427.txt">0x7464427</A>; 0xe8c884f)</TD>
+<TD>CRC-27K/3.7 (*p)</TD>
+<TD><A
+HREF="c27/0x7464427_len.txt">{<B>134217700</B>,21092,1450,185,79,30,21,21,<B>20</B>,5,5}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=12@ 15</TD>
+<TD>(<A HREF="c27/0x472d41c.txt">0x472d41c</A>; 0x8e5a839)</TD>
+<TD>CRC-27K/3.8 (*p)</TD>
+<TD><A
+HREF="c27/0x472d41c_len.txt">{<B>134217700</B>,10790,1042,207,95,54,24,16,16,<B>15</B>,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=13@ 11</TD>
+<TD>(<A HREF="c27/0x6986313.txt">0x6986313</A>; 0xd30c627)</TD>
+<TD>CRC-27K/13 (*p)</TD>
+<TD><A
+HREF="c27/0x6986313_len.txt">{<B>134217700</B>,3942,1156,223,84,52,11,11,11,11,<B>11</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=14@ 8</TD>
+<TD>(<A HREF="c27/0x6a21e4f.txt">0x6a21e4f</A>; 0xd443c9f)</TD>
+<TD>CRC-27K/3.9 (*p)</TD>
+<TD><A
+HREF="c27/0x6a21e4f_len.txt">{<B>134217700</B>,30200,399,192,66,50,18,14,8,8,8,<B>8</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=15@ 7</TD>
+<TD>(<A HREF="c27/0x4cbaf41.txt">0x4cbaf41</A>; 0x9975e83)</TD>
+<TD>CRC-27K/3.10 (*p)</TD>
+<TD><A
+HREF="c27/0x4cbaf41_len.txt">{<B>134217700</B>,14634,713,274,70,54,24,17,7,7,7,7,<B>7</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc27.html"><B>27</B></A></TD>
+<TD ALIGN="CENTER">134217700 </TD>
+<TD>HD=16@ 5</TD>
+<TD>(<A HREF="c27/0x46569fb.txt">0x46569fb</A>; 0x8cad3f7)</TD>
+<TD>CRC-27K/3.11 (*p)</TD>
+<TD><A
+HREF="c27/0x46569fb_len.txt">{<B>134217700</B>,5364,969,185,69,40,34,10,6,5,5,5,5,<B>5</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=4@ 112011 </TD>
+<TD>(<A HREF="c28/0x91dc1e3.txt">0x91dc1e3</A>; 0x123b83c7)</TD>
+<TD>CRC-28K/3.1 (*p)</TD>
+<TD><A
+HREF="c28/0x91dc1e3_len.txt">{<B>268435427</B>,<B>112011</B>,851,283,116,48,41,23,4,4,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=5@ 2997</TD>
+<TD>(<A HREF="c28/0x8ba3d6b.txt">0x8ba3d6b</A>; 0x11747ad7)</TD>
+<TD>CRC-28K/3.2 (*p)</TD>
+<TD> <A
+HREF="c28/0x8ba3d6b_len.txt">{<B>268435427</B>,32665,<B>2997</B>,151,123,62,7,7,7,7,5,4,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=6@ 551</TD>
+<TD>(<A HREF="c28/0x95afd3e.txt">0x95afd3e</A>; 0x12b5fa7d)</TD>
+<TD>CRC-28K/3.3 (*p)</TD>
+<TD><A
+HREF="c28/0x95afd3e_len.txt">{<B>268435427</B>,19899,1143,<B>551</B>,111,59,19,19,9,6,2,2,2,2,2,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=7@ 192</TD>
+<TD><A HREF="c28/0xbd07453.txt">0xbd07453</A>; 0x17a0e8a7)</TD>
+<TD>CRC-28K/3.4 (*p)</TD>
+<TD><A
+HREF="c28/0xbd07453_len.txt">{<B>268435427</B>,40233,1065,282,<B>192</B>,32,23,16,14,10,4,3,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=8@ 92</TD>
+<TD>.(<A HREF="c28/0x81620e5.txt">0x81620e5</A>; 0x102c41cb)</TD>
+<TD>CRC-28K/3.5 (*p)</TD>
+<TD><A
+HREF="c28/0x81620e5_len.txt">{<B>268435427</B>,44913,1217,92,92,<B>92</B>,10,10,10}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=9@ 53</TD>
+<TD>(<A HREF="c28/0xb628899.txt">0xb628899</A>; 0x16c51133)</TD>
+<TD>CRC-28K/3.6 (*p)</TD>
+<TD><A
+HREF="c28/0xb628899_len.txt">{<B>268435427</B>,15847,745,295,81,60,<B>53</B>,7,7,7,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=10@ 33</TD>
+<TD>(<A HREF="c28/0xde00a27.txt">0xde00a27</A>; 0x1bc0144f)</TD>
+<TD>CRC-28K/3.7 (*p)</TD>
+<TD><A
+HREF="c28/0xde00a27_len.txt">{<B>268435427</B>,10170,1075,147,115,34,34,<B>33</B>,16,4,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=11@ 22</TD>
+<TD>(<A HREF="c28/0x895065e.txt">0x895065e</A>; 0x112a0cbd)</TD>
+<TD>CRC-28K/3.8 (*p)</TD>
+<TD><A
+HREF="c28/0x895065e_len.txt">{<B>268435427</B>,25515,2004,95,57,42,24,24,<B>22</B>,6,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=12@ 19</TD>
+<TD>(<A HREF="c28/0xcf69197.txt">0xcf69197</A>; 0x19ed232f)</TD>
+<TD>CRC-28K/3.9 (*p)</TD>
+<TD><A
+HREF="c28/0xcf69197_len.txt">{<B>268435427</B>,35900,1724,210,116,42,34,21,19,<B>19</B>,5,4,4,4,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=13@ 9</TD>
+<TD>(<A HREF="c28/0xb4ec80f.txt">0xb4ec80f</A>; 0x169d901f)</TD>
+<TD>CRC-28K/3.10 (*p)</TD>
+<TD><A
+HREF="c28/0xb4ec80f_len.txt">{<B>268435427</B>,22683,1002,306,86,36,22,21,13,10,<B>9</B>,<B>9</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=14@ 9</TD>
+<TD>(<A HREF="c28/0xb4ec80f.txt">0xb4ec80f</A>; 0x169d901f)</TD>
+<TD>CRC-28K/3.10 (*p)</TD>
+<TD><A
+HREF="c28/0xb4ec80f_len.txt">{<B>268435427</B>,22683,1002,306,86,36,22,21,13,10,<B>9</B>,<B>9</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=15@ 8</TD>
+<TD>(<A HREF="c28/0x86b655c.txt">0x86b655c</A>; 0x10d6cab9)</TD>
+<TD>CRC-28K/3.11 (*p)</TD>
+<TD><A
+HREF="c28/0x86b655c_len.txt">{<B>268435427</B>,23240,485,217,90,31,25,19,11,9,9,8,<B>8</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc28.html"><B>28</B></A></TD>
+<TD ALIGN="CENTER">268435427</TD>
+<TD>HD=16@ 6</TD>
+<TD>(<A HREF="c28/0xb73e919.txt">0xb73e919</A>; 0x16e7d233)</TD>
+<TD>CRC-28K/3.12 (*p)</TD>
+<TD><A
+HREF="c28/0xb73e919_len.txt">{<B>268435427</B>,17941,1299,326,6,6,6,6,6,6,6,6,6,<B>6</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=4@ 156945</TD>
+<TD>(<A HREF="c29/0x16dfbf51.txt">0x16dfbf51</A>; 0x2dbf7ea3))</TD>
+<TD>CRC-29K/3.1 (*p)</TD>
+<TD><A
+HREF="c29/0x16dfbf51_len.txt">{<B>536870882</B>,<B>156945</B>,1567,280,67,62,43,19,15,5,5,5,2,2,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=5@ 3770</TD>
+<TD>(<A HREF="c29/0x12e77cc7.txt">0x12e77cc7</A>; 0x25cef98f)</TD>
+<TD>CRC-29K/3.2 (*p)</TD>
+<TD><A
+HREF="c29/0x12e77cc7_len.txt">{<B>536870882</B>,14946,<B>3770</B>,283,100,76,45,23,11,9,7,3,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=6@ 656</TD>
+<TD>(<A HREF="c29/0x11f54062.txt">0x11f54062</A>; 0x23ea80c5)</TD>
+<TD>CRC-29K/3.3 (*p)</TD>
+<TD><A
+HREF="c29/0x11f54062_len.txt">{<B>536870882</B>,11794,1940,<B>656</B>,116,40,25,13,13,8,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=7@ 226</TD>
+<TD>(<A HREF="c29/0x1310728d.txt">0x1310728d</A>; 0x2620e51b)</TD>
+<TD>CRC-29K/3.4 (*p)</TD>
+<TD><A
+HREF="c29/0x1310728d_len.txt">{<B>536870882</B>,34201,1867,240,<B>226</B>,55,44,15,13,11,7}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=8@ 108</TD>
+<TD>(<A HREF="c29/0x17505831.txt">0x17505831</A>; 0x2ea0b063)</TD>
+<TD>CRC-29K/3.5 (*p)</TD>
+<TD><A
+HREF="c29/0x17505831_len.txt">{<B>536870882</B>,28734,1199,265,118,<B>108</B>,23,23,10,10,10}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=9@ 62</TD>
+<TD>(<A HREF="c29/0x10e70676.txt">0x10e70676</A>; 0x21ce0ced)</TD>
+<TD>CRC-29K/3.6 (*p)</TD>
+<TD><A
+HREF="c29/0x10e70676_len.txt">{<B>536870882</B>,83259,1264,145,80,77,<B>62</B>,27,7,7,7,3,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=10@ 39</TD>
+<TD>(<A HREF="c29/0x121b9bfb.txt">0x121b9bfb</A>; 0x243737f7)</TD>
+<TD>CRC-29K/3.7 (*p)</TD>
+<TD><A
+HREF="c29/0x121b9bfb_len.txt">{<B>536870882</B>,11272,2280,343,108,41,40,<B>39</B>,9,9,6,5,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=11@ 27</TD>
+<TD>(<A HREF="c29/0x173f6f21.txt">0x173f6f21</A>; 0x2e7ede43)</TD>
+<TD>CRC-29K/3.8 (*p)</TD>
+<TD><A
+HREF="c29/0x173f6f21_len.txt">{<B>536870882</B>,15530,1383,312,137,46,32,28,<B>27</B>,10,7,7,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=12@ 20</TD>
+<TD>(<A HREF="c29/0x1a4a9ced.txt">0x1a4a9ced</A>; 0x349539db)</TD>
+<TD>CRC-29K/3.9 (*p)</TD>
+<TD><A
+HREF="c29/0x1a4a9ced_len.txt">{<B>536870882</B>,16252,1219,302,61,59,41,22,20,<B>20</B>,4,3,3,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=13@ 13</TD>
+<TD>(<A HREF="c29/0x142507bb.txt">0x142507bb</A>; 0x284a0f77)</TD>
+<TD>CRC-29K/3.10 (*p)</TD>
+<TD><A
+HREF="c29/0x142507bb_len.txt">{<B>536870882</B>,17116,1150,288,106,67,21,17,15,13,<B>13</B>,6,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=14@ 10</TD>
+<TD>(<A HREF="c29/0x112b95a9.txt">0x112b95a9</A>; 0x22572b53)</TD>
+<TD>CRC-29K/3.11 (*p)</TD>
+<TD><A
+HREF="c29/0x112b95a9_len.txt">{<B>536870882</B>,43878,1996,298,109,68,38,27,18,10,10,<B>10</B>,5}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=15@ 9</TD>
+<TD>(<A HREF="c29/0x1057c91b.txt">0x1057c91b</A>; 0x20af9237)</TD>
+<TD>CRC-29K/3.12 (*p)</TD>
+<TD><A
+HREF="c29/0x1057c91b_len.txt">{<B>536870882</B>,19053,1463,288,100,45,45,20,12,9,9,9,<B>9</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc29.html"><B>29</B></A></TD>
+<TD ALIGN="CENTER">536870882</TD>
+<TD>HD=16@ 5</TD>
+<TD>(<A HREF="c29/0x1234acfb.txt">0x1234acfb</A>; 0x246959f7)</TD>
+<TD>CRC-29K/3.13 (*p)</TD>
+<TD><A
+HREF="c29/0x1234acfb_len.txt">{<B>536870882</B>,69997,1050,423,102,51,34,12,12,12,9,8,6,<B>5</B>,3}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=4@ 212811</TD>
+<TD>(<A HREF="c30/0x31342a2f.txt">0x31342a2f</A>; 0x6268545f)) </TD>
+<TD> CRC-30K/3.1 (*p)</TD>
+<TD><A
+HREF="c30/0x31342a2f_len.txt">{<B>1073741793</B>,<B>212811</B>,1604,318,78,78,41,28,16,15,11,7,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=5@ 4958</TD>
+<TD>(<A HREF="c30/0x31107331.txt">0x31107331</A>; 0x6220e663)</TD>
+<TD>CRC-30K/3.2 (*p)</TD>
+<TD><A
+HREF="c30/0x31107331_len.txt">{<B>1073741793</B>,55080,<B>4958</B>,457,158,77,36,21,10,9,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=6@ 786</TD>
+<TD>(<A HREF="c30/0x2a5b919d.txt">0x2a5b919d</A>; 0x54b7233b)</TD>
+<TD>CRC-30K/3.3 (*p)</TD>
+<TD><A
+HREF="c30/0x2a5b919d_len.txt">{<B>1073741793</B>,81187,1579,<B>786</B>,104,68,44,22,13,6,6,6,6,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=7@ 267</TD>
+<TD>(<A HREF="c30/0x2efb42ab.txt">0x2efb42ab</A>; 0x5df68557)</TD>
+<TD>CRC-30K/3.4 (*p)</TD>
+<TD> <A
+HREF="c30/0x2efb42ab_len.txt">{<B>1073741793</B>,19534,1765,342,<B>267</B>,56,47,23,16,9,2,2,2,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=8@ 125</TD>
+<TD>(<A HREF="c30/0x3d60199f.txt">0x3d60199f</A>; 0x7ac0333f)</TD>
+<TD>CRC-30K/3.5 (*p)</TD>
+<TD><A
+HREF="c30/0x3d60199f_len.txt">{<B>1073741793</B>,32233,1633,385,158,<B>125</B>,29,23,3,3,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=9@ 71</TD>
+<TD>(<A HREF="c30/0x35b8d0bf.txt">0x35b8d0bf</A>; 0x6b71a17f)</TD>
+<TD>CRC-30K/3.6 (*p)</TD>
+<TD><A
+HREF="c30/0x35b8d0bf_len.txt">{<B>1073741793</B>,32573,2019,450,96,76,<B>71</B>,24,18,9,4,4,4,2,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=10@ 44</TD>
+<TD>(<A HREF="c30/0x22322571.txt">0x22322571</A>; 0x44644ae3)</TD>
+<TD>CRC-30K/3.7 (*p)</TD>
+<TD><A
+HREF="c30/0x22322571_len.txt">{<B>1073741793</B>,5271,614,272,146,58,44,<B>44</B>,19,5,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=11@ 30</TD>
+<TD>(<A HREF="c30/0x20b33c48.txt">0x20b33c48</A>; 0x41667891)</TD>
+<TD>CRC-30K/3.8 (*p)</TD>
+<TD><A
+HREF="c30/0x20b33c48_len.txt">{<B>1073741793</B>,66878,1308,558,121,76,36,32,<B>30</B>,12,8}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=12@ 19</TD>
+<TD>(<A HREF="c30/0x24916855.txt">0x24916855</A>; 0x4922d0ab)</TD>
+<TD>CRC-30K/3.9 (*p)</TD>
+<TD><A
+HREF="c30/0x24916855_len.txt">{<B>1073741793</B>,55553,1243,361,114,74,49,27,19,<B>19</B>,12}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=13@ 15</TD>
+<TD>(<A HREF="c30/0x26d31d3c.txt">0x26d31d3c</A>; 0x4da63a79)</TD>
+<TD>CRC-30K/3.10 (*p)</TD>
+<TD><A
+HREF="c30/0x26d31d3c_len.txt">{<B>1073741793</B>,38136,1617,463,123,81,44,24,16,15,<B>15</B>,3,3,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=14@ 12</TD>
+<TD>(<A HREF="c30/0x3452a9a3.txt">0x3452a9a3</A>; 0x68a55347)</TD>
+<TD>CRC-30K/3.11 (*p)</TD>
+<TD><A
+HREF="c30/0x3452a9a3_len.txt">{<B>1073741793</B>,71125,2113,328,112,41,29,25,12,12,12,<B>12</B>,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=15@ 10</TD>
+<TD>(<A HREF="c30/0x236982e3.txt">0x236982e3</A>; 0x46d305c7)</TD>
+<TD>CRC-30K/3.12 (*p)</TD>
+<TD><A
+HREF="c30/0x236982e3_len.txt">{<B>1073741793</B>,49379,869,444,118,72,33,25,19,15,11,10,<B>10</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=16@ 8</TD>
+<TD>(<A HREF="c30/0x2897f865.txt">0x2897f865</A>; 0x512ff0cb)</TD>
+<TD>CRC-30K/3.13 (*p)</TD>
+<TD><A
+HREF="c30/0x2897f865_len.txt">{<B>1073741793</B>,54065,2555,395,143,58,24,24,19,9,9,9,8,<B>8</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc30.html"><B>30</B></A></TD>
+<TD ALIGN="CENTER">1073741793</TD>
+<TD>HD=17@ 4</TD>
+<TD>(<A HREF="c30/0x2728fbad.txt">0x2728fbad</A>; 0x4e51f75b)</TD>
+<TD>CRC-30K/3.14 (*p)</TD>
+<TD><A
+HREF="c30/0x2728fbad_len.txt">{<B>1073741793</B>,18343,1383,383,166,46,35,24,9,8,8,7,7,5,<B>4</B>,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=4@ 335041</TD>
+<TD>(<A HREF="c31/0x737e312b.txt">0x737e312b</A>; 0xe6fc6257)</TD>
+<TD>CRC-31K/3.1 (*p) </TD>
+<TD><A
+HREF="c31/0x737e312b_len.txt">{<B>2147483616</B>,<B>335041</B>,2609,214,140,55,45,30,7,7,7,5,4,4,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=5@ 6168</TD>
+<TD>(<A HREF="c31/0x474e03ac.txt">0x474e03ac</A>; 0x8e9c0759)</TD>
+<TD>CRC-31K/3.2 (*p) </TD>
+<TD><A
+HREF="c31/0x474e03ac_len.txt">{<B>2147483616</B>,24098,<B>6168</B>,510,149,98,45,22,22,15,9,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=6@ 1019</TD>
+<TD>(<A HREF="c31/0x4bf43ae9.txt">0x4bf43ae9</A>; 0x97e875d3)</TD>
+<TD>CRC-31K/3.3 (*p) </TD>
+<TD><A
+HREF="c31/0x4bf43ae9_len.txt">{<B>2147483616</B>,68274,2788,<B>1019</B>,147,73,35,21,21,8,8,8,4,3,2,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=7@ 319</TD>
+<TD>(<A HREF="c31/0x66cd3537.txt">0x66cd3537</A>; 0xcd9a6a6f)</TD>
+<TD>CRC-31K/3.4 (*p) </TD>
+<TD><A
+HREF="c31/0x66cd3537_len.txt">{<B>2147483616</B>,89836,2279,363,<B>319</B>,88,45,30,11,11,3,3,3,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=8@ 147</TD>
+<TD>(<A HREF="c31/0x49f2f2b5.txt">0x49f2f2b5</A>; 0x93e5e56b)</TD>
+<TD>CRC-31K/3.5 (*p) </TD>
+<TD><A
+HREF="c31/0x49f2f2b5_len.txt">{<B>2147483616</B>,79707,2486,574,147,<B>147</B>,36,23,21,13,6,3,3,3,3,3,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=9@ 81</TD>
+<TD>(<A HREF="c31/0x4a30cfd6.txt">0x4a30cfd6</A>; 0x94619fad)</TD>
+<TD>CRC-31K/3.6 (*p) </TD>
+<TD><A
+HREF="c31/0x4a30cfd6_len.txt">{<B>2147483616</B>,39591,1518,320,139,90,<B>81</B>,18,18,14,9,7,5,5,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=10@ 51</TD>
+<TD>(<A HREF="c31/0x59b51725.txt">0x59b51725</A>; 0xb36a2e4b)</TD>
+<TD>CRC-31K/3.7 (*p) </TD>
+<TD><A
+HREF="c31/0x59b51725_len.txt">{<B>2147483616</B>,38610,1932,386,143,52,52,<B>51</B>,11,11,11,7,6,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=11@ 35</TD>
+<TD>(<A HREF="c31/0x460ee3bf.txt">0x460ee3bf</A>; 0x8c1dc77f)</TD>
+<TD>CRC-31K/3.8 (*p) </TD>
+<TD><A
+HREF="c31/0x460ee3bf_len.txt">{<B>2147483616</B>,58790,1420,452,84,52,45,39,<B>35</B>,13,1,1,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=12@ 24</TD>
+<TD>(<A HREF="c31/0x4fea6a3a.txt">0x4fea6a3a</A>; 0x9fd4d475)</TD>
+<TD>CRC-31K/3.9 (*p) </TD>
+<TD><A
+HREF="c31/0x4fea6a3a_len.txt">{<B>2147483616</B>,23848,2157,339,40,40,40,26,25,<B>24</B>,10,3,2,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=13@ 18</TD>
+<TD>(<A HREF="c31/0x705a39ab.txt">0x705a39ab</A>; 0xe0b47357)</TD>
+<TD>CRC-31K/3.10 (*p) </TD>
+<TD><A
+HREF="c31/0x705a39ab_len.txt">{<B>2147483616</B>,54608,826,327,130,91,65,26,18,18,<B>18</B>,6,4,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=14@ 13</TD>
+<TD>(<A HREF="c31/0x40d5e985.txt">0x40d5e985</A>; 0x81abd30b)</TD>
+<TD>CRC-31K/3.11 (*p) </TD>
+<TD><A
+HREF="c31/0x40d5e985_len.txt">{<B>2147483616</B>,57299,1437,158,132,42,42,31,15,15,13,<B>13</B>,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=15@ 10</TD>
+<TD>(<A HREF="c31/0x4a59e381.txt">0x4a59e381</A>; 0x94b3c703)</TD>
+<TD>CRC-31K/3.12 (*p) </TD>
+<TD><A
+HREF="c31/0x4a59e381_len.txt">{<B>2147483616</B>,69278,1131,554,124,76,47,43,22,11,11,10,<B>10</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=16@ 9</TD>
+<TD>(<A HREF="c31/0x41df2a47.txt">0x41df2a47</A>; 0x83be548f)</TD>
+<TD>CRC-31K/3.13 (*p) </TD>
+<TD><A
+HREF="c31/0x41df2a47_len.txt">{<B>2147483616</B>,24992,2361,279,160,67,46,20,12,11,9,9,9,<B>9</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc31.html"><B>31</B></A></TD>
+<TD ALIGN="CENTER">2147483616</TD>
+<TD>HD=17@ 5</TD>
+<TD>(<A HREF="c31/0x4a3ed66b.txt">0x4a3ed66b</A>; 0x947dacd7 </TD>
+<TD>CRC-31K/3.14 (*p) </TD>
+<TD><A
+HREF="c31/0x4a3ed66b_len.txt">{<B>2147483616</B>,101769,2646,450,6,6,6,6,6,6,6,6,6,6,<B>5</B>,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">&nbsp;4294967263&nbsp;</TD>
+<TD>HD=4@ 427053</TD>
+<TD>(<A HREF="c32a/0xad0424f3.txt">0xad0424f3</A>; 0x15a0849e7)</TD>
+<TD>CRC-32K/3.1 (*p)</TD>
+<TD><A
+HREF="c32a/0xad0424f3_len.txt">{<B>4294967263</B>,<B>427053</B>,817,522,149,63,27,19,19,19,9,9,6}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=5@ 8162</TD>
+<TD>(<A HREF="c32a/0x9d9947fd.txt">0x9d9947fd</A>; 0x13b328ffb)</TD>
+<TD>CRC-32K/3.2 (*p)</TD>
+<TD><A
+HREF="c32a/0x9d9947fd_len.txt">{<B>4294967263</B>,146826,<B>8162</B>,361,145,60,56,33,16,16,6,6,4,4,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=6@ 1199</TD>
+<TD>(<A HREF="c32a/0x8e2371ef.txt">0x8e2371ef</A>; 0x11c46e3df)</TD>
+<TD>CRC-32K/3.3 (*p)</TD>
+<TD><A
+HREF="c32a/0x8e2371ef_len.txt">{<B>4294967263</B>,118103,2438,<B>1199</B>,201,66,45,38,24,14,10,6,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=7@ 356</TD>
+<TD>(<A HREF="c32a/0x80fcb077.txt">0x80fcb077</A>; 0x101f960ef)</TD>
+<TD>CRC-32K/3.4 (*p)</TD>
+<TD><A
+HREF="c32a/0x80fcb077_len.txt">{<B>4294967263</B>,47729,3343,519,<B>356</B>,68,41,31,17,9,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=8@ 163</TD>
+<TD>(<A HREF="c32/0x8741c726.txt">0x8741c726</A>; 0x10e838e4d)</TD>
+<TD>CRC-32K/3.5 (*p)</TD>
+<TD><A
+HREF="c32/0x8741c726_len.txt">{<B>4294967263</B>,93289,2083,725,249,<B>163</B>,58,30,13,13,7,3,3}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=9@ 90</TD>
+<TD>(<A HREF="c32/0xd2c0ef07.txt">0xd2c0ef07</A>; 0x1a581de0f)</TD>
+<TD>CRC-32K/3.6 (*p)</TD>
+<TD><A
+HREF="c32/0xd2c0ef07_len.txt">{<B>4294967263</B>,50057,971,625,153,91,<B>90</B>,39,11,11,5,5,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=10@ 58</TD>
+<TD>(<A HREF="c32a/0xb338add6.txt">0xb338add6</A>; 0x166715bad)</TD>
+<TD>CRC-32K/3.7 (*p)</TD>
+<TD><A
+HREF="c32a/0xb338add6_len.txt">{<B>4294967263</B>,40931,1969,224,198,63,63,<B>58</B>,25,11,11,5,4,2,2,2,2}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=11@ 38</TD>
+<TD>(<A HREF="c32a/0x945d045d.txt">0x945d045d</A>; 0x128ba08bb)</TD>
+<TD>CRC-32K/3.8 (*p)</TD>
+<TD><A
+HREF="c32a/0x945d045d_len.txt">{<B>4294967263</B>,184268,3603,526,136,100,48,38,<B>38</B>,10,10,10,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=12@ 27</TD>
+<TD>(<A HREF="c32a/0x8ee5368f.txt">0x8ee5368f</A>; 0x11dca6d1f)</TD>
+<TD>CRC-32K/3.9 (*p)</TD>
+<TD><A
+HREF="c32a/0x8ee5368f_len.txt">{<B>4294967263</B>,82664,2704,489,145,86,30,27,27,<B>27</B>,10,6,6,4,4,3,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=13@ 20</TD>
+<TD>(<A HREF="c32a/0x93b39b1b.txt">0x93b39b1b</A>; 0x127673637)</TD>
+<TD>CRC-32K/13 (*p)</TD>
+<TD><A
+HREF="c32a/0x93b39b1b_len.txt">{<B>4294967263</B>,41385,1745,515,210,71,67,32,29,20,<B>20</B>,8,4,4,4,2,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=14@ 15</TD>
+<TD>(<A HREF="c32a/0x81d7e747.txt">0x81d7e747</A>; 0x103afce8f)</TD>
+<TD>CRC-32K/3.10 (*p)</TD>
+<TD><A
+HREF="c32a/0x81d7e747_len.txt">{<B>4294967263</B>,27933,2311,664,199,70,58,33,18,18,16,<B>15</B>,1,1,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=15@ 14</TD>
+<TD>(<A HREF="c32a/0x87496166.txt">0x87496166</A>; 0x10e92c2cd)</TD>
+<TD>CRC-32K/3.11 (*p)</TD>
+<TD><A
+HREF="c32a/0x87496166_len.txt">{<B>4294967263</B>,126795,2098,272,103,103,52,35,21,15,15,14,<B>14</B>}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=16@ 10</TD>
+<TD>(<A HREF="c32a/0x8c746ed4.txt">0x8c746ed4</A>; 0x118e8dda9)</TD>
+<TD>CRC-32K/3.12 (*p)</TD>
+<TD><A
+HREF="c32a/0x8c746ed4_len.txt">{<B>4294967263</B>,116655,1682,490,102,76,67,42,22,15,10,10,10,<B>10</B>,4}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=17@ 6</TD>
+<TD>(<A HREF="c32a/0x8efd4bcd.txt">0x8efd4bcd</A>; 0x11dfa979b) </TD>
+<TD>CRC-32K/3.13 (*p)</TD>
+<TD><A
+HREF="c32a/0x8efd4bcd_len.txt">{<B>4294967263</B>,115159,1173,469,157,96,6,6,6,6,6,6,6,6,<B>6</B>,4,1,1,1}</A>
+</TD>
+</TR>
+<TR>
+<TD><A HREF="crc32.html"><B>32</B></A></TD>
+<TD ALIGN="CENTER">4294967263</TD>
+<TD>HD=18@ 4</TD>
+<TD>(<A HREF="c32a/0xe47b4c57.txt">0xe47b4c57</A>; 0x1c8f698af)</TD>
+<TD>CRC-32K/3.14 (*p)</TD>
+<TD><A
+HREF="c32a/0xe47b4c57_len.txt">{<B>4294967263</B>,58599,3333,722,232,107,59,27,6,6,6,6,6,6,6,<B>4</B>,1}</A>
+</TD>
+</TR>
+<TR>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD ALIGN="CENTER" BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+<TD BGCOLOR="#C0C0C0"></TD>
+</TR>
+</TABLE>
+<HR>
+<P>See the <A HREF="http://users.ece.cmu.edu/~koopman/crc/notes.html">NOTES
+PAGE</A> for interpreting this data. Last update 1/2019.</P>
+<P><A REL="license"
+HREF="http://creativecommons.org/licenses/by/4.0/"><IMG
+ALT="Creative Commons License" STYLE="border-width:0"
+SRC="https://i.creativecommons.org/l/by/4.0/88x31.png"></A><BR>
+This work is copyright 2015-2017 by Philip Koopman. Licensed under a
+<A REL="license" HREF="http://creativecommons.org/licenses/by/4.0/">Creative
+Commons Attribution 4.0 International License</A>.</P>
+<HR>
+</BODY>
+</HTML>
+

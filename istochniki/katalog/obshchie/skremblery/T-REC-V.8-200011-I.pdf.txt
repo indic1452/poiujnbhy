@@ -1,0 +1,1615 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+INTERNATIONAL  TELECOMMUNICATION  UNION 
+ 
+ 
+ 
+V.8
+TELECOMMUNICATION 
+STANDARDIZATION  SECTOR 
+OF  ITU 
+(11/2000) 
+ 
+SERIES V: DATA COMMUNICATION OVER THE 
+TELEPHONE NETWORK 
+General 
+ 
+ 
+Procedures for starting sessions of data 
+transmission over the public switched 
+telephone network 
+ 
+ITU-T  Recommendation  V.8 
+(Formerly  CCITT  Recommendation) 
+
+=====PAGE 2=====
+ 
+ITU-T V-SERIES  RECOMMENDATIONS 
+DATA COMMUNICATION OVER THE TELEPHONE NETWORK 
+ 
+ 
+General 
+V.1–V.9 
+Interfaces and voiceband modems 
+V.10–V.34 
+Wideband modems 
+V.35–V.39 
+Error control 
+V.40–V.49 
+Transmission quality and maintenance 
+V.50–V.59 
+Simultaneous transmission of data and other signals 
+V.60–V.99 
+Interworking with other networks 
+V.100–V.199 
+Interface layer specifications for data communication 
+V.200–V.249 
+Control procedures 
+V.250–V.299 
+Modems on digital circuits 
+V.300–V.399 
+ 
+ 
+For further details, please refer to the list of ITU-T Recommendations. 
+
+=====PAGE 3=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+i 
+ITU-T Recommendation V.8 
+ 
+Procedures for starting sessions of data transmission 
+over the public switched telephone network 
+ 
+ 
+ 
+Summary 
+This Recommendation defines signals to be exchanged between DCEs over the PSTN when a 
+session of data transmission needs to be established, but before signals are exchanged which are 
+specific to a particular Recommendation. It provides means to automatically determine the best 
+available operational mode between two DCEs connected via the PSTN, provides a timely indication 
+to Circuit Multiplication Equipments on the V-series modulation to be employed in a new session of 
+data transmission, provides a means to enable a PSTN call to be passed on automatically to an 
+appropriate DCE, and provides signals for interacting with PSTN echo-control equipment. 
+This Recommendation was revised in 1998 and 1999 to define additional call function types, define 
+procedures for the exchange of non-standard facilities information and add support for PCM 
+modulation modes. 
+This Recommendation was revised in 2000 to provide support for V.92 features, correct errors in the 
+1999 version, clarify the use of the prot0 octet, and add clause 10 to address compatibility with 
+future revisions of this Recommendation. 
+ 
+ 
+Source 
+ITU-T Recommendation V.8 was revised by ITU-T Study Group 16 (2001-2004) and approved 
+under the WTSA Resolution 1 procedure on 17 November 2000. 
+ 
+ 
+ 
+ 
+
+=====PAGE 4=====
+ 
+ii 
+ITU-T V.8 (11/2000) 
+FOREWORD 
+The International Telecommunication Union (ITU) is the United Nations specialized agency in the field of 
+telecommunications. The ITU Telecommunication Standardization Sector (ITU-T) is a permanent organ of 
+ITU. ITU-T is responsible for studying technical, operating and tariff questions and issuing Recommendations 
+on them with a view to standardizing telecommunications on a worldwide basis. 
+The World Telecommunication Standardization Assembly (WTSA), which meets every four years, 
+establishes the topics for study by the ITU-T study groups which, in turn, produce Recommendations on these 
+topics. 
+The approval of ITU-T Recommendations is covered by the procedure laid down in WTSA Resolution 1. 
+In some areas of information technology which fall within ITU-T's purview, the necessary standards are 
+prepared on a collaborative basis with ISO and IEC. 
+ 
+ 
+ 
+ 
+ 
+NOTE 
+In this Recommendation, the expression "Administration" is used for conciseness to indicate both a 
+telecommunication administration and a recognized operating agency. 
+ 
+ 
+ 
+ 
+INTELLECTUAL PROPERTY RIGHTS 
+ITU draws attention to the possibility that the practice or implementation of this Recommendation may 
+involve the use of a claimed Intellectual Property Right. ITU takes no position concerning the evidence, 
+validity or applicability of claimed Intellectual Property Rights, whether asserted by ITU members or others 
+outside of the Recommendation development process. 
+As of the date of approval of this Recommendation, ITU had received notice of intellectual property, 
+protected by patents, which may be required to implement this Recommendation. However, implementors are 
+cautioned that this may not represent the latest information and are therefore strongly urged to consult the 
+TSB patent database. 
+ 
+ 
+ 
+  ITU  2001 
+All rights reserved. No part of this publication may be reproduced or utilized in any form or by any means, 
+electronic or mechanical, including photocopying and microfilm, without permission in writing from ITU. 
+
+=====PAGE 5=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+iii 
+CONTENTS 
+ 
+Page 
+1 
+Scope........................................................................................................................... 
+1 
+2 
+References................................................................................................................... 
+1 
+3 
+Definitions .................................................................................................................. 
+3 
+4 
+Overview of the Recommendation ............................................................................. 
+3 
+4.1 
+Call indication............................................................................................................. 
+3 
+4.2 
+Call menu/Joint menu exchange................................................................................. 
+3 
+5 
+Coding format............................................................................................................. 
+4 
+5.1 
+Category octets............................................................................................................ 
+4 
+5.2 
+Extension octets.......................................................................................................... 
+4 
+6 
+Code tables.................................................................................................................. 
+4 
+6.1 
+Call functions.............................................................................................................. 
+5 
+6.2 
+Modulation modes ...................................................................................................... 
+6 
+6.3 
+PCM Modem availability............................................................................................ 
+7 
+6.4 
+Protocols ..................................................................................................................... 
+7 
+6.5 
+PSTN access ............................................................................................................... 
+8 
+6.6 
+Non-standard facilities................................................................................................ 
+8 
+7 
+Descriptions of signals................................................................................................ 
+9 
+7.1 
+Function indicator signal CI........................................................................................ 
+9 
+7.2 
+Modified answer tone ANSam.................................................................................... 
+9 
+7.3 
+The Call Menu signal CM .......................................................................................... 
+9 
+7.4 
+The Joint Menu signal JM .......................................................................................... 
+10 
+8 
+Data session start-up procedure .................................................................................. 
+11 
+8.1 
+Start-up procedure in the call DCE............................................................................. 
+11 
+8.1.1 
+Call signal transmission................................................................................. 
+11 
+8.1.2 
+Call menu transmission ................................................................................. 
+12 
+8.2 
+Start-up procedure in the answer DCE ....................................................................... 
+12 
+8.2.1 
+ANS transmission.......................................................................................... 
+12 
+8.2.2 
+ANSam transmission..................................................................................... 
+12 
+8.2.3 
+JM transmission............................................................................................. 
+12 
+9 
+DTE-DCE interchange circuits................................................................................... 
+13 
+10 
+Compatibility .............................................................................................................. 
+13 
+ 
+
+=====PAGE 6=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+1 
+ITU-T Recommendation V.8 
+Procedures for starting sessions of data transmission 
+over the public switched telephone network 
+1 
+Scope 
+This Recommendation defines signals to be exchanged between DCEs over the PSTN when a 
+session of data transmission needs to be established, but before signals are exchanged which are 
+specific to a particular modem Recommendation. 
+This Recommendation provides the following features: 
+• 
+A means to determine automatically, prior to initiation of modem handshake, the best 
+available operational mode between two DCEs connected via the PSTN. Many DCEs can 
+provide operation according to a number of different V-series modem Recommendations. 
+• 
+A timely indication to Circuit Multiplication Equipments (CMEs) on the V-series 
+modulation to be employed in any new session of data transmission. CMEs in the PSTN will 
+increasingly need to deploy demodulation/remodulation in order to maintain and improve 
+data signalling rates. 
+• 
+A means to enable a PSTN call to be passed on automatically to an appropriate DCE, with 
+the minimum potential for adversely affecting existing DCEs. 
+• 
+Signals for interacting with PSTN echo-control equipment, as provided for in ITU-T V.25. 
+Implementors should note that this Recommendation is designed to be extensible, and care must be 
+taken to ensure compatibility with future revisions of this Recommendation. See clauses 6 and 10. 
+2 
+References 
+The following ITU-T Recommendations and other references contain provisions which, through 
+reference in this text, constitute provisions of this Recommendation. At the time of publication, the 
+editions indicated were valid. All Recommendations and other references are subject to revision; all 
+users of this Recommendation are therefore encouraged to investigate the possibility of applying the 
+most recent edition of the Recommendations and other references listed below. A list of the currently 
+valid ITU-T Recommendations is regularly published. 
+– 
+ITU-T H.324 (1998), Terminal for low bit-rate multimedia communication. 
+– 
+ITU-T T.30 (1999), Procedures for document facsimile transmission in the general switched 
+telephone network. 
+– 
+ITU-T T.35 (2000), Procedure for the allocation of ITU-T defined codes for non-standard 
+facilities. 
+− 
+ITU-T T.66 (1999), Facsimile code points for use with Recommendations V.8 and V.8 bis. 
+– 
+ITU-T T.101 (1994), International interworking for videotex services. 
+– 
+ITU-T V.2 (1988), Power levels for data transmission over telephone lines. 
+– 
+ITU-T V.17 (1991), A 2-wire modem for facsimile applications with rates up to 14 400 bit/s. 
+– 
+ITU-T V.18 (1998), Operational and interworking requirements for DCEs operating in the 
+text telephone mode. 
+– 
+ITU-T V.21 (1988), 300 bits per second duplex modem standardized for use in the general 
+switched telephone network. 
+
+=====PAGE 7=====
+ 
+2 
+ITU-T V.8 (11/2000) 
+– 
+ITU-T V.22 (1988), 1200 bits per second duplex modem standardized for use in the general 
+switched telephone network and on point-to-point 2-wire leased telephone-type circuits. 
+– 
+ITU-T V.22 bis (1988), 2400 bits per second duplex modem using the frequency division 
+technique standardized for use on the general switched telephone network and on point-to-
+point 2-wire leased telephone-type circuits. 
+– 
+ITU-T V.23 (1988), 600/1200-baud modem standardized for use in the general switched 
+telephone network. 
+– 
+ITU-T V.25 (1996), Automatic answering equipment and general procedures for automatic 
+calling equipment on the general switched telephone network including procedures for 
+disabling of echo control devices for both manually and automatically established calls. 
+– 
+ITU-T V.26 bis (1988), 2400/1200 bits per second modem standardized for use in the 
+general switched telephone network. 
+– 
+ITU-T V.26 ter (1988), 2400 bits per second duplex modem using the echo cancellation 
+technique standardized for use on the general switched telephone network and on point-to-
+point 2-wire leased telephone-type circuits. 
+– 
+ITU-T V.27 ter (1984), 4800/2400 bits per second modem standardized for use in the 
+general switched telephone network. 
+– 
+ITU-T V.291 (1988), 9600 bits per second modem standardized for use on point-to-point 4-
+wire leased telephone-type circuits. 
+– 
+ITU-T V.32 (1993), A family of 2-wire, duplex modems operating at data signalling rates of 
+up to 9600 bit/s for use on the general switched telephone network and on leased telephone-
+type circuits. 
+– 
+ITU-T V.32 bis (1991), A duplex modem operating at data signalling rates of up to 14 400 
+bit/s for use on the general switched telephone network and on leased point-to-point 2-wire 
+telephone-type circuits. 
+– 
+ITU-T V.34 (1998), A modem operating at data signalling rates of up to 33 600 bit/s for use 
+on the general switched telephone network and on leased point-to-point 2-wire telephone-
+type circuits. 
+– 
+ITU-T V.42 (1996), Error-correcting procedures for DCEs using asynchronous-to-
+synchronous conversion. 
+– 
+ITU-T V.90 (1998), A digital modem and analogue modem pair for use on the Public 
+Switched Telephone Network (PSTN) at data signalling rates of up to 56 000 bit/s 
+downstream and up to 33 600 bit/s upstream. 
+– 
+ITU-T V.91 (1999), A digital modem operating at data signalling rates of up to 64 000 bit/s 
+for use in a 4-wire circuit switched connection and on leased point-to-point 4-wire digital 
+circuits. 
+− 
+ITU-T V.92 (2000), Enhancements to Recommendation V.90. 
+____________________ 
+1 With PSTN usage defined in a T-series Recommendation. 
+
+=====PAGE 8=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+3 
+3 
+Definitions 
+This Recommendation defines the following terms: 
+3.1 
+call indicator signal (CI): A signal transmitted from the call DCE to indicate the general 
+communication function. CI is transmitted with an ON/OFF cadence defined in 7.1. The ON periods 
+consist of a repetitive sequence of bits at 300 bit/s, modulating V.21(L), the low-band channel 
+defined in ITU-T V.21. 
+3.2 
+signal CNG: The call tone defined in ITU-T T.30. 
+3.3 
+signal CT: Any call tone allowed for in ITU-T V.25. 
+3.4 
+call menu signal (CM): A signal (see 7.3) transmitted from the call DCE primarily to 
+indicate modulation modes available in the call DCE. CM consists of a repetitive sequence of bits at 
+300 bit/s, modulating V.21(L), the low-band channel defined in ITU-T V.21. 
+3.5 
+CM terminator (CJ): A signal which acknowledges the detection of a JM signal and 
+indicates the end of a CM signal. CJ consists of three consecutive octets of all ZEROs with start and 
+stop bits, modulating V.21(L) at 300 bit/s. 
+3.6 
+joint menu signal (JM): A signal (see 7.4) transmitted from the answer DCE primarily to 
+indicate modulation modes available jointly in the call and answer DCEs. JM consists of a repetitive 
+sequence of bits at 300 bit/s, modulating V.21(H), the high-band channel defined in ITU-T V.21. 
+3.7 
+ANS: Answer tone as defined in ITU-T V.25. 
+3.8 
+ANSam: A sinewave signal at 2100 Hz, amplitude-modulated, as defined in 7.2. 
+3.9 
+sigC: A signal transmitted by a call DCE specific to a V-series modem Recommendation. 
+3.10 
+sigA: A signal transmitted by an answer DCE specific to a V-series modem 
+Recommendation. 
+3.11 
+PCM Modem: A class of modems as specified in the ITU-T V.9x series of 
+Recommendations. 
+4 
+Overview of the Recommendation 
+4.1 
+Call indication 
+The V.8 alternative to call tone (CT), signal CI, carries information to permit the selection of call 
+functions, e.g. facsimile or data. The subsequent CM/JM exchange also provides for this function as 
+well as other functions outlined in this Recommendation. 
+4.2 
+Call menu/Joint menu exchange 
+The exchange of call menu and joint menu signals, CM and JM, enables DCEs to choose, for a 
+forthcoming data session on the PSTN, the best V-series modulation mode from those available in 
+both the call and answer DCEs. 
+The CM/JM exchange also provides for protocol selection, PSTN access indication, and non-
+standard facilities. 
+JM signals also provide information in a form suitable for PSTN Circuit Multiplication Equipment 
+(CME) prior to the onset of modem training. 
+
+=====PAGE 9=====
+ 
+4 
+ITU-T V.8 (11/2000) 
+5 
+Coding format 
+Signals CI, CM and JM use a common coding format. Each of these signals consists of a repeated 
+sequence of bits. A sequence consists of 10 ONEs followed by 10 bits for synchronization and then 
+information-bearing octets, each octet being preceded by a start-bit (ZERO), and followed by a stop-
+bit (ONE). 
+To avoid confusion of signal JM with T.30 signals which also use V.21(H) modulation, a coding 
+constraint is maintained which ensures that HDLC flags (01111110) cannot appear in the bit stream. 
+Each octet lies within one "information category". The coding format allows information categories 
+to be expanded for special applications, while keeping signals brief for the majority of applications. 
+The first information category in a sequence shall be the call function. No particular ordering is 
+required for subsequent information categories. All information within one category shall be carried 
+in one octet or, when necessary, in an ordered sequence of octets. 
+5.1 
+Category octets 
+Category octets are those which occur first in any new information category, and include a 4-bit code 
+identifying the information category. The format is shown below with bits listed from left to right in 
+order of transmission: 
+start-bit (0) 
+b0 
+b1 
+b2 
+b3 
+0 
+b5 
+b6 
+b7 
+stop-bit (1) 
+Bits b0-b3 make up the category tag with b0 the least significant bit, b4 is set to ZERO to prevent 
+flag simulation, and bits b5-b7 are "option bits" relevant to the information category. 
+5.2 
+Extension octets 
+When 3 option bits are inadequate for a particular category, any number of extension octets may 
+follow directly after a category octet. The format for an extension octet is shown below: 
+start-bit (0) 
+b0 
+b1 
+b2 
+0 
+1 
+0 
+b6 
+b7 
+stop-bit (1) 
+Bits b0-b2, b6 and b7 provide five additional option bits in the current category. Bit b4 is set to ONE 
+in order to distinguish an extension octet from a category octet, and bits b3 and b5 are set to ZERO 
+to prevent flag simulation. 
+6 
+Code tables 
+Information categories and extension octets beyond those specified in the tables below are all 
+reserved for future definition by the ITU-T. To be compatible with future versions of this 
+Recommendation, a receiver shall ignore all bits, codes and octets reserved for such future 
+definition. 
+Table 1 shows the preamble to each signal sequence. This consists of ten ONEs followed by ten bits 
+for synchronization. 
+Table 1/V.8 – Preamble 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+Ten ONEs preceding each information sequence 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+0 
+1 
+Synchronization for CI sequences 
+0 
+0 
+0 
+0 
+0 
+0 
+1 
+1 
+1 
+1 
+Synchronization for CM and JM sequences 
+0 
+1 
+0 
+1 
+0 
+1 
+0 
+1 
+0 
+1 
+Defined in ITU-T V.92 
+
+=====PAGE 10=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+5 
+Table 2 lists the information categories, identified by a 4-bit category tag b0-b3. 
+Table 2/V.8 – Information categories 
+Start b0 b1 
+b2 b3 b4 b5 
+b6 b7 Stop
+Category octets (b4 = 0) with category 
+given by tag b0-b3 
+0 
+1 
+0 
+0 
+0 
+0 
+x 
+x 
+x 
+1 
+Call function 
+0 
+1 
+0 
+1 
+0 
+0 
+x 
+x 
+x 
+1 
+Modulation modes 
+0 
+0 
+1 
+0 
+1 
+0 
+x 
+x 
+x 
+1 
+Protocols 
+0 
+1 
+0 
+1 
+1 
+0 
+x 
+x 
+x 
+1 
+PSTN access 
+0 
+1 
+1 
+1 
+1 
+0 
+x 
+x 
+x 
+1 
+Non-standard facilities 
+0 
+1 
+1 
+1 
+0 
+0 
+x 
+x 
+x 
+1 
+PCM modem availability 
+0 
+0 
+1 
+1 
+1 
+0 
+x 
+x 
+x 
+1 
+Defined in ITU-T T.66 
+6.1 
+Call functions 
+Table 3 shows how the 3 option bits in a call-function octet are used to identify particular call 
+functions. 
+Table 3/V.8 – The call function category 
+Start b0 b1 b2 b3 b4 b5 b6 b7 Stop
+Octet – "callf0" 
+Reference 
+0 
+1 
+0 
+0 
+0 
+ 
+ 
+ 
+ 
+ 
+Tag b0-b3 indicating the call 
+function category 
+ 
+ 
+ 
+ 
+ 
+ 
+0 
+ 
+ 
+ 
+ 
+Indicates a category octet 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+0 
+0 
+0 
+ 
+To be determined by the ITU-T
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+0 
+0 
+ 
+PSTN Multimedia Terminal 
+ITU-T H.324 
+ 
+ 
+ 
+ 
+ 
+ 
+0 
+1 
+0 
+ 
+Textphone 
+Textphone according to 
+ITU-T V.18 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+1 
+0 
+ 
+Videotext 
+ITU-T T.101 
+ 
+ 
+ 
+ 
+ 
+ 
+0 
+0 
+1 
+ 
+Transmit facsimile from call 
+terminal 
+ITU-T T.30 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+0 
+1 
+ 
+Receive facsimile at call 
+terminal 
+ITU-T T.30 
+ 
+ 
+ 
+ 
+ 
+ 
+0 
+1 
+1 
+ 
+Data (unspecified application) 
+V-series modem 
+Recommendations 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+1 
+1 
+ 
+Call function as indicated in an 
+extension octet 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+Stop bit 
+ 
+
+=====PAGE 11=====
+ 
+6 
+ITU-T V.8 (11/2000) 
+6.2 
+Modulation modes 
+Table 4 shows the coding over 3 octets to indicate availability of PSTN V-series modulation modes 
+other than PCM modems. Availability shall be shown only if the modulation mode can be used with 
+the indicated call function, and if it is desired to convey that capability to the remote DCE. 
+Table 4/V.8 – Modulation modes 
+Start 
+b0 b1 b2 b3
+b4 b5 b6
+b7
+Stop 
+Octet – "modn0" 
+Item 
+0 
+1 
+0 
+1 
+0 
+ 
+ 
+ 
+ 
+ 
+Tag b0-b3 indicating the modulation 
+modes category 
+ 
+ 
+ 
+ 
+ 
+ 
+0 
+ 
+ 
+ 
+ 
+Indicates a category octet 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+ 
+1 when PCM Modem availability 
+category is present 
+0 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+1 denotes V.34 duplex availability 
+1 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+1 denotes V.34 half-duplex availability 
+2 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+Stop bit 
+ 
+0 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Octet – "modn1" 
+ 
+ 
+x 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 denotes V.32 bis/V.32 availability 
+3 
+ 
+ 
+x 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 denotes V.22 bis/V.22 availability 
+4 
+ 
+ 
+ 
+x 
+ 
+ 
+ 
+ 
+ 
+ 
+1 denotes V.17 availability 
+5 
+ 
+ 
+ 
+ 
+0 
+1 
+0 
+ 
+ 
+ 
+Indicates an extension octet 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+1 denotes V.29 half-duplex availability 
+(as used in ITU-T T.30, etc.) 
+6 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+1 denotes V.27 ter availability 
+7 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+Stop bit 
+ 
+0 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Octet – "modn2" 
+ 
+ 
+x 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 denotes V.26 ter availability 
+8 
+ 
+ 
+x 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 denotes V.26 bis availability 
+9 
+ 
+ 
+ 
+x 
+ 
+ 
+ 
+ 
+ 
+ 
+1 denotes V.23 duplex availability 
+10 
+ 
+ 
+ 
+ 
+0 
+1 
+0 
+ 
+ 
+ 
+Indicates an extension octet 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+1 denotes V.23 half-duplex availability 
+11 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+1 denotes V.21 availability 
+12 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+Stop bit 
+ 
+
+=====PAGE 12=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+7 
+6.3 
+PCM Modem availability 
+Table 5 shows the coding to indicate availability of PCM modem modulation modes. Availability 
+shall be shown only if the modulation mode can be used with the indicated call function, and if it is 
+desired to convey that capability to the remote DCE. If either bit b5 or b6 in octet pcm0 is set, the 
+V.34 availability bit in the modulation category shall also be set. 
+When this category is present, the PSTN access category shall also be present. When this category is 
+present and the modulation modes category is present, bit b5 in the first modulation category octet 
+shall be set to ONE. 
+Table 5/V.8 – The PCM Modem availability category 
+Start 
+b0 b1 b2 b3
+b4 b5 b6
+b7
+Stop 
+Octet – "pcm0" 
+0 
+1 
+1 
+1 
+0 
+ 
+ 
+ 
+ 
+ 
+Tag b0-b3 indicates the PCM Modem 
+availability category 
+ 
+ 
+ 
+ 
+ 
+0 
+ 
+ 
+ 
+ 
+Indicates a category octet 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+ 
+1 denotes V.90 or V.92 analogue modem 
+availability 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+1 denotes V.90 or V.92 digital modem 
+availability 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+1 denotes V.91 availability 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+Stop bit 
+6.4 
+Protocols 
+Table 6 lists codes within the protocol category. 
+If the LAPM protocol code is indicated in CM and the answer DCE wishes to use LAPM, a protocol 
+octet is also transmitted in JM indicating LAPM. 
+Table 6/V.8 – The protocol category 
+Start 
+b0 b1 b2 b3
+b4 b5 b6
+b7
+Stop 
+Octet – "prot0" 
+0 
+0 
+1 
+0 
+1 
+ 
+ 
+ 
+ 
+ 
+Tag b0-b3 indicates the protocol category 
+ 
+ 
+ 
+ 
+ 
+0 
+ 
+ 
+ 
+ 
+Indicates a category octet 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+0 
+0 
+ 
+Calls for LAPM protocol according to 
+ITU-T V.42 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+1 
+1 
+ 
+Calls for protocol as indicated in an extension 
+octet 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+Stop bit 
+NOTE – Absence of this octet does not preclude alternative means of protocol negotiation. 
+
+=====PAGE 13=====
+ 
+8 
+ITU-T V.8 (11/2000) 
+6.5 
+PSTN access 
+Table 7 provides codes for indicating the type of access to the PSTN connection. 
+Table 7/V.8 – PSTN access category 
+Start b0 
+b1 
+b2 
+b3 
+b4 
+b5 
+b6 
+b7 Stop
+Octet – "access0" 
+0 
+1 
+0 
+1 
+1 
+ 
+ 
+ 
+ 
+ 
+Tag b0-b3 indicates the PSTN access category 
+ 
+ 
+ 
+ 
+ 
+0 
+ 
+ 
+ 
+ 
+Indicates a category octet 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+ 
+1 denotes that the call DCE is on a cellular 
+connection 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+ 
+1 denotes that the answer DCE is on a cellular 
+connection 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+x 
+ 
+1 denotes a DCE on a digital network connection 
+0 denotes a DCE on an analogue network 
+connection 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1 
+Stop bit 
+NOTE 1 – Absence of this octet conveys no information about the type of PSTN access. 
+NOTE 2 – An analogue V.90 or V.92 modem may reside on a digital network connection. 
+6.6 
+Non-standard facilities 
+CM and JM messages may optionally include a non-standard information field following the 
+standard fields in each CM/JM sequence to define information beyond that defined in this 
+Recommendation. When non-standard information is to be sent, the NS field category octet is set 
+to 11110xxx. 
+Each non-standard information block is composed in the structure in Table 8. 
+Table 8/V.8 – Structure of non-standard information field 
+Non-standard field octets 
+Octets 
+Non-standard field length K+L+M+1 
+1 
+T.35 country code  
+K 
+Provider code length 
+1 
+Provider code 
+L 
+Non-standard information 
+M 
+NOTE – The T.35 country code is no longer limited to one octet in length. See ITU-T T.35 (2000). 
+The NS field is parsed in accordance with the rules for extension octets in 5.2. This distributes each 
+five bits of NS (higher order NS bits in higher order b positions) over 10 bits of extension octets. 
+Multiple concatenated NS information blocks may be transmitted. 
+
+=====PAGE 14=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+9 
+7 
+Descriptions of signals 
+7.1 
+Function indicator signal CI 
+To initiate a session of data transmission on the PSTN, a DCE transmits either CI, CT, CNG or no 
+signal. Signal CI is a V.8 alternative to call tone CT, and is coded to indicate a call function. The 
+term "call signal" is used hereinafter to refer to CI, CT or CNG. 
+CI is transmitted from the call DCE with a regular ON/OFF cadence. The ON periods shall be not 
+less than 3 periods of the CI sequence, and not greater than 2 s in duration; the OFF periods shall be 
+not less than 0.4 s and not greater than 2 s in duration. 
+A CI sequence consists of 10 ONEs followed by 10 synchronization bits and the call function octet.  
+The transmission and detection of CI is optional in most DCE Recommendations. Whether or not 
+this option is used, DCEs conforming with this Recommendation should not malfunction if CI is 
+received. 
+7.2 
+Modified answer tone ANSam 
+Modified answer tone ANSam consists of a sinewave signal at 2100 ± 1 Hz with phase reversals at 
+an interval of 450 ± 25 ms, amplitude-modulated by a sinewave at 15 ± 0.1 Hz. The modulated 
+envelope shall range in amplitude between (0.8 ± 0.01) and (1.2 ± 0.01) times its average amplitude. 
+The average transmitted power shall be in accordance with ITU-T V.2. 
+The average power outside the band 2100 ± 200 Hz produced by using an approximation to the 
+15 Hz sinewave envelope shall be at least 24 dB below the average power within that band. 
+When network echo canceller disabling is not required, phase reversals shall not be imparted to the 
+ANSam signal. 
+A call DCE shall not transmit a signal CM unless ANSam has been detected. 
+NOTE 1 – The call DCE needs to distinguish ANSam from ANS. Detector design needs to allow for transient 
+variations in the received answer-tone amplitude and phase that may be generated occasionally by network 
+equipment. 
+NOTE 2 – Experience in the field has indicated that, when connecting on circuits fitted with some network 
+echo cancellers, there is a potential for failure to connect if the phase reversal option of ANSam is not used. 
+7.3 
+The Call Menu signal CM 
+Signal CM initiates the process of modulation-mode selection.  
+A CM sequence starts with 10 ONEs followed by 10 synchronization bits as given in Table 1. 
+The first information category in CM indicates the required call function in accordance with Table 3. 
+CM shall also include one or more octets indicating available modulation modes in accordance with 
+Table 4. 
+The protocol category may be included in order to negotiate LAPM without requiring the ODP/ADP 
+exchange (see 7.2.1/V.42 and Table 6). If both DCEs indicate LAPM in the prot0 octet, they may be 
+required to omit the ODP/ADP exchange (for example, see 9.3.1/V.92). It should be noted however 
+that some existing implementations of V.8 may indicate LAPM in prot0, but still require the 
+ODP/ADP exchange to successfully negotiate LAPM. 
+The PSTN access category is included if the call DCE wishes to indicate network access type (see 
+Table 7). In this case, bit b5 is set to ONE and bit b6 is set to ZERO when the DCE is on a cellular 
+connection. In addition, bit b7 is set to ONE when the DCE is on a digital network connection 
+(e.g. an ISDN B-channel carrying encoded analogue content), and set to ZERO when the DCE is on 
+an analogue network connection. 
+
+=====PAGE 15=====
+ 
+10 
+ITU-T V.8 (11/2000) 
+If the PCM modem availability category is present, the PSTN access category shall also be present 
+and the modulation category, if present, shall have bit b5 in its first octet set to ONE. If bit b5 or b6 
+in the PCM modem availability category octet pcm0 is set to ONE, then the modulation category 
+shall be present, with at least the V.34 availability bit also set to ONE. 
+A CM signal is terminated (after JM detection) by the transmission of a CJ signal. 
+7.4 
+The Joint Menu signal JM 
+A signal JM is transmitted from an answer DCE only in response to a detected CM signal. JM shall 
+be transmitted after a minimum of two identical CM sequences have been received. 
+A JM sequence starts with 10 ONEs followed by 10 synchronization bits as given in Table 1. 
+The first information category in JM indicates the same call function as in the received CM or, if the 
+call function is not available in the answer DCE, JM may indicate a different call function 
+(see 8.2.3). 
+If there are modulation category modulation modes in common between the call and answer DCEs, 
+JM shall include the octets necessary to indicate all modulation modes that are both indicated in CM 
+and available in the answer DCE for use with the call function indicated in CM. Additional 
+modulation mode octets that are in CM may also be included.  
+If there are no modulation category modulation modes in common between the call and answer 
+DCEs, the JM sequence shall include the same number of modulation-mode octets as CM, and show 
+zeros for all modulation modes. 
+If the LAPM protocol code is indicated in CM, the protocol octet may be included in JM in order to 
+complete the negotiation of LAPM (see Table 6). If both DCEs indicate LAPM in the prot0 octet, 
+they may be required to omit the ODP/ADP exchange (for example, see 9.3.1/V.92). It should be 
+noted, however, that some existing implementations of V.8 may indicate LAPM in prot0, but still 
+require the ODP/ADP exchange to successfully negotiate LAPM. 
+The PSTN access category is included if the answer DCE wishes to indicate network access type, or 
+if this category is present in the received CM with bit b5 set to ONE (see Table 7). If the answer 
+DCE wishes to indicate cellular access, bit b6 is set to ONE. Bit b5 is set to ONE if and only if the 
+corresponding bit (b5) is set to ONE in the received CM. In addition, bit b7 is set to ONE when the 
+DCE is on a digital network connection (e.g. an ISDN B-channel carrying encoded analogue 
+content), and set to ZERO when the DCE is on an analogue network connection. 
+The PCM Modem availability category shall be present only if it is present in the received CM, if 
+PCM modulation can be used with the indicated call function, and if it is desired to convey PCM 
+modem capability to the remote DCE. If either bit b5 or b6 in octet pcm0 is set, the V.34 availability 
+bit in the modulation category shall also be set. 
+If the PCM Modem availability category is present, the PSTN access category shall also be present, 
+and the modulation category, if present, shall have bit b5 in its first octet set to ONE. 
+If the PCM Modem availability category is contained in JM, operation shall proceed as specified in 
+ITU-T V.90, V.91, or V.92. Otherwise, the indicated modulation category modulation mode with the 
+lowest item number (see Table 4) shall be used in the subsequent data session. 
+
+=====PAGE 16=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+11 
+8 
+Data session start-up procedure 
+Figure 1 shows the signal interaction diagram with CI, ANSam and CM/JM signals. Te is the silent 
+period allowed for disabling of network echo-control equipment. 
+T1400580-94
+CI, CI, CI, ...
+CM, CM, CM, ... 
+75 ± 5 ms
+JM, JM, JM, ...
+75 ± 5 ms
+Te
+ANSam
+sigA
+sigC
+1 s
+CJ
+≥0.2 s
+NOTE – Use of  CI as a call signal is optional. Compatibility with existing
+answer terminals will sometimes mandate the use of CNG or CT.
+Call DCE
+(Note)
+Answer DCE
+ 
+Figure 1/V.8 – Use of the CI call signal and exchange of CM/JM menu signals 
+8.1 
+Start-up procedure in the call DCE 
+8.1.1 
+Call signal transmission 
+After transmitting no signal for 1 s, the DCE shall initiate transmission of CI, CT or CNG, or 
+continue transmission of no signal. 
+The DCE shall then seek to detect ANS, ANSam, or a sigA that is characteristic of an acceptable 
+mode of modulation. 
+NOTE – The transmission of a V.21(H) signal before the transmission of answer tone is being studied by the 
+ITU-T for some facsimile applications. A call DCE conforming with this Recommendation should not 
+malfunction if such a signal is received.  
+If a suitable sigA is detected, then the call modem shall proceed in accordance with the modulation 
+mode indicated by sigA. Such procedure is outside the scope of this Recommendation. 
+After detection of ANS or ANSam, the call signal shall be stopped. However, the call DCE may 
+choose to ensure that CI has been transmitted for a minimum of 3 full sequences. 
+If ANSam (rather than ANS) is detected, the DCE shall transmit no signal for a period Te prior to 
+transmitting signal CM. The silent period Te begins after the termination of the call signal or, in the 
+absence of a call signal, after the detection of ANSam. The minimum value for Te shall be 0.5 s. 
+However, if it is desired to allow for network echo canceller disabling in the manner defined in 
+ITU-T V.25, Te shall be set to a value ≥ 1 s. The procedure shall continue in accordance with 8.1.2. 
+If ANS (rather than ANSam) is detected, the DCE shall proceed in accordance with 
+Annex A/V.32 bis, ITU-T T.30, or other appropriate Recommendations. 
+
+=====PAGE 17=====
+ 
+12 
+ITU-T V.8 (11/2000) 
+8.1.2 
+Call menu transmission 
+When interval Te has elapsed, the call DCE shall initiate transmission of signal CM and condition its 
+receiver to detect signal JM. 
+After a minimum of 2 identical JM sequences have been received, the call DCE shall complete the 
+current octet and associated start and stop bits and then signal CJ shall be transmitted. Following CJ, 
+the call DCE shall transmit no signal for a period of 75 ± 5 ms, transmit sigC and proceed in 
+accordance with the selected V-series modulation mode. 
+If the PCM modem availability category is not contained in the received JM, and if JM shows zeros 
+for all modulation category modulation modes, the call DCE may disconnect after transmission of 
+CJ. 
+8.2 
+Start-up procedure in the answer DCE 
+For a period of at least 0.2 s after connection to line, the answer DCE shall transmit no signal. 
+Some Recommendations require that the answer DCE shall delay the transmission of answer tone 
+unless or until some signal is detected from the call DCE. In these cases, upon detection of CI, CT or 
+CNG as appropriate, the DCE shall proceed in accordance with 8.2.1 or 8.2.2. 
+Other Recommendations require that answer tone shall be transmitted without waiting for call 
+signals. Such DCEs shall proceed directly in accordance with 8.2.1 or 8.2.2. 
+8.2.1 
+ANS transmission 
+Some Recommendations require the transmission of unmodulated Answer tone (ANS) and do not 
+allow for CM/JM exchanges. The procedure following the transmission of ANS is outside the scope 
+of this Recommendation. 
+8.2.2 
+ANSam transmission 
+If the answer DCE supports CM/JM exchanges, ANSam shall be transmitted. 
+Upon receiving a minimum of 2 identical CM sequences, the DCE shall transmit JM and proceed in 
+accordance with 8.2.3. 
+If a suitable sigC is detected during ANSam transmission, the DCE shall transmit no signal for 
+75 ± 5 ms, transmit the appropriate sigA and continue in accordance with the relevant modem 
+Recommendation. 
+If neither CM nor a suitable sigC is detected during ANSam transmission, the DCE shall transmit no 
+signal for 75 ± 5 ms and then continue in accordance with Annex A/V.32 bis, or ITU-T T.30 or other 
+appropriate Recommendation. If not terminated by the receipt of CM or a suitable sigC, ANSam 
+shall be transmitted for a period of 5 ± 1 s. 
+8.2.3 
+JM transmission 
+If the call function is available, JM shall be coded to indicate the same call function as CM. 
+If the call function is not available, the answer DCE may indicate an available call function different 
+from CM. If JM is sent, it shall include the same number of modulation category octets as CM and 
+show zeros for all modulation modes. 
+The PCM Modem availability category shall not be present. 
+JM transmission shall continue until signal CJ is detected and all 3 octets of CJ have been received. 
+In the case that CJ is not correctly received, other criteria may be used to terminate transmission of 
+JM, such as detection of sigC corresponding to the selected modulation mode, or the absence of CM 
+for a suitably long period of time. 
+
+=====PAGE 18=====
+ 
+ 
+ 
+ITU-T V.8 (11/2000) 
+13 
+JM shall be terminated without any requirement to complete a current JM sequence. No signal shall 
+be transmitted for a period 75 ± 5 ms, followed by sigA corresponding to the selected modulation 
+mode. SigA and subsequent responses shall be as defined in the relevant V-series modem 
+Recommendation. 
+If the PCM Modem availability category is not contained in JM, and if JM shows zeros for all 
+modulation category modulation modes, the answer DCE may disconnect on reception of CJ. 
+9 
+DTE-DCE interchange circuits 
+During the V.8 procedure, there is no requirement for DTE-DCE communication, and the 
+Recommendation does not provide for any such communication. The states of interchange circuits 
+may therefore be determined by the procedures before and after the V.8 procedure. Optionally, 
+procedures defined in V.251 may be used. 
+10 
+Compatibility 
+Information categories and extension octets beyond those specified in clause 6 are all reserved for 
+future definition by ITU-T. To be compatible with future versions of this Recommendation, a 
+receiver shall ignore all bits, codes and octets reserved for such future definition. 
+Implementors who wish to exchange proprietary information using V.8 shall do so via the non-
+standard information field described in 6.6. Any other proprietary extensions of the codes defined in 
+clause 6 may prevent equipment from being compliant with future revisions of this 
+Recommendation. 
+ 
+
+=====PAGE 19=====
+ 
+Geneva, 2001 
+SERIES OF ITU-T RECOMMENDATIONS 
+Series A 
+Organization of the work of ITU-T 
+Series B 
+Means of expression: definitions, symbols, classification 
+Series C 
+General telecommunication statistics 
+Series D 
+General tariff principles 
+Series E 
+Overall network operation, telephone service, service operation and human factors 
+Series F 
+Non-telephone telecommunication services 
+Series G 
+Transmission systems and media, digital systems and networks 
+Series H 
+Audiovisual and multimedia systems 
+Series I 
+Integrated services digital network 
+Series J 
+Transmission of television, sound programme and other multimedia signals 
+Series K 
+Protection against interference 
+Series L 
+Construction, installation and protection of cables and other elements of outside plant 
+Series M 
+TMN and network maintenance: international transmission systems, telephone circuits, 
+telegraphy, facsimile and leased circuits 
+Series N 
+Maintenance: international sound programme and television transmission circuits 
+Series O 
+Specifications of measuring equipment 
+Series P 
+Telephone transmission quality, telephone installations, local line networks 
+Series Q 
+Switching and signalling 
+Series R 
+Telegraph transmission 
+Series S 
+Telegraph services terminal equipment 
+Series T 
+Terminals for telematic services 
+Series U 
+Telegraph switching 
+Series V 
+Data communication over the telephone network 
+Series X 
+Data networks and open system communications 
+Series Y 
+Global information infrastructure and Internet protocol aspects 
+Series Z 
+Languages and general software aspects for telecommunication systems 
+ 
+ 

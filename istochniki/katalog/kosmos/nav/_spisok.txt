@@ -1,0 +1,26 @@
+IS-GPS-200N.pdf 3338120 PDF document, version 1.6 (zip https://navcen.uscg.gov/sites/default/files/pdf/gps/IS-GPS-200N.pdf
+IS-GPS-705J.pdf 1771754 PDF document, version 1.6 (zip https://navcen.uscg.gov/sites/default/files/pdf/gps/IS-GPS-705J.pdf
+IS-GPS-800J.pdf 4167288 PDF document, version 1.6 (zip https://navcen.uscg.gov/sites/default/files/pdf/gps/IS-GPS-800J.pdf
+Galileo_OS_SIS_ICD_v2.1.pdf 5443453 PDF document, version 1.7, 20  https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_OS_SIS_ICD_v2.1.pdf
+Galileo_HAS_SIS_ICD_v1.0.pdf 2079523 PDF document, version 1.7 https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_HAS_SIS_ICD_v1.0.pdf
+IS-QZSS-L1S.pdf 896751 PDF document, version 1.7 (zip https://qzss.go.jp/en/technical/download/pdf/ps-is-qzss/is-qzss-l1s-006.pdf
+ICD_GLONASS_5.1_2008_en.pdf 994607 PDF document, versio https://www.unavco.org/help/glossary/docs/ICD_GLONASS_5.1_(2008)_en.pdf
+BDS-SIS-ICD-B1I-2.0_unb.pdf 1399829 PDF document, versio https://gge.ext.unb.ca/Resources/beidou_icd_english_ver2.0.pdf
+nav/NavIC_SPS_ICD_L1_final.pdf 3617525 PDF document, version 1.7 https://www.isro.gov.in/media_isro/pdf/SateliteNavigation/NavIC_SPS_ICD_L1_final.pdf
+nav/IRNSS_SPS_ICD_v1.1_2017.pdf 2060847 PDF document, version 1.5 https://www.isro.gov.in/media_isro/pdf/SateliteNavigation/irnss_sps_icd_version1.1-2017.pdf
+nav/ICD_BeiDou_1.0_2012_en_unavco.pdf 909777 PDF document, version 1.5 https://www.unavco.org/help/glossary/docs/ICD_BeiDou_1.0_(2012)_en.pdf
+nav/bds/BDS_SAR_v1.0.pdf 374397 PDF document, version 1.6 http://en.beidou.gov.cn/SYSTEMS/ICD/202008/P020200803535920317313.pdf
+nav/bds/BDS_PPP_B2b_v1.0.pdf 1388902 PDF document, version 1.7 http://en.beidou.gov.cn/SYSTEMS/ICD/202008/P020231201538195573144.pdf
+nav/bds/BDS_B3I_v1.0.pdf 1217676 PDF document, version 1.5 http://en.beidou.gov.cn/SYSTEMS/ICD/201806/P020180608516798097666.pdf
+nav/bds/BDS_B1I_v3.0.pdf 1209495 PDF document, version 1.5 http://en.beidou.gov.cn/SYSTEMS/ICD/201902/P020190227702348791891.pdf
+nav/bds/BDS_B2b_v1.0.pdf 1496980 PDF document, version 1.7 http://en.beidou.gov.cn/SYSTEMS/ICD/202008/P020231201537880833625.pdf
+nav/bds/BDS_GBAS_v1.0.pdf 668221 PDF document, version 1.7 http://en.beidou.gov.cn/SYSTEMS/ICD/202008/P020200803534703523965.pdf
+nav/bds/BDS_B1C_B2a_test_2017.pdf 3322113 PDF document, version 1.5 http://en.beidou.gov.cn/SYSTEMS/ICD/201806/P020180608522414961797.pdf
+nav/bds/BDS_B1C_v1.0.pdf 1694100 PDF document, version 1.5 http://en.beidou.gov.cn/SYSTEMS/ICD/201806/P020180608519640359959.pdf
+nav/bds/BDS_BDSBAS_B1C_v1.0.pdf 1396926 PDF document, version 1.6 http://en.beidou.gov.cn/SYSTEMS/ICD/202008/P020200803538292532733.pdf
+nav/bds/BDS_B2a_v1.0.pdf 1594977 PDF document, version 1.5 http://en.beidou.gov.cn/SYSTEMS/ICD/201806/P020180608518432765621.pdf
+nav/is-qzss-dcr-017.pdf 2715367 PDF document, version 1.7 https://qzss.go.jp/en/technical/download/pdf/ps-is-qzss/is-qzss-dcr-017.pdf
+nav/is-qzss-pnt-006.pdf 4131112 PDF document, version 1.7 https://qzss.go.jp/en/technical/download/pdf/ps-is-qzss/is-qzss-pnt-006.pdf
+nav/is-qzss-l6-008.pdf 1505520 PDF document, version 1.6 https://qzss.go.jp/en/technical/download/pdf/ps-is-qzss/is-qzss-l6-008.pdf
+nav/is-qzss-dcx-004.pdf 2508806 PDF document, version 1.7 https://qzss.go.jp/en/technical/download/pdf/ps-is-qzss/is-qzss-dcx-004.pdf
+nav/glonass/IKD_GLONASS_L3OC_proekt_2015_srns.pdf 1586128 PDF document, version 1.5 https://www.srns.ru/images/2/26/%D0%9E%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5_L3OC.pdf

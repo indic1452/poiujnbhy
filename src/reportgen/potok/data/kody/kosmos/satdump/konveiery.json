@@ -1,0 +1,7489 @@
+[
+ {
+  "конвейер": "ace_s_link",
+  "название": "ACE S-band downlink",
+  "файл": "resources/pipelines/ACE.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 175300.0,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.5,
+     "rrc_taps": 31,
+     "costas_bw": 0.001
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "aim_dump",
+  "название": "AIM Dump",
+  "файл": "resources/pipelines/AIM.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2282.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 3200000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 9952,
+     "nrzm": true,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_fill_bytes": 7,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "aim_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "aws_pfm",
+  "название": "AWS PFM L-Band",
+  "файл": "resources/pipelines/AWS.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Default",
+    1707.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 1785000,
+     "rrc_alpha": 0.45,
+     "pll_bw": 0.003
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "nrzm": false,
+     "derandomize": true,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "rs_type": "rs223",
+     "rs_i": 5
+    }
+   },
+   "products": {
+    "модуль": "aws_instruments",
+    "параметры": {
+     "use_ephemeris": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "adityal1_tlm_link",
+  "название": "Aditya-L1 TLM Link",
+  "файл": "resources/pipelines/Aditya.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 1000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 32000.0,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 1816,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "analog_demod",
+  "название": "Analog Demodulation",
+  "файл": "resources/pipelines/Analog.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "audio_wav": {
+    "модуль": "generic_analog_demod",
+    "параметры": {
+     "symbolrate": 48000.0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "bluewalker3_wide",
+  "название": "BlueWalker-3 S-Band Wide",
+  "файл": "resources/pipelines/BlueWalker3.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2245.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "fsk_demod",
+    "параметры": {
+     "symbolrate": 512000.0,
+     "rrc_alpha": 0.35
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 9784,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "bluewalker3_narrow",
+  "название": "BlueWalker-3 S-Band Narrow",
+  "файл": "resources/pipelines/BlueWalker3.json",
+  "строка": 37,
+  "частоты_МГц": [
+   [
+    "Main",
+    2245.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "fsk_demod",
+    "параметры": {
+     "symbolrate": 128000.0,
+     "rrc_alpha": 0.35
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2648,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   },
+   "products": {
+    "модуль": "bw3_decoder",
+    "параметры": {
+     "cadu_size": 331,
+     "payload_size": 198
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "chandrayaan3_link_1k",
+  "название": "Chandrayaan-3 1k Link",
+  "файл": "resources/pipelines/Chandrayaan.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 1000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 32000.0,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 1816,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "chandrayaan3_link_4k",
+  "название": "Chandrayaan-3 4k Link",
+  "файл": "resources/pipelines/Chandrayaan.json",
+  "строка": 35,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 4000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 64000.0,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 1816,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "chandrayaan3_link_2k",
+  "название": "Chandrayaan-3 2k Link",
+  "файл": "resources/pipelines/Chandrayaan.json",
+  "строка": 68,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 2000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 32000.0,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/2",
+     "turbo_base": 223,
+     "turbo_iters": 10
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "chandrayaan3_link_8k",
+  "название": "Chandrayaan-3 8k Link",
+  "файл": "resources/pipelines/Chandrayaan.json",
+  "строка": 99,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 8000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 64000.0,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/2",
+     "turbo_base": 223,
+     "turbo_iters": 10
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "cloudsat_link",
+  "название": "CloudSat S-Band Link",
+  "файл": "resources/pipelines/Cloudsat.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Backup",
+    2217.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "frm": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "ccsds": false,
+     "constellation": "bpsk",
+     "cadu_size": 3216,
+     "derandomize": false,
+     "nrzm": true,
+     "rs_i": 0,
+     "asm": "0x04b3e375"
+    }
+   },
+   "products": {
+    "модуль": "cloudsat_cpr",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "cluster_lr_link",
+  "название": "Cluster-IIFM S-Band Lowrate Link",
+  "файл": "resources/pipelines/Cluster.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 43700.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "costas_bw": 0.001,
+     "subcarrier_offset": 262000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 1,
+     "nrzm": false,
+     "derandomize": false,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "cluster_hr_link",
+  "название": "Cluster-IIFM S-Band Highrate Link",
+  "файл": "resources/pipelines/Cluster.json",
+  "строка": 36,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 524288.0,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.5,
+     "rrc_taps": 31,
+     "costas_bw": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 1,
+     "nrzm": false,
+     "derandomize": false,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   },
+   "products": {
+    "модуль": "cluster_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "coriolis_db",
+  "название": "Coriolis S-Band Tactical DB",
+  "файл": "resources/pipelines/Coriolis.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Tactial DB",
+    2221.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 512000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "frm": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "ccsds": false,
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": false,
+     "rs_i": 0,
+     "asm": "0x352ef853"
+    }
+   },
+   "products": {
+    "модуль": "coriolis_windsat",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "cosmos_2558_dump",
+  "название": "Cosmos 2558 S-Band Dump",
+  "файл": "resources/pipelines/Cosmos.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2284.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 600000.0,
+     "agc_rate": 0.001,
+     "pll_bw": 0.005,
+     "pll_max_offset": 0.5,
+     "rrc_alpha": 0.6,
+     "rrc_taps": 31,
+     "costas_bw": 0.01,
+     "clock_omega_relative_limit": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 10232,
+     "derandomize": false,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "cryosat_dump",
+  "название": "Cryosat X-Band Dump",
+  "файл": "resources/pipelines/Cryosat.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 50000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0189
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   },
+   "products": {
+    "модуль": "cryosat_siral",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "dmsp_rtd",
+  "название": "DMSP RTD",
+  "файл": "resources/pipelines/DMSP.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2252.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1024000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005
+    }
+   },
+   "frm": {
+    "модуль": "dmsp_rtd_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "dmsp_rtd_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "dscovr_tlm",
+  "название": "DSCOVR TLM Link",
+  "файл": "resources/pipelines/DSCOVR.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2215.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 40000.0,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.001,
+     "pll_max_offset": 3.14
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10112,
+     "viterbi_ber_thresold": 0.39,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_dualbasis": true,
+     "rs_type": "rs223",
+     "rs_fill_bytes": 3
+    }
+   },
+   "products": {
+    "модуль": "dscovr_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "dscovr_hr",
+  "название": "DSCOVR High-Rate Link",
+  "файл": "resources/pipelines/DSCOVR.json",
+  "строка": 47,
+  "частоты_МГц": [
+   [
+    "Main",
+    2215.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 276000.0,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.001,
+     "pll_max_offset": 3.14
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10112,
+     "viterbi_ber_thresold": 0.34,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_dualbasis": true,
+     "rs_type": "rs223",
+     "rs_fill_bytes": 3
+    }
+   },
+   "products": {
+    "модуль": "dscovr_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "dvbs_test",
+  "название": "DVB-S Test",
+  "файл": "resources/pipelines/DVB_Test.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "ts": {
+    "модуль": "dvbs_demod",
+    "параметры": {
+     "symbolrate": 1000000.0,
+     "pll_bw": 0.003
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "dvbs_test_udp",
+  "название": "DVB-S Test to UDP",
+  "файл": "resources/pipelines/DVB_Test.json",
+  "строка": 32,
+  "частоты_МГц": [],
+  "этапы": {
+   "ts": {
+    "модуль": "dvbs_demod",
+    "параметры": {
+     "symbolrate": 1000000.0,
+     "pll_bw": 0.003
+    }
+   },
+   "net": {
+    "модуль": "network_server",
+    "параметры": {
+     "server_mode": "udp_send",
+     "server_address": "127.0.0.1",
+     "server_port": 8888,
+     "pkt_size": 1316
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "iss_hamtv",
+  "название": "ISS HamTV to UDP",
+  "файл": "resources/pipelines/DVB_Test.json",
+  "строка": 72,
+  "частоты_МГц": [],
+  "этапы": {
+   "ts": {
+    "модуль": "dvbs_demod",
+    "параметры": {
+     "symbolrate": 1000000.0,
+     "pll_bw": 0.003
+    }
+   },
+   "net": {
+    "модуль": "network_server",
+    "параметры": {
+     "server_mode": "udp_send",
+     "server_address": "127.0.0.1",
+     "server_port": 8888,
+     "pkt_size": 1316
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "dvbs2_test",
+  "название": "DVB-S2 Test (TS)",
+  "файл": "resources/pipelines/DVB_Test.json",
+  "строка": 112,
+  "частоты_МГц": [],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "freq_prop_factor": 0.01
+    }
+   },
+   "ts": {
+    "модуль": "dvbs2_ts_extractor",
+    "параметры": {}
+   },
+   "net": {
+    "модуль": "network_server",
+    "параметры": {
+     "server_mode": "udp_send",
+     "server_address": "127.0.0.1",
+     "server_port": 8888,
+     "pkt_size": 1316
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "alphasat_edrs",
+  "название": "Alphasat Ka-Band EDRS",
+  "файл": "resources/pipelines/EDRS.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 150000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.005,
+     "clock_alpha": 0.01
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "rs_i": 5,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "aqua_db",
+  "название": "Aqua DB",
+  "файл": "resources/pipelines/EOS.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "DB",
+    8160.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 7500000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006,
+     "clock_gain_omega": 0.8,
+     "clock_mu": 0.9,
+     "clock_gain_mu": 0.037,
+     "clock_omega_relative_limit": 0.0001,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "aqua_db_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "eos_instruments",
+    "параметры": {
+     "satellite": "aqua",
+     "modis_bowtie": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "terra_db",
+  "название": "Terra DB",
+  "файл": "resources/pipelines/EOS.json",
+  "строка": 44,
+  "частоты_МГц": [
+   [
+    "DB",
+    8212.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "terra_db_demod",
+    "параметры": {
+     "symbolrate": 13125000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "derand_after_rs": true,
+     "derand_start": 10,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "eos_instruments",
+    "параметры": {
+     "satellite": "terra",
+     "modis_bowtie": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "aura_db",
+  "название": "Aura DB",
+  "файл": "resources/pipelines/EOS.json",
+  "строка": 85,
+  "частоты_МГц": [
+   [
+    "DB",
+    8160.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 7500000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006,
+     "clock_gain_omega": 0.8,
+     "clock_mu": 0.9,
+     "clock_gain_mu": 0.037,
+     "clock_omega_relative_limit": 0.0001,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "aqua_db_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "eos_instruments",
+    "параметры": {
+     "satellite": "aura",
+     "modis_bowtie": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "earthcare_dump",
+  "название": "EarthCare X-Band Dump",
+  "файл": "resources/pipelines/Earthcare.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 75000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0189
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "qpsk_swap_iq": true,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   },
+   "products": {
+    "модуль": "earthcare_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "swarm_dump",
+  "название": "SWARM S-Band Dump",
+  "файл": "resources/pipelines/Earthcare.json",
+  "строка": 35,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 2980000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0189
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "qpsk_swap_iq": true,
+     "oqpsk_delay": true,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   },
+   "products": {
+    "модуль": "earthcare_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "elektro_rdas",
+  "название": "ELEKTRO-L RDAS",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "RDAS",
+    7500.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 30720000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.03
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 0
+    }
+   },
+   "products": {
+    "модуль": "elektro_arktika_msugs",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "arktika_rdas",
+  "название": "ARKTIKA-M RDAS",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 60,
+  "частоты_МГц": [
+   [
+    "RDAS",
+    7865.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 30720000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.03
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 0
+    }
+   },
+   "products": {
+    "модуль": "elektro_arktika_msugs",
+    "параметры": {
+     "is_arktika": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "elektro_lrit",
+  "название": "ELEKTRO-L LRIT",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 119,
+  "частоты_МГц": [
+   [
+    "xRIT",
+    1691.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 294000,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.0145,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "elektro_lrit_data_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "elektro_hrit",
+  "название": "ELEKTRO-L HRIT",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 173,
+  "частоты_МГц": [
+   [
+    "xRIT",
+    1691.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 1150000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.001,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "elektro_lrit_data_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "elektro_ggak",
+  "название": "ELEKTRO-L GGAK",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 228,
+  "частоты_МГц": [
+   [
+    "SEM TLM",
+    1693.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 5000.0,
+     "pll_bw": 0.02,
+     "rrc_alpha": 0.5
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 1792,
+     "derandomize": false,
+     "nrzm": false,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "elektro_ggak_mqtt",
+  "название": "ELEKTRO-L GGAK MQTT Test",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 263,
+  "частоты_МГц": [
+   [
+    "SEM TLM",
+    1693.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 5000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 1792,
+     "derandomize": false,
+     "nrzm": false,
+     "rs_i": 0
+    }
+   },
+   "mqtt": {
+    "модуль": "ggak_to_mqtt",
+    "параметры": {
+     "address": "192.168.0.100",
+     "port": "1883"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "arktika_m1_ggak",
+  "название": "ARKTIKA-M N°1 GGAK",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 306,
+  "частоты_МГц": [
+   [
+    "SEM TLM",
+    1703.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "enable_doppler": true,
+     "satellite_frequency": 1703000000.0,
+     "satellite_norad": 47719,
+     "symbolrate": 5000.0,
+     "pll_bw": 0.02,
+     "rrc_alpha": 0.5
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 1792,
+     "derandomize": false,
+     "nrzm": false,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "arktika_m2_ggak",
+  "название": "ARKTIKA-M N°2 GGAK",
+  "файл": "resources/pipelines/Elektro_Arktika.json",
+  "строка": 344,
+  "частоты_МГц": [
+   [
+    "SEM TLM",
+    1703.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "enable_doppler": true,
+     "satellite_frequency": 1703000000.0,
+     "satellite_norad": 58584,
+     "symbolrate": 5000.0,
+     "pll_bw": 0.02,
+     "rrc_alpha": 0.5
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 1792,
+     "derandomize": false,
+     "nrzm": false,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "erminaz",
+  "название": "ERMINAZ UHF Link",
+  "файл": "resources/pipelines/Erminaz.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main UHF",
+    435.775
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 9600
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 2072,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "escapade_x_link",
+  "название": "Escapade X-Band Link",
+  "файл": "resources/pipelines/Escapade.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 16000.0,
+     "pll_bw": 0.001,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 64000.0,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/2",
+     "turbo_base": 1115,
+     "turbo_iters": 5
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "formosat7_s_dump",
+  "название": "FORMOSAT-7/COSMIC-2 S-Band dump",
+  "файл": "resources/pipelines/FORMOSAT.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2264.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2048000.0,
+     "rrc_alpha": 0.5,
+     "agc_rate": 0.03,
+     "rrc_taps": 31,
+     "pll_bw": 0.003
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "ccsds": true,
+     "cadu_size": 10232,
+     "nrzm": true,
+     "derandomize": true,
+     "asm": "0x1acffc1d",
+     "rs_type": "rs223",
+     "rs_i": 5,
+     "rs_usecheck": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "formosat5_s_dump",
+  "название": "FORMOSAT-5 S-Band dump",
+  "файл": "resources/pipelines/FORMOSAT.json",
+  "строка": 43,
+  "частоты_МГц": [
+   [
+    "Main",
+    2215.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1600000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 10232,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun_svissr",
+  "название": "FengYun-2 S-VISSR",
+  "файл": "resources/pipelines/FengYun-2.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "S-VISSR",
+    1687.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 660000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "svissr": {
+    "модуль": "fengyun_svissr_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "fengyun_svissr_image_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_ab_ahrpt",
+  "название": "FengYun-3 A/B AHRPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    1704.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2800000,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.003
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": false
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3ab"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_c_ahrpt",
+  "название": "FengYun-3 C AHRPT ",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 52,
+  "частоты_МГц": [
+   [
+    "Main",
+    1701.4
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2600000,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.003
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": false
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3c"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_abc_mpt",
+  "название": "FengYun-3 A/B/C MPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 102,
+  "частоты_МГц": [
+   [
+    "FengYun-3 A/B",
+    7750.0
+   ],
+   [
+    "FengyYun-3 C",
+    7780.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 18700000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.0063,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_mpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.3
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3ab",
+     "downlink": "mpt",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_d_ahrpt",
+  "название": "FengYun-3 D AHRPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 152,
+  "частоты_МГц": [
+   [
+    "AHPRT",
+    7820.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 30000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.008,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": true
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3d",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_e_ahrpt",
+  "название": "FengYun-3 E AHRPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 204,
+  "частоты_МГц": [
+   [
+    "Main",
+    7860.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 38400000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.008,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": true
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3e",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_f_ahrpt",
+  "название": "FengYun-3 F AHRPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 256,
+  "частоты_МГц": [
+   [
+    "Main",
+    7790.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 38400000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.008,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": true
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3f",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_g_ahrpt",
+  "название": "FengYun-3 G AHRPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 308,
+  "частоты_МГц": [
+   [
+    "Main",
+    7790.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 6000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.008,
+     "costas_max_offset": 1500000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": true
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3g",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_h_ahrpt",
+  "название": "FengYun-3 H AHRPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 367,
+  "частоты_МГц": [
+   [
+    "Main",
+    7860.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 38400000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.008,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": true
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3h",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_abc_dpt",
+  "название": "FengYun-3 A/B/C DPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 419,
+  "частоты_МГц": [
+   [
+    "FengYun-3 A/B",
+    8145.95
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 62000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.006,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": true
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3ab",
+     "downlink": "dpt",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_d_dpt",
+  "название": "FengYun-3 D DPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 466,
+  "частоты_МГц": [
+   [
+    "Main",
+    8250.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 150000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.006,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.26,
+     "invert_second_viterbi": true
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3d",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_e_dpt",
+  "название": "FengYun-3 E DPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 512,
+  "частоты_МГц": [
+   [
+    "Main",
+    8212.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 225000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.006,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_ldpc_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "ldpc_rate": "7/8",
+     "ldpc_iterations": 10,
+     "internal_stream": false,
+     "internal_cadu_size": 0
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3e",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_f_dpt",
+  "название": "FengYun-3 F DPT",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 560,
+  "частоты_МГц": [
+   [
+    "Main",
+    8212.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 225000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.006,
+     "costas_max_offset": 1000000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_ldpc_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "ldpc_rate": "7/8",
+     "ldpc_iterations": 10,
+     "internal_stream": false,
+     "internal_cadu_size": 0
+    }
+   },
+   "products": {
+    "модуль": "fy3_instruments",
+    "параметры": {
+     "satellite": "fy3f",
+     "mersi_bowtie": true,
+     "mersi_histmatch": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_tlm_old",
+  "название": "FengYun-3 TLM (Old) A/B/C/D",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 608,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 4096,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 65536,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 2048,
+     "nrzm": true,
+     "derandomize": false,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun3_tlm",
+  "название": "FengYun-3 TLM E/F",
+  "файл": "resources/pipelines/FengYun-3.json",
+  "строка": 643,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 8192,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 65536,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 4096,
+     "nrzm": true,
+     "derandomize": false,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun4_a_lrit",
+  "название": "FengYun-4A LRIT",
+  "файл": "resources/pipelines/FengYun-4.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "LRIT",
+    1697.0
+   ]
+  ],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 90000.0,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.01,
+     "clock_alpha": 0.0025,
+     "modcod": 3,
+     "sof_thresold": 10
+    }
+   },
+   "cadu": {
+    "модуль": "s2_udp_cadu_extractor",
+    "параметры": {
+     "bb_size": 25728,
+     "pid": 3004
+    }
+   },
+   "products": {
+    "модуль": "fy4_lrit_data_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun4_b_lrit",
+  "название": "FengYun-4B LRIT",
+  "файл": "resources/pipelines/FengYun-4.json",
+  "строка": 58,
+  "частоты_МГц": [
+   [
+    "LRIT",
+    1697.0
+   ]
+  ],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 120000.0,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.01,
+     "clock_alpha": 0.0025,
+     "modcod": 10,
+     "sof_thresold": 10
+    }
+   },
+   "cadu": {
+    "модуль": "s2_udp_cadu_extractor",
+    "параметры": {
+     "bb_size": 57472,
+     "pid": 3000
+    }
+   },
+   "products": {
+    "модуль": "fy4_lrit_data_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "fengyun4_a_hrit23",
+  "название": "FengYun-4A HRIT-II/III",
+  "файл": "resources/pipelines/FengYun-4.json",
+  "строка": 115,
+  "частоты_МГц": [
+   [
+    "HRIT",
+    1679.0
+   ]
+  ],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 1000000.0,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.001,
+     "clock_alpha": 0.0025,
+     "modcod": 9
+    }
+   },
+   "cadu": {
+    "модуль": "s2_udp_cadu_extractor",
+    "параметры": {
+     "bb_size": 53840,
+     "pid": 3002
+    }
+   },
+   "products": {
+    "модуль": "fy4_lrit_data_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "gcom_w1_link",
+  "название": "GCOM-W1 Link",
+  "файл": "resources/pipelines/GCOM.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    8245.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 10000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10112,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_fill_bytes": 3,
+     "rs_type": "rs239"
+    }
+   },
+   "products": {
+    "модуль": "gcom1_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "gcom_c1_link",
+  "название": "GCOM-C1 Link",
+  "файл": "resources/pipelines/GCOM.json",
+  "строка": 41,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 69416000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10112,
+     "nrzm": true,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "gk2a_lrit",
+  "название": "GK-2A LRIT",
+  "файл": "resources/pipelines/GK2A.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "LRIT",
+    1692.14
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 128000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "gk2a_lrit_data_decoder",
+    "параметры": {
+     "write_images": true,
+     "write_additional": true,
+     "write_unknown": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "gk2a_lrit_tcp",
+  "название": "GK-2A LRIT to xrit-rx",
+  "файл": "resources/pipelines/GK2A.json",
+  "строка": 61,
+  "частоты_МГц": [
+   [
+    "LRIT",
+    1692.14
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 128000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "tcp": {
+    "модуль": "xrit_goesrecv_publisher",
+    "параметры": {
+     "address": "0.0.0.0",
+     "nanomsg_port": 5004
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "gk2a_hrit",
+  "название": "GK-2A HRIT",
+  "файл": "resources/pipelines/GK2A.json",
+  "строка": 109,
+  "частоты_МГц": [
+   [
+    "HRIT",
+    1695.4
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 3000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "gk2a_lrit_data_decoder",
+    "параметры": {
+     "write_images": true,
+     "write_additional": true,
+     "write_unknown": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "gk2a_uhrit",
+  "название": "GK-2A UHRIT",
+  "файл": "resources/pipelines/GK2A.json",
+  "строка": 168,
+  "частоты_МГц": [
+   [
+    "UHRIT",
+    8070.0
+   ]
+  ],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 15622440,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.0005,
+     "clock_alpha": 0.0001,
+     "modcod": 13,
+     "pilots": true,
+     "mt_bch": false
+    }
+   },
+   "cadu": {
+    "модуль": "gk2a_uhrit_cadu_extractor",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "gk2a_lrit_data_decoder",
+    "параметры": {
+     "write_images": true,
+     "write_additional": true,
+     "write_unknown": true,
+     "uhrit_mode": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "gk2a_cdas",
+  "название": "GK-2A CDAS",
+  "файл": "resources/pipelines/GK2A.json",
+  "строка": 205,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 3096000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10112,
+     "rs_i": 5,
+     "rs_fill_bytes": 3,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goes_gvar",
+  "название": "GOES GVAR",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "GVAR",
+    1685.7
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2110000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002,
+     "max_sps": 3
+    }
+   },
+   "gvar": {
+    "модуль": "goes_gvar_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "goes_gvar_image_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "goes_hrit",
+  "название": "GOES-R HRIT",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 47,
+  "частоты_МГц": [
+   [
+    "HRIT",
+    1694.1
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 927000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "goes_lrit_data_decoder",
+    "параметры": {
+     "max_fill_lines": 50,
+     "write_images": true,
+     "write_emwin": true,
+     "write_messages": true,
+     "write_dcs": false,
+     "write_unknown": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goes_hrit_tcp",
+  "название": "GOES-R HRIT to goestools",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 150,
+  "частоты_МГц": [
+   [
+    "HRIT",
+    1694.1
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 927000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "tcp": {
+    "модуль": "xrit_goesrecv_publisher",
+    "параметры": {
+     "address": "0.0.0.0",
+     "nanomsg_port": 5004
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goes_grb",
+  "название": "GOES-R GRB",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 199,
+  "частоты_МГц": [
+   [
+    "GRB",
+    1686.6
+   ]
+  ],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 8665938,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.005,
+     "clock_alpha": 0.0025,
+     "modcod": 11,
+     "mt_bch": true
+    }
+   },
+   "cadu": {
+    "модуль": "goes_grb_cadu_extractor",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "goes_grb_data_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "goesr_cda",
+  "название": "GOES-R CDA (40k)",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 244,
+  "частоты_МГц": [
+   [
+    "CDA",
+    1693.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 40000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 2048,
+     "nrzm": true,
+     "rs_i": 1,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goesr_cda_4k",
+  "название": "GOES-R CDA (4k)",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 282,
+  "частоты_МГц": [
+   [
+    "CDA",
+    1693.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 4000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 2048,
+     "nrzm": true,
+     "rs_i": 1,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goes_mdl",
+  "название": "GOES-N MDL",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 320,
+  "частоты_МГц": [
+   [
+    "MDL",
+    1681.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 200000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005,
+     "max_sps": 3
+    }
+   },
+   "frm": {
+    "модуль": "goes_mdl_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "goes_lrit",
+  "название": "GOES-N LRIT",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 351,
+  "частоты_МГц": [
+   [
+    "LRIT",
+    1691.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 293000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.02,
+     "max_sps": 3
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "goes_lrit_data_decoder",
+    "параметры": {
+     "max_fill_lines": 50,
+     "write_images": true,
+     "write_emwin": true,
+     "write_messages": true,
+     "write_dcs": true,
+     "write_unknown": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goesn_cda",
+  "название": "GOES-N CDA",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 414,
+  "частоты_МГц": [
+   [
+    "CDA",
+    1694.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 4000.0,
+     "agc_rate": 0.001,
+     "pll_bw": 0.01,
+     "pll_max_offset": 0.5,
+     "rrc_alpha": 0.6,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "clock_omega_relative_limit": 0.005
+    }
+   },
+   "frm": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "ccsds": false,
+     "constellation": "bpsk",
+     "cadu_size": 4096,
+     "nrzm": false,
+     "derandomize": false,
+     "rs_i": 0,
+     "asm": "0xfaf3201c"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goesn_sounder",
+  "название": "GOES-N Sounder SD",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 456,
+  "частоты_МГц": [
+   [
+    "GOES-N Sensor data",
+    1676.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 40000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005
+    }
+   },
+   "frm": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "ccsds": false,
+     "constellation": "bpsk",
+     "cadu_size": 4224,
+     "nrzm": true,
+     "derandomize": false,
+     "rs_i": 0,
+     "asm": "0x3683a2e6"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "goesn_sd",
+  "название": "GOES-N Imager SD",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 495,
+  "частоты_МГц": [
+   [
+    "GOES-N Sensor data",
+    1676.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2621000.0,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.001
+    }
+   },
+   "frm": {
+    "модуль": "goesn_sd_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "goes_sd_image_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "goesr_raw",
+  "название": "GOES-R Raw Data",
+  "файл": "resources/pipelines/GOES.json",
+  "строка": 531,
+  "частоты_МГц": [
+   [
+    "GOES Raw Data Link",
+    8220.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 60000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_ldpc_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "ldpc_rate": "7/8",
+     "ldpc_iterations": 10,
+     "internal_stream": false,
+     "internal_cadu_size": 0
+    }
+   },
+   "products": {
+    "модуль": "goesr_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "gpm_core_dump",
+  "название": "GPM Core Dump",
+  "файл": "resources/pipelines/GPM.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2287.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 2304000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "soft2hard",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "geonetcast",
+  "название": "GeoNetCast",
+  "файл": "resources/pipelines/GeoNetCast.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "GeoNetCast",
+    4080.0
+   ]
+  ],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 30000000.0,
+     "rrc_alpha": 0.2,
+     "pll_bw": 0.01,
+     "modcod": 15,
+     "shortframes": false,
+     "pilots": true,
+     "freq_prop_factor": 0.01
+    }
+   },
+   "products": {
+    "модуль": "geonetcast_decoder",
+    "параметры": {
+     "ts_input": false,
+     "process_goes_abi": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "stratosat_tk1_uhf",
+  "название": "StratoSat-TK1 UHF",
+  "файл": "resources/pipelines/Geoscan.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    435.87
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 9600,
+     "enable_doppler": true,
+     "satellite_norad": 57167,
+     "satellite_frequency": 435870000.0
+    }
+   },
+   "frm": {
+    "модуль": "geoscan_decoder",
+    "параметры": {
+     "frame_length": 66,
+     "thresold": 4
+    }
+   },
+   "products": {
+    "модуль": "geoscan_data_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "rtumirea1_uhf",
+  "название": "RTU-MIREA1 UHF",
+  "файл": "resources/pipelines/Geoscan.json",
+  "строка": 51,
+  "частоты_МГц": [
+   [
+    "Main UHF",
+    436.2
+   ],
+   [
+    "Main DVB-S2",
+    10473.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 9600,
+     "enable_doppler": true,
+     "satellite_norad": 61785,
+     "satellite_frequency": 436200000.0
+    }
+   },
+   "frm": {
+    "модуль": "geoscan_decoder",
+    "параметры": {
+     "frame_length": 74,
+     "thresold": 6
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "tusur_go_uhf",
+  "название": "TUSUR-GO UHF",
+  "файл": "resources/pipelines/Geoscan.json",
+  "строка": 101,
+  "частоты_МГц": [
+   [
+    "Main UHF",
+    437.73
+   ],
+   [
+    "Main DVB-S2",
+    10475.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 9600,
+     "enable_doppler": true,
+     "satellite_norad": 61782,
+     "satellite_frequency": 437730000.0
+    }
+   },
+   "frm": {
+    "модуль": "geoscan_decoder",
+    "параметры": {
+     "frame_length": 74,
+     "thresold": 6
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "vizard_ion_uhf",
+  "название": "VIZARD-ION UHF",
+  "файл": "resources/pipelines/Geoscan.json",
+  "строка": 151,
+  "частоты_МГц": [
+   [
+    "Main UHF",
+    436.87
+   ],
+   [
+    "Main DVB-S2",
+    10475.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 9600,
+     "enable_doppler": true,
+     "satellite_norad": 61749,
+     "satellite_frequency": 436870000.0
+    }
+   },
+   "frm": {
+    "модуль": "geoscan_decoder",
+    "параметры": {
+     "frame_length": 74,
+     "thresold": 6
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "colibri_s_uhf",
+  "название": "COLIBRI-S UHF",
+  "файл": "resources/pipelines/Geoscan.json",
+  "строка": 201,
+  "частоты_МГц": [
+   [
+    "Main UHF",
+    436.835
+   ],
+   [
+    "Main DVB-S2",
+    10475.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 9600,
+     "enable_doppler": true,
+     "satellite_norad": 61746,
+     "satellite_frequency": 436835000.0
+    }
+   },
+   "frm": {
+    "модуль": "geoscan_decoder",
+    "параметры": {
+     "frame_length": 74,
+     "thresold": 6
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "horizon_uhf",
+  "название": "HORIZON UHF",
+  "файл": "resources/pipelines/Geoscan.json",
+  "строка": 251,
+  "частоты_МГц": [
+   [
+    "Main UHF",
+    435.43
+   ],
+   [
+    "Main DVB-S2",
+    10474.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 9600,
+     "enable_doppler": true,
+     "satellite_norad": 61755,
+     "satellite_frequency": 435430000.0
+    }
+   },
+   "frm": {
+    "модуль": "geoscan_decoder",
+    "параметры": {
+     "frame_length": 74,
+     "thresold": 6
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "hera_x_link",
+  "название": "HERA X-Band",
+  "файл": "resources/pipelines/Hera.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 400000.0,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.001,
+     "pll_max_offset": 3.14
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/4",
+     "turbo_base": 1115,
+     "turbo_iters": 2
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "himawaricast",
+  "название": "HimawariCast",
+  "файл": "resources/pipelines/Himawari.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "HimawariCast",
+    4148.0
+   ]
+  ],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 2586148,
+     "rrc_alpha": 0.2,
+     "pll_bw": 0.01,
+     "modcod": 5,
+     "shortframes": false,
+     "pilots": true,
+     "freq_prop_factor": 0.01
+    }
+   },
+   "products": {
+    "модуль": "himawaricast_data_decoder",
+    "параметры": {
+     "ts_input": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "hinode_s_dump",
+  "название": "Hinode S-Band dump",
+  "файл": "resources/pipelines/Hinode.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2256.22
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 262000.0,
+     "agc_rate": 0.001,
+     "pll_bw": 0.01,
+     "pll_max_offset": 0.5,
+     "rrc_alpha": 0.6,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "clock_omega_relative_limit": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "hinode_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "hinode_s_tlm",
+  "название": "Hinode S-Band TLM",
+  "файл": "resources/pipelines/Hinode.json",
+  "строка": 44,
+  "частоты_МГц": [
+   [
+    "Main",
+    2256.22
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 65600.0,
+     "agc_rate": 0.001,
+     "pll_bw": 0.01,
+     "pll_max_offset": 0.5,
+     "rrc_alpha": 0.6,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "clock_omega_relative_limit": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "im1_s_tlm",
+  "название": "IM-1 S-Band 2.5k TLM",
+  "файл": "resources/pipelines/IM-1.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 2500.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 30000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 1256,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "inmarsat_std_c",
+  "название": "Inmarsat STD-C",
+  "файл": "resources/pipelines/Inmarsat.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "agc_rate": 0.1,
+     "symbolrate": 1200,
+     "rrc_taps": 31,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.03
+    }
+   },
+   "frm": {
+    "модуль": "inmarsat_stdc_decoder",
+    "параметры": {}
+   },
+   "msg": {
+    "модуль": "inmarsat_stdc_parser",
+    "параметры": {
+     "save_files": true,
+     "station_id": ""
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "inmarsat_aero_6",
+  "название": "Inmarsat Aero 0.6k (WIP)",
+  "файл": "resources/pipelines/Inmarsat.json",
+  "строка": 42,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "sdpsk_demod",
+    "параметры": {
+     "symbolrate": 600,
+     "rrc_alpha": 0.4
+    }
+   },
+   "frm": {
+    "модуль": "inmarsat_aero_decoder",
+    "параметры": {
+     "oqpsk": false,
+     "dummy_bits": 0,
+     "inter_cols": 6,
+     "inter_blocks": 3
+    }
+   },
+   "msg": {
+    "модуль": "inmarsat_aero_parser",
+    "параметры": {
+     "save_files": true,
+     "station_id": ""
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "inmarsat_aero_12",
+  "название": "Inmarsat Aero 1.2k (WIP)",
+  "файл": "resources/pipelines/Inmarsat.json",
+  "строка": 82,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "sdpsk_demod",
+    "параметры": {
+     "symbolrate": 1200,
+     "rrc_alpha": 0.4
+    }
+   },
+   "frm": {
+    "модуль": "inmarsat_aero_decoder",
+    "параметры": {
+     "oqpsk": false,
+     "dummy_bits": 0,
+     "inter_cols": 9,
+     "inter_blocks": 2
+    }
+   },
+   "msg": {
+    "модуль": "inmarsat_aero_parser",
+    "параметры": {
+     "save_files": true,
+     "station_id": ""
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "inmarsat_aero_105",
+  "название": "Inmarsat Aero 10.5k (WIP)",
+  "файл": "resources/pipelines/Inmarsat.json",
+  "строка": 122,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "agc_rate": 0.2,
+     "symbolrate": 5250.0,
+     "rrc_alpha": 1.0,
+     "pll_bw": 0.01
+    }
+   },
+   "frm": {
+    "модуль": "inmarsat_aero_decoder",
+    "параметры": {
+     "oqpsk": true,
+     "dummy_bits": 178,
+     "inter_cols": 78,
+     "inter_blocks": 1
+    }
+   },
+   "msg": {
+    "модуль": "inmarsat_aero_parser",
+    "параметры": {
+     "save_files": true,
+     "station_id": ""
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "inmarsat_aero_84",
+  "название": "Inmarsat Aero 8.4k",
+  "файл": "resources/pipelines/Inmarsat.json",
+  "строка": 166,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "agc_rate": 0.2,
+     "symbolrate": 4200.0,
+     "rrc_alpha": 1.0,
+     "pll_bw": 0.01
+    }
+   },
+   "frm": {
+    "модуль": "inmarsat_aero_decoder",
+    "параметры": {
+     "is_c": true,
+     "oqpsk": true,
+     "dummy_bits": 0,
+     "inter_cols": 4,
+     "inter_blocks": 16,
+     "ber_thresold": 0.25
+    }
+   },
+   "msg": {
+    "модуль": "inmarsat_aero_parser",
+    "параметры": {
+     "is_c": true,
+     "save_files": true,
+     "station_id": ""
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "insat_3d_imager",
+  "название": "Insat-3D Imager",
+  "файл": "resources/pipelines/Insat.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 3928000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.01
+    }
+   },
+   "frames": {
+    "модуль": "insat_imager_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "integral_s_link",
+  "название": "Integral S-band downlink",
+  "файл": "resources/pipelines/Integral.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 262000.0,
+     "pll_bw": 0.001,
+     "rrc_alpha": 0.5,
+     "rrc_taps": 31,
+     "costas_bw": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 1,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs239"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "iris_s_dump",
+  "название": "IRIS S-Band Dump",
+  "файл": "resources/pipelines/Iris.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2220.8
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 512000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.003
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 14304,
+     "nrzm": true,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 0,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "iris_dump",
+  "название": "IRIS X-Band Dump",
+  "файл": "resources/pipelines/Iris.json",
+  "строка": 41,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 7500000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_ldpc_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "ldpc_rate": "7/8",
+     "ldpc_iterations": 10,
+     "internal_stream": true,
+     "internal_cadu_size": 14304
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "npp_hrd",
+  "название": "Suomi NPP / JPSS-1 HRD",
+  "файл": "resources/pipelines/JPSS.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    7812.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 15000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "jpss_instruments",
+    "параметры": {
+     "npp_mode": true,
+     "use_ephemeris": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "jpss_hrd",
+  "название": "JPSS-2/3/4 HRD",
+  "файл": "resources/pipelines/JPSS.json",
+  "строка": 55,
+  "частоты_МГц": [
+   [
+    "Main",
+    7812.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 25000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "jpss_instruments",
+    "параметры": {
+     "npp_mode": false,
+     "use_ephemeris": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "jpss_tlm",
+  "название": "JPSS-2/3/4 Telemetry",
+  "файл": "resources/pipelines/JPSS.json",
+  "строка": 108,
+  "частоты_МГц": [
+   [
+    "Main",
+    2247.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 1600000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "jason3_link",
+  "название": "Jason-3 S-Band Link",
+  "файл": "resources/pipelines/Jason-3.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2215.92
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 838000.0,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   },
+   "products": {
+    "модуль": "jason3_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "juice_x_link",
+  "название": "JUICE X-Band",
+  "файл": "resources/pipelines/Juice.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 526316,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.001,
+     "pll_max_offset": 3.14
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/2",
+     "turbo_base": 1115,
+     "turbo_iters": 5
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "kplo_sband_link",
+  "название": "KPLO (Danuri) S-Band Link",
+  "файл": "resources/pipelines/KPLO.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 16384,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.001,
+     "subcarrier_offset": 147456,
+     "pll_max_offset": 3.14
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2048,
+     "viterbi_ber_thresold": 0.34,
+     "viterbi_outsync_after": 100,
+     "derandomize": true,
+     "rs_i": 1,
+     "rs_dualbasis": true,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "kanopus_v_qpsk",
+  "название": "Kanopus-V QPSK",
+  "файл": "resources/pipelines/Kanopus-V.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 61440000.0,
+     "rrc_taps": 31,
+     "rrc_alpha": 25,
+     "pll_bw": 0.001,
+     "costas_max_offset": 1000000.0,
+     "iq_swap": true
+    }
+   },
+   "frm": {
+    "модуль": "kanopusv_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "kanopusv_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "landsat_ldcm_tlm",
+  "название": "LandSat 8/9 S-band",
+  "файл": "resources/pipelines/LandSat.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 1067000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "landsat_ldcm_link",
+  "название": "LandSat 8/9 X-band",
+  "файл": "resources/pipelines/LandSat.json",
+  "строка": 35,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 220400000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_ldpc_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "ldpc_rate": "7/8",
+     "ldpc_iterations": 10,
+     "internal_stream": true,
+     "internal_cadu_size": 8272,
+     "internal_asm": "0x352EF853"
+    }
+   },
+   "products": {
+    "модуль": "ldcm_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "lucky7_link",
+  "название": "Lucky-7 UHF Link",
+  "файл": "resources/pipelines/Lucky7.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    437.525
+   ]
+  ],
+  "этапы": {
+   "frm": {
+    "модуль": "lucky7_demod",
+    "параметры": {
+     "symbolrate": 4800,
+     "custom_samplerate": 48000.0,
+     "corr_thresold": 60,
+     "enable_doppler": true,
+     "satellite_norad": 44406,
+     "satellite_frequency": 437525000.0
+    }
+   },
+   "products": {
+    "модуль": "lucky7_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "mats_dump",
+  "название": "MATS Dump",
+  "файл": "resources/pipelines/MATS.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2214.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 1562000.0,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "oqpsk_method2": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "mats_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "msg_raw",
+  "название": "MSG Raw Data",
+  "файл": "resources/pipelines/MSG.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "MSG Raw",
+    1686.83
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 3750000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0004,
+     "clock_alpha": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.4,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "msg_instruments",
+    "параметры": {
+     "seviri_rss": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "mtg_s_band_link",
+  "название": "MTG S-band TLM link",
+  "файл": "resources/pipelines/MTG.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 16380.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.01,
+     "subcarrier_offset": 64000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "mtg_raw",
+  "название": "MTG Ka-Band Link",
+  "файл": "resources/pipelines/MTG.json",
+  "строка": 36,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 188000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0001,
+     "clock_alpha": 0.01
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.36,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "metopsg_ddb",
+  "название": "MetOp-SG DDB",
+  "файл": "resources/pipelines/MetOp-SG.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    7825.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 93300000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "iq_invert": true,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "metopsg_instruments",
+    "параметры": {
+     "metimage_bowtie": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "metop_ahrpt",
+  "название": "MetOp AHRPT",
+  "файл": "resources/pipelines/MetOp.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    1701.3
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2333333,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.003
+    }
+   },
+   "cadu": {
+    "модуль": "metop_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 10,
+     "viterbi_ber_thresold": 0.28
+    }
+   },
+   "products": {
+    "модуль": "metop_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "metop_dump",
+  "название": "MetOp X-Band Dump",
+  "файл": "resources/pipelines/MetOp.json",
+  "строка": 54,
+  "частоты_МГц": [
+   [
+    "Main",
+    7800.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 35000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.03
+    }
+   },
+   "cadu": {
+    "модуль": "metop_dump_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "metop_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "meteor_hrpt",
+  "название": "METEOR HRPT",
+  "файл": "resources/pipelines/Meteor-M.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    1700.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 665400,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "clock_omega_relative_limit": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "meteor_hrpt_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "meteor_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "meteor_m2_lrpt",
+  "название": "METEOR M2 LRPT 72k",
+  "файл": "resources/pipelines/Meteor-M.json",
+  "строка": 44,
+  "частоты_МГц": [
+   [
+    "Primary",
+    137.1
+   ],
+   [
+    "Backup",
+    137.9
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 72000.0,
+     "rrc_taps": 31,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "meteor_lrpt_decoder",
+    "параметры": {
+     "diff_decode": false
+    }
+   },
+   "products": {
+    "модуль": "meteor_msumr_lrpt",
+    "параметры": {
+     "m2x_mode": false,
+     "max_fill_lines": 50
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "meteor_m2-x_lrpt",
+  "название": "METEOR M2-x LRPT 72k",
+  "файл": "resources/pipelines/Meteor-M.json",
+  "строка": 111,
+  "частоты_МГц": [
+   [
+    "Primary",
+    137.9
+   ],
+   [
+    "Backup",
+    137.1
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 72000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "nrzm": true,
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_dualbasis": false,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "meteor_msumr_lrpt",
+    "параметры": {
+     "m2x_mode": true,
+     "max_fill_lines": 50
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "meteor_m2-x_lrpt_80k",
+  "название": "METEOR M2-x LRPT 80k",
+  "файл": "resources/pipelines/Meteor-M.json",
+  "строка": 195,
+  "частоты_МГц": [
+   [
+    "Primary",
+    137.9
+   ],
+   [
+    "Backup",
+    137.1
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 80000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "meteor_lrpt_decoder",
+    "параметры": {
+     "m2x_mode": true,
+     "interleaved": true,
+     "diff_decode": true,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20
+    }
+   },
+   "products": {
+    "модуль": "meteor_msumr_lrpt",
+    "параметры": {
+     "m2x_mode": true,
+     "max_fill_lines": 50
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "meteor_m_mtvza_dump",
+  "название": "METEOR-M MTVZA Dump (Narrow BPSK)",
+  "файл": "resources/pipelines/Meteor-M.json",
+  "строка": 266,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 15360000.0,
+     "rrc_taps": 31,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.004
+    }
+   },
+   "frm": {
+    "модуль": "meteor_xband_decoder",
+    "параметры": {
+     "instrument_type": "mtvza"
+    }
+   },
+   "products": {
+    "модуль": "meteor_xband_instruments",
+    "параметры": {
+     "instrument_type": "mtvza"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "meteor_m_kmss_qpsk_dump",
+  "название": "METEOR-M KMSS Dump (Wide QPSK)",
+  "файл": "resources/pipelines/Meteor-M.json",
+  "строка": 312,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 61400000.0,
+     "rrc_taps": 31,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.004
+    }
+   },
+   "frm": {
+    "модуль": "meteor_qpsk_kmss_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "meteor_xband_instruments",
+    "параметры": {
+     "instrument_type": "kmss_bpsk"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "meteor_m_kmss_bpsk_db",
+  "название": "METEOR-M KMSS DB (Wide BPSK)",
+  "файл": "resources/pipelines/Meteor-M.json",
+  "строка": 355,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 61440000.0,
+     "rrc_taps": 31,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.004
+    }
+   },
+   "frm": {
+    "модуль": "meteor_xband_decoder",
+    "параметры": {
+     "instrument_type": "kmss_bpsk"
+    }
+   },
+   "products": {
+    "модуль": "meteor_xband_instruments",
+    "параметры": {
+     "instrument_type": "kmss_bpsk"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "noaa_hrpt",
+  "название": "NOAA HRPT",
+  "файл": "resources/pipelines/NOAA.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "NOAA-18",
+    1707.0
+   ],
+   [
+    "NOAA-19",
+    1698.0
+   ],
+   [
+    "NOAA-15",
+    1702.5
+   ],
+   [
+    "NOAA POES S-Band",
+    2247.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 665400,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.6,
+     "clock_omega_relative_limit": 0.001
+    }
+   },
+   "frames": {
+    "модуль": "noaa_hrpt_decoder",
+    "параметры": {
+     "deframer_thresold": 10
+    }
+   },
+   "products": {
+    "модуль": "noaa_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "noaa_gac",
+  "название": "NOAA GAC",
+  "файл": "resources/pipelines/NOAA.json",
+  "строка": 65,
+  "частоты_МГц": [
+   [
+    "NOAA-18 L-band",
+    1707.0
+   ],
+   [
+    "NOAA-19 L-band",
+    1698.0
+   ],
+   [
+    "NOAA-15 L-band",
+    1702.5
+   ],
+   [
+    "NOAA POES S-Band",
+    2247.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2661600.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004,
+     "post_costas_dc": true
+    }
+   },
+   "frm": {
+    "модуль": "noaa_gac_decoder",
+    "параметры": {
+     "backward": false
+    }
+   },
+   "products": {
+    "модуль": "noaa_instruments",
+    "параметры": {
+     "gac_mode": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "noaa_dsb",
+  "название": "NOAA DSB",
+  "файл": "resources/pipelines/NOAA.json",
+  "строка": 138,
+  "частоты_МГц": [
+   [
+    "NOAA-18/15",
+    137.35
+   ],
+   [
+    "NOAA-19",
+    137.77
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 8320,
+     "agc_rate": 0.001,
+     "pll_bw": 0.01,
+     "pll_max_offset": 0.5,
+     "rrc_alpha": 0.6,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "clock_omega_relative_limit": 0.005
+    }
+   },
+   "frames": {
+    "модуль": "noaa_dsb_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "noaa_instruments",
+    "параметры": {
+     "dsb_mode": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "noaa_apt",
+  "название": "NOAA APT",
+  "файл": "resources/pipelines/NOAA.json",
+  "строка": 197,
+  "частоты_МГц": [
+   [
+    "NOAA-18",
+    137.9125
+   ],
+   [
+    "NOAA-19",
+    137.1
+   ],
+   [
+    "NOAA-15",
+    137.62
+   ]
+  ],
+  "этапы": {
+   "audio_wav": {
+    "модуль": "noaa_apt_demod",
+    "параметры": {
+     "symbolrate": 50000.0,
+     "save_wav": false
+    }
+   },
+   "products": {
+    "модуль": "noaa_apt_decoder",
+    "параметры": {
+     "audio_samplerate": 50000.0,
+     "max_crop_stddev": 3500,
+     "save_unsynced": true,
+     "align_timestamps": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "odin_dump",
+  "название": "ODIN Dump",
+  "файл": "resources/pipelines/ODIN.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2162000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.001,
+     "carrier_pll_bw": 0.001,
+     "has_carrier": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "orx_link",
+  "название": "OSIRIS-REx X-Band Link",
+  "файл": "resources/pipelines/ORX.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 80000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 275000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/2",
+     "turbo_base": 1115,
+     "turbo_iters": 1
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "oceansat2_db",
+  "название": "OceanSat-2 DB",
+  "файл": "resources/pipelines/Oceansat.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 21226000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.01
+    }
+   },
+   "frames": {
+    "модуль": "oceansat2_db_decoder",
+    "параметры": {}
+   },
+   "products": {
+    "модуль": "oceansat_ocm",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "oceansat3_argos",
+  "название": "Oceansat-3 L-Band",
+  "файл": "resources/pipelines/Oceansat.json",
+  "строка": 28,
+  "частоты_МГц": [
+   [
+    "DB",
+    1703.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 1000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "oceansat3_dump",
+  "название": "OceanSat-3 X-Band Dump",
+  "файл": "resources/pipelines/Oceansat.json",
+  "строка": 68,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 80000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0189
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 16352,
+     "nrzm": false,
+     "rs_i": 8,
+     "rs_type": "rs239"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "ominous_tlm",
+  "название": "Ominous TLM (10k)",
+  "файл": "resources/pipelines/Ominous.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "VHF",
+    137.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 10000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "clock_omega_relative_limit": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2072,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "ominous_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "ominous_lrpt",
+  "название": "Ominous LRPT (3/4, 80k)",
+  "файл": "resources/pipelines/Ominous.json",
+  "строка": 44,
+  "частоты_МГц": [
+   [
+    "Primary",
+    137.9
+   ],
+   [
+    "Backup",
+    137.1
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 80000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 2072,
+     "conv_rate": "3/4",
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "ominous_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "ominous_hrpt",
+  "название": "Ominous HRPT (2.5M)",
+  "файл": "resources/pipelines/Ominous.json",
+  "строка": 91,
+  "частоты_МГц": [
+   [
+    "Primary",
+    137.9
+   ],
+   [
+    "Backup",
+    137.1
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2500000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 2072,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "ominous_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "orbcomm_stx",
+  "название": "Orbcomm STX",
+  "файл": "resources/pipelines/Orbcomm.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "STX-1",
+    2282.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "orbcomm_stx_demod",
+    "параметры": {
+     "symbolrate": 4800.0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "orbcomm_stx_auto",
+  "название": "Orbcomm STX Auto",
+  "файл": "resources/pipelines/Orbcomm.json",
+  "строка": 23,
+  "частоты_МГц": [
+   [
+    "Default (Tune here!)",
+    137.5
+   ]
+  ],
+  "этапы": {
+   "frm": {
+    "модуль": "orbcomm_stx_auto_demod",
+    "параметры": {
+     "frequency": 137500000.0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "orbcomm_stx_auto_plotter",
+  "название": "Orbcomm STX Auto Plotter",
+  "файл": "resources/pipelines/Orbcomm.json",
+  "строка": 44,
+  "частоты_МГц": [
+   [
+    "Default (Tune here!)",
+    137.5
+   ]
+  ],
+  "этапы": {
+   "frm": {
+    "модуль": "orbcomm_stx_auto_demod",
+    "параметры": {
+     "frequency": 137500000.0
+    }
+   },
+   "products": {
+    "модуль": "orbcomm_plotter",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "orion_link",
+  "название": "Orion S-Band",
+  "файл": "resources/pipelines/Orion.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2214.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_ldpc_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "ldpc_rate": "1/2",
+     "ldpc_block_size": 1024,
+     "ldpc_iterations": 10
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "off2pro",
+  "название": "Data Stores / Archives Formats (NOAA/EUMETSAT/CMA/NASA), Experimental",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "products": {
+    "модуль": "off2pro",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "sstv_decoder",
+  "название": "SSTV Decoder",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 11,
+  "частоты_МГц": [],
+  "этапы": {
+   "audio_wav": {
+    "модуль": "generic_analog_demod",
+    "параметры": {
+     "symbolrate": 12000.0
+    }
+   },
+   "products": {
+    "модуль": "sstv_decoder",
+    "параметры": {
+     "audio_samplerate": 48000.0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "angels_l_band",
+  "название": "ANGELS L-Band",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 102,
+  "частоты_МГц": [
+   [
+    "DB",
+    1698.4
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 400000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "angels_argos",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "gazelle_l_band",
+  "название": "OTB-3/Gazelle L-Band",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 144,
+  "частоты_МГц": [
+   [
+    "DB",
+    1703.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 1000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "yunhai_ahrpt",
+  "название": "Yunhai AHRPT - Encrypted",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 184,
+  "частоты_МГц": [
+   [
+    "DB",
+    1704.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 4000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "fengyun_ahrpt_decoder",
+    "параметры": {
+     "viterbi_outsync_after": 20,
+     "viterbi_ber_thresold": 0.25,
+     "invert_second_viterbi": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "scisat1_dump",
+  "название": "SciSat-1 Dump",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 214,
+  "частоты_МГц": [
+   [
+    "Main",
+    2232.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 9592,
+     "rs_i": 5,
+     "rs_fill_bytes": 16,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "scisat1_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "CALIPSO",
+  "название": "Calipso S band Dump",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 252,
+  "частоты_МГц": [
+   [
+    "Main",
+    2268.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 839000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "rs_i": 5,
+     "nrzm": true,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "youthsat_dump",
+  "название": "YouthSat Dump",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 290,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1560000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "pretty_s_500k_dump",
+  "название": "PRETTY 500k S-Band Dump",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 325,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 500000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "iq_invert": true,
+     "cadu_size": 16352,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 8,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "pretty_s_2m_dump",
+  "название": "PRETTY 2M S-Band Dump",
+  "файл": "resources/pipelines/Others.json",
+  "строка": 364,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "iq_invert": true,
+     "cadu_size": 16352,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 8,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "peregrine_x_tlm",
+  "название": "Peregrine X-Band TLM",
+  "файл": "resources/pipelines/Peregrine.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 13000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "rrc_taps": 31,
+     "costas_bw": 0.001,
+     "subcarrier_offset": 1024000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_ldpc_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "ldpc_rate": "7/8",
+     "ldpc_iterations": 10
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "prefire_s_dump",
+  "название": "PREFIRE-1/2 S-Band Dump",
+  "файл": "resources/pipelines/Prefire.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2212.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 16416,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "proba1_dump",
+  "название": "Proba-1 Dump",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Dump",
+    2235.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": false,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "proba1"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "proba2_dump",
+  "название": "Proba-2 Dump",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 50,
+  "частоты_МГц": [
+   [
+    "Dump",
+    2235.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": false,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "proba2"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "probav_s_dump",
+  "название": "Proba-V S-Band Dump",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 98,
+  "частоты_МГц": [
+   [
+    "Dump",
+    2235.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1919000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "probaV"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "probav_x_dump",
+  "название": "Proba-V X-Band Dump",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 146,
+  "частоты_МГц": [
+   [
+    "Main",
+    8300.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 35000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "probaV_X"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "pvcc_s_dump",
+  "название": "Proba-V-CC S-Band Dump",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 185,
+  "частоты_МГц": [
+   [
+    "Dump",
+    2221.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "pvcc_x_dump",
+  "название": "Proba-V-CC X-Band Dump",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 228,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 50000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "probaV_X"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "proba3_dump_pm",
+  "название": "Proba-3 Dump PM",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 262,
+  "частоты_МГц": [
+   [
+    "Main",
+    2256.22
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 220000.0,
+     "agc_rate": 0.001,
+     "pll_bw": 0.01,
+     "pll_max_offset": 0.5,
+     "rrc_alpha": 0.6,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "clock_omega_relative_limit": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "proba3"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "proba3_dump_qpsk12",
+  "название": "Proba-3 Dump QPSK 1/2",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 310,
+  "частоты_МГц": [
+   [
+    "Main",
+    2256.22
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 425000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "proba3"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "proba3_dump_qpsk",
+  "название": "Proba-3 Dump QPSK",
+  "файл": "resources/pipelines/Proba.json",
+  "строка": 355,
+  "частоты_МГц": [
+   [
+    "Main",
+    2256.22
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 425000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "proba_instruments",
+    "параметры": {
+     "satellite": "proba3"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "psyche_hr",
+  "название": "Psyche High Rate",
+  "файл": "resources/pipelines/Psyche.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 368000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.002,
+     "post_costas_dc": true
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/6",
+     "turbo_base": 1115,
+     "turbo_iters": 1
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "queqiao2_s_link",
+  "название": "Queqiao-2 S-Band Link",
+  "файл": "resources/pipelines/Queqiao.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 4096,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 65536,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2048,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 1,
+     "rs_fill_bytes": 3,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "queqiao2_oqpsk_science_s_link",
+  "название": "Queqiao-2 QPSK S-Band Science Link",
+  "файл": "resources/pipelines/Queqiao.json",
+  "строка": 40,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 3000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.002
+    }
+   },
+   "frm": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "queqiao2_bpsk_science_s_link",
+  "название": "Queqiao-2 BPSK S-Band Science Link",
+  "файл": "resources/pipelines/Queqiao.json",
+  "строка": 73,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1000000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.002
+    }
+   },
+   "frm": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs223",
+     "rs_usecheck": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "saocom_1ab_tlm_dump",
+  "название": "SAOCOM 1A/1B TLM Dump",
+  "файл": "resources/pipelines/SAOCOM.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "TL1A",
+    2255.45
+   ],
+   [
+    "TL2A",
+    2255.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.003
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 8952,
+     "nrzm": true,
+     "derandomize": true,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "slim_tlm_link",
+  "название": "SLIM TLM Link",
+  "файл": "resources/pipelines/SLIM.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 32720.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 340000.0,
+     "pll_max_offset": 3.14
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2048,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 100,
+     "derandomize": true,
+     "rs_i": 1,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "saral_l_band",
+  "название": "Saral L-Band",
+  "файл": "resources/pipelines/Saral.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "DB",
+    1698.4
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 400000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "saral_argos",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "saral_dump",
+  "название": "Saral X-Band Dump",
+  "файл": "resources/pipelines/Saral.json",
+  "строка": 44,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 16000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "seawifs_processing",
+  "название": "SeaWIFs level 0 data",
+  "файл": "resources/pipelines/Seawifs.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "products": {
+    "модуль": "module_seawifs_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "sentinel6_dump",
+  "название": "Sentinel-6 Dump",
+  "файл": "resources/pipelines/Sentinel-6.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    8090.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 75000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "sentinel6_tlm",
+  "название": "Sentinel 6 S-Band TLM",
+  "файл": "resources/pipelines/Sentinel-6.json",
+  "строка": 39,
+  "частоты_МГц": [
+   [
+    "Main",
+    2256.75
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 500000.0,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "sonate2_dump",
+  "название": "Sonate-2 S-Band Dump",
+  "файл": "resources/pipelines/Sonate-2.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2048000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0189
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 16416,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 0,
+     "rs_type": "rs223",
+     "rs_usecheck": false
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "falcon9_tlm",
+  "название": "Falcon 9 S-Band TLM",
+  "файл": "resources/pipelines/SpaceX.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "fsk_demod",
+    "параметры": {
+     "symbolrate": 3571400,
+     "rrc_alpha": 0.35
+    }
+   },
+   "cadu": {
+    "модуль": "spacex_tlm_decoder",
+    "параметры": {
+     "qpsk": false
+    }
+   },
+   "products": {
+    "модуль": "falcon_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "starship_tlm",
+  "название": "Starship S-Band TLM",
+  "файл": "resources/pipelines/SpaceX.json",
+  "строка": 29,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 3125000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "spacex_tlm_decoder",
+    "параметры": {
+     "qpsk": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "crew_dragon_tlm",
+  "название": "Crew Dragon S-Band TLM",
+  "файл": "resources/pipelines/SpaceX.json",
+  "строка": 55,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "fsk_demod",
+    "параметры": {
+     "symbolrate": 2350000.0,
+     "rrc_alpha": 0.35
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 2000,
+     "nrzm": false,
+     "rs_fill_bytes": 9,
+     "rs_i": 1,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "stereo_lr",
+  "название": "Stereo-A/B Low Rate",
+  "файл": "resources/pipelines/Stereo.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    8443.52
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 3800,
+     "resample_after_pll": true,
+     "agc_rate": 0.001,
+     "pll_bw": 0.01,
+     "pll_max_offset": 3.14,
+     "rrc_alpha": 0.6,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "clock_omega_relative_limit": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/6",
+     "turbo_base": 1115,
+     "turbo_iters": 20
+    }
+   },
+   "products": {
+    "модуль": "stereo_instruments",
+    "параметры": {
+     "icer_path": "./icer_decomp_linux"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "stereo_hr",
+  "название": "Stereo-A/B High Rate",
+  "файл": "resources/pipelines/Stereo.json",
+  "строка": 46,
+  "частоты_МГц": [
+   [
+    "Main",
+    8443.52
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1440000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.002,
+     "post_costas_dc": true
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/2",
+     "turbo_base": 1115,
+     "turbo_iters": 1
+    }
+   },
+   "products": {
+    "модуль": "stereo_instruments",
+    "параметры": {
+     "icer_path": "./icer_decomp_linux"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "syracuse3_tlm",
+  "название": "Syracuse 3 TLM",
+  "файл": "resources/pipelines/Syracuse.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Syracuse-3A",
+    7720.0
+   ],
+   [
+    "Syracuse-3B",
+    7705.0
+   ],
+   [
+    "Syracuse-4A",
+    7729.0
+   ],
+   [
+    "Syracuse-4B",
+    7749.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 156000.0,
+     "pll_bw": 0.005,
+     "pll_max_offset": 0.5,
+     "rrc_alpha": 0.25,
+     "rrc_taps": 31,
+     "costas_bw": 0.005,
+     "clock_omega_relative_limit": 0.005
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "tgo_link",
+  "название": "Mars TGO X-Band Link",
+  "файл": "resources/pipelines/TGO.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 52765,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 262000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_turbo_decoder",
+    "параметры": {
+     "turbo_rate": "1/2",
+     "turbo_base": 1115,
+     "turbo_iters": 50
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "tubin_x_dump",
+  "название": "TUBIN X-Band Dump",
+  "файл": "resources/pipelines/TUBSAT.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    8392.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 12300000.0,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 4416,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   },
+   "products": {
+    "модуль": "tubin_decoder",
+    "параметры": {
+     "check_crc": true
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "gfsk_test",
+  "название": "GFSK Test",
+  "файл": "resources/pipelines/Test.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "fsk_demod",
+    "параметры": {
+     "symbolrate": 4800.0,
+     "rrc_alpha": 0.35
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "nrzm": false,
+     "rs_i": 0,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "test_custom",
+  "название": "test_custom",
+  "файл": "resources/pipelines/Test.json",
+  "строка": 35,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "ominous_orb",
+  "название": "Ominous Rebroadcast (ORB) WIP!!!",
+  "файл": "resources/pipelines/Test.json",
+  "строка": 68,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 128000.0,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   },
+   "products": {
+    "модуль": "orb_decoder_test",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "ndsp_demod_test",
+  "название": "NDSP Demod",
+  "файл": "resources/pipelines/Test.json",
+  "строка": 110,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "ndsp_demod",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "tianwen1_link",
+  "название": "Tianwen-1 Link",
+  "файл": "resources/pipelines/Tianwen.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Telemetry",
+    8431.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 16384,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.001,
+     "subcarrier_offset": 65536,
+     "pll_max_offset": 3.14
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2048,
+     "viterbi_ber_thresold": 0.39,
+     "viterbi_outsync_after": 100,
+     "derandomize": true,
+     "rs_i": 1,
+     "rs_dualbasis": false,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "tianwen2_link",
+  "название": "Tianwen-2 Link",
+  "файл": "resources/pipelines/Tianwen.json",
+  "строка": 45,
+  "частоты_МГц": [
+   [
+    "Telemetry",
+    8431.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 16384,
+     "pll_bw": 0.002,
+     "rrc_alpha": 0.35,
+     "costas_bw": 0.001,
+     "subcarrier_offset": 65536,
+     "pll_max_offset": 3.14
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.39,
+     "viterbi_outsync_after": 100,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_dualbasis": true,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "tropics_link",
+  "название": "TROPICS S-Band Dump",
+  "файл": "resources/pipelines/Tropics.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2252.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.8,
+     "pll_bw": 0.006,
+     "costas_max_offset": 100000.0
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 2072,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": false,
+     "nrzm": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "inspiresat7_tlm",
+  "название": "INSPIRE-Sat7 TLM",
+  "файл": "resources/pipelines/UVSQ.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Primary",
+    437.41
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 9600.0,
+     "agc_rate": 2,
+     "rrc_taps": 31,
+     "rrc_alpha": 0.6,
+     "pll_bw": 0.1
+    }
+   },
+   "frm": {
+    "модуль": "ax25_decoder",
+    "параметры": {
+     "nrzi": true,
+     "g3ruh": true,
+     "min_sz": 10,
+     "max_sz": 1000
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "spino_2400",
+  "название": "AMSAT-F Spino 2400bps",
+  "файл": "resources/pipelines/UVSQ.json",
+  "строка": 44,
+  "частоты_МГц": [
+   [
+    "Main",
+    435.2
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "xfsk_burst_demod",
+    "параметры": {
+     "symbolrate": 2400,
+     "enable_doppler": true,
+     "satellite_norad": 56211,
+     "satellite_frequency": 435200000.0
+    }
+   },
+   "frm": {
+    "модуль": "spino_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "uvsqsatng_s_dump_oqpsk3125",
+  "название": "UVSQSat-NG OQPSK 312.5k S-Band Dump",
+  "файл": "resources/pipelines/UVSQSAT-NG.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2208.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 312500.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 2072,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "uvsqsatng_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "uvsqsatng_s_dump_125",
+  "название": "UVSQSat-NG 1.25M S-Band Dump",
+  "файл": "resources/pipelines/UVSQSAT-NG.json",
+  "строка": 44,
+  "частоты_МГц": [
+   [
+    "Main",
+    2208.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1250000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2072,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "uvsqsatng_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "uvsqsatng_s_dump_25",
+  "название": "UVSQSat-NG 2.5M S-Band Dump",
+  "файл": "resources/pipelines/UVSQSAT-NG.json",
+  "строка": 86,
+  "частоты_МГц": [
+   [
+    "Main",
+    2208.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2500000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2072,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "uvsqsatng_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "uvsqsatng_s_dump_5",
+  "название": "UVSQSat-NG 5M S-Band Dump",
+  "файл": "resources/pipelines/UVSQSAT-NG.json",
+  "строка": 128,
+  "частоты_МГц": [
+   [
+    "Main",
+    2208.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 5000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 2072,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 1,
+     "rs_type": "rs223",
+     "rs_usecheck": true
+    }
+   },
+   "products": {
+    "модуль": "uvsqsatng_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "umka_1_dump",
+  "название": "UmKA-1 Dump",
+  "файл": "resources/pipelines/UmKA.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    2402.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.25,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   },
+   "products": {
+    "модуль": "umka1_decoder",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "veronika_link",
+  "название": "VERONIKA UHF Link",
+  "файл": "resources/pipelines/VERONIKA.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Main",
+    436.68
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "fsk_demod",
+    "параметры": {
+     "symbolrate": 9600,
+     "rrc_alpha": 0.5,
+     "enable_doppler": true,
+     "satellite_norad": 58261,
+     "satellite_frequency": 436680000.0
+    }
+   },
+   "frm": {
+    "модуль": "ax25_decoder",
+    "параметры": {
+     "nrzi": true,
+     "g3ruh": true,
+     "min_sz": 10,
+     "max_sz": 1000
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "viasat3_tlm",
+  "название": "ViaSat-3 TLM",
+  "файл": "resources/pipelines/ViaSat.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 4000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 32000.0
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 4096,
+     "ccsds": false,
+     "nrzm": true,
+     "derandomize": false,
+     "asm": "0xfaf3200d",
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "viasat3_tlm_12200",
+  "название": "ViaSat-3 12.2GHz TLM",
+  "файл": "resources/pipelines/ViaSat.json",
+  "строка": 36,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 4000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 32000.0
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 4096,
+     "ccsds": false,
+     "nrzm": true,
+     "derandomize": false,
+     "asm": "0xfaf3203b",
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "wsf_m_db",
+  "название": "WSF-M S-Band DB",
+  "файл": "resources/pipelines/WSF-M.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "Tactial DB",
+    2252.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 400000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.004
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 0
+    }
+   },
+   "products": {
+    "модуль": "wsfm_instruments",
+    "параметры": {}
+   }
+  }
+ },
+ {
+  "конвейер": "aeolus_dump",
+  "название": "Aeolus Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 5000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "smos_dump",
+  "название": "SMOS X-Band Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 18,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "8psk",
+     "symbolrate": 9000000,
+     "agc_rate": 1e-05,
+     "rrc_alpha": 0.5,
+     "rrc_taps": 31,
+     "costas_bw": 0.001,
+     "clock_omega_relative_limit": 0.001
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "prisma_dump",
+  "название": "PRISMA X-Band Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 38,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 77500000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.0189
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8304,
+     "nrzm": true,
+     "derandomize": true,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "smap_s_link",
+  "название": "SMAP S-Band Link",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 65,
+  "частоты_МГц": [
+   [
+    "SMAP",
+    2274.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 590000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.04
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 10232,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "cheops_link",
+  "название": "CHEOPS S-Band Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 106,
+  "частоты_МГц": [
+   [
+    "Main",
+    2208.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 1142000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "d_oqpsk_method_2": true,
+     "cadu_size": 10232,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "timed_dump",
+  "название": "TIMED S-Band Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 142,
+  "частоты_МГц": [
+   [
+    "Main",
+    2214.97
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2295000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 9872,
+     "nrzm": true,
+     "derand_after_rs": true,
+     "rs_i": 0,
+     "rs_fill_bytes": 9,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "grace_fo_link",
+  "название": "Grace-FO Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 176,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 1500000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "oqpsk_method3": true,
+     "cadu_size": 10232,
+     "nrzm": false,
+     "rs_i": 5,
+     "rs_type": "rs239"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "cfosat1_dump",
+  "название": "CFOSAT-1 X-Band Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 207,
+  "частоты_МГц": [],
+  "этапы": {
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8192,
+     "nrzm": true,
+     "rs_i": 4,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "eumetcast_africa",
+  "название": "EUMETCAST Africa",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 232,
+  "частоты_МГц": [],
+  "этапы": {
+   "bbframe": {
+    "модуль": "dvbs2_demod",
+    "параметры": {
+     "symbolrate": 9892000.0,
+     "rrc_alpha": 0.2,
+     "pll_bw": 0.01,
+     "modcod": 7,
+     "shortframes": false,
+     "pilots": false,
+     "freq_prop_factor": 0.01
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "smos_tlm",
+  "название": "SMOS TLM",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 254,
+  "частоты_МГц": [
+   [
+    "SMOS TLM",
+    2216.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 838878,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.25,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "neossat_dump",
+  "название": "NEOSSAT Dump",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 293,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 2000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 10232,
+     "viterbi_ber_thresold": 0.25,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "nrzm": false,
+     "iq_invert": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "ops_sat_s_link",
+  "название": "OPS-SAT S-Band Link",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 327,
+  "частоты_МГц": [
+   [
+    "Main",
+    2229.5
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "qpsk",
+     "symbolrate": 1000000.0,
+     "rrc_alpha": 0.15,
+     "pll_bw": 0.002
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "qpsk",
+     "cadu_size": 8952,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "iq_invert": true,
+     "nrzm": false,
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "swot_tlm",
+  "название": "SWOT S-Band TLM",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 366,
+  "частоты_МГц": [
+   [
+    "SWOT",
+    2282.4
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 932000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 10232,
+     "nrzm": true,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 20,
+     "derandomize": true,
+     "rs_i": 5,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "tiahne1_tlm",
+  "название": "Tiahne-1 TLM",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 409,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "resample_after_pll": true,
+     "symbolrate": 64000.0,
+     "pll_bw": 0.01,
+     "rrc_alpha": 0.5,
+     "costas_bw": 0.005,
+     "subcarrier_offset": 350000.0
+    }
+   },
+   "frames": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8192,
+     "ccsds": false,
+     "nrzm": true,
+     "derandomize": false,
+     "asm": "0xa91a8c29",
+     "rs_i": 0
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "paz_s_tlm",
+  "название": "PAZ S-band telemetry",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 445,
+  "частоты_МГц": [
+   [
+    "PAZ TLM",
+    2285.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 1000000.0,
+     "rrc_alpha": 0.5,
+     "pll_bw": 0.006
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 8952,
+     "derandomize": true,
+     "rs_i": 0,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "gcom_s_band",
+  "название": "GCOM S-Band link",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 485,
+  "частоты_МГц": [
+   [
+    "GCOM-C",
+    2220.0
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "oqpsk",
+     "symbolrate": 500000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.005
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "oqpsk",
+     "cadu_size": 2048,
+     "derandomize": true,
+     "nrzm": false,
+     "rs_i": 1,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "cosmos_2518_sband",
+  "название": "Cosmos-2518 S-Band link",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 526,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 16000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.008
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "chinese_spaceplane_sband",
+  "название": "Chinese Spaceplane S-Band link",
+  "файл": "resources/pipelines/Work-In-Progress.json",
+  "строка": 551,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "psk_demod",
+    "параметры": {
+     "constellation": "bpsk",
+     "symbolrate": 3060000.0,
+     "rrc_alpha": 0.35,
+     "pll_bw": 0.008
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "xmm_newton_s_link",
+  "название": "XMM-Newton S-band downlink",
+  "файл": "resources/pipelines/XMM-Newton.json",
+  "строка": 2,
+  "частоты_МГц": [],
+  "этапы": {
+   "soft": {
+    "модуль": "pm_demod",
+    "параметры": {
+     "symbolrate": 162000.0,
+     "pll_bw": 0.001,
+     "rrc_alpha": 0.5,
+     "rrc_taps": 31,
+     "costas_bw": 0.001
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_conv_concat_decoder",
+    "параметры": {
+     "constellation": "bpsk_90",
+     "cadu_size": 8192,
+     "viterbi_ber_thresold": 0.3,
+     "viterbi_outsync_after": 1,
+     "nrzm": false,
+     "derandomize": true,
+     "rs_i": 4,
+     "rs_type": "rs239"
+    }
+   }
+  }
+ },
+ {
+  "конвейер": "sts1_9k6",
+  "название": "SpaceTeamSat1 9k6",
+  "файл": "resources/pipelines/spaceteamsat1.json",
+  "строка": 2,
+  "частоты_МГц": [
+   [
+    "STS1 Main",
+    437.395
+   ]
+  ],
+  "этапы": {
+   "soft": {
+    "модуль": "fsk_demod",
+    "параметры": {
+     "symbolrate": 9600.0,
+     "rrc_alpha": 0.45,
+     "clock_alpha": 0.8
+    }
+   },
+   "cadu": {
+    "модуль": "ccsds_simple_psk_decoder",
+    "параметры": {
+     "constellation": "bpsk",
+     "cadu_size": 2072,
+     "rs_dualbasis": true,
+     "nrzm": false,
+     "rs_i": 1,
+     "rs_type": "rs223"
+    }
+   }
+  }
+ }
+]

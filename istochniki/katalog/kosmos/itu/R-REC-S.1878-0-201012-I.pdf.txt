@@ -1,0 +1,1341 @@
+
+=====PAGE 1=====
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Recommendation  ITU-R  S.1878
+(12/2010)
+Multi-carrier based transmission
+techniques for satellite systems
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+S Series
+Fixed-satellite service
+ 
+ 
+ 
+ 
+ 
+ 
+
+=====PAGE 2=====
+ii 
+Rec.  ITU-R  S.1878 
+Foreword 
+The role of the Radiocommunication Sector is to ensure the rational, equitable, efficient and economical use of the 
+radio-frequency spectrum by all radiocommunication services, including satellite services, and carry out studies without 
+limit of frequency range on the basis of which Recommendations are adopted. 
+The regulatory and policy functions of the Radiocommunication Sector are performed by World and Regional 
+Radiocommunication Conferences and Radiocommunication Assemblies supported by Study Groups. 
+Policy on Intellectual Property Right (IPR) 
+ITU-R policy on IPR is described in the Common Patent Policy for ITU-T/ITU-R/ISO/IEC referenced in Annex 1 of 
+Resolution ITU-R 1. Forms to be used for the submission of patent statements and licensing declarations by patent 
+holders are available from http://www.itu.int/ITU-R/go/patents/en where the Guidelines for Implementation of the 
+Common Patent Policy for ITU-T/ITU-R/ISO/IEC and the ITU-R patent information database can also be found.  
+ 
+ 
+Series of ITU-R Recommendations  
+(Also available online at http://www.itu.int/publ/R-REC/en) 
+Series 
+Title 
+BO 
+Satellite delivery 
+BR 
+Recording for production, archival and play-out; film for television 
+BS 
+Broadcasting service (sound) 
+BT 
+Broadcasting service (television) 
+F 
+Fixed service 
+M 
+Mobile, radiodetermination, amateur and related satellite services 
+P 
+Radiowave propagation 
+RA 
+Radio astronomy 
+RS 
+Remote sensing systems 
+S 
+Fixed-satellite service 
+SA 
+Space applications and meteorology 
+SF 
+Frequency sharing and coordination between fixed-satellite and fixed service systems 
+SM 
+Spectrum management 
+SNG 
+Satellite news gathering 
+TF 
+Time signals and frequency standards emissions 
+V 
+Vocabulary and related subjects 
+ 
+ 
+Note: This ITU-R Recommendation was approved in English under the procedure detailed in Resolution ITU-R 1. 
+ 
+ 
+Electronic Publication 
+Geneva, 2010 
+ 
+ ITU 2010 
+All rights reserved. No part of this publication may be reproduced, by any means whatsoever, without written permission of ITU. 
+ 
+
+=====PAGE 3=====
+ 
+Rec.  ITU-R  S.1878 
+1 
+ 
+RECOMMENDATION  ITU-R  S.1878 
+Multi-carrier based transmission techniques for satellite systems 
+(Questions ITU-R 46-3/4 and ITU-R 73-2/4) 
+ 
+(2010) 
+Scope 
+For the efficient use of frequency resources and high-speed data services, multi-carrier based 
+transmission techniques are considered as promising technologies for providing future 
+radiocommunication services. This Recommendation presents an overview of multi-carrier based 
+transmission techniques over satellite links, briefly giving guidance for the utilization of multi-
+carrier code division multiple access (MC-CDMA) and carrier interferometry orthogonal frequency 
+division multiplexing (CI-OFDM) schemes for satellite radiocommunication systems. 
+The ITU Radiocommunication Assembly, 
+considering 
+a) 
+that satellites in the fixed-satellite service (FSS) and mobile-satellite service (MSS) are 
+simultaneously used by many earth stations at different locations; 
+b) 
+that multicarrier-based multiple-access schemes such as orthogonal frequency division 
+multiplexing – frequency division multiple-access (OFDM-FDMA or OFDMA), MC-CDMA and 
+multi-frequency TDMA (MF-TDMA) have been adopted or are being considered to be adopted in 
+many terrestrial and satellite system standards for future implementation; 
+c) 
+that although OFDM-type systems are largely used in terrestrial networks as a means for 
+providing good spectral and energy efficiency over frequency selective channels, OFDM has high 
+peak to average power ratio (PAPR), which is problematic for the high power amplifier (HPA) in 
+the satellite; 
+d) 
+that there is a need for a high degree of freedom especially for bursty (i.e. non-continuous 
+and variable rate) and high-rate packet transmissions; 
+e) 
+that, in order to ensure the efficient use of frequency spectrum and orbits, it may be 
+desirable to determine the optimum multiple-access characteristics; 
+f) 
+that 
+the 
+transmission 
+characteristics 
+of 
+multiple-access 
+systems, 
+especially 
+multi-carrier-based multiple-access systems, may be of importance in their interaction with 
+one another, 
+noting 
+a) 
+that Recommendation ITU-R S.1709 specifies MF-TDMA as an inbound traffic access 
+format for global broadband satellite systems; 
+b) 
+that Recommendation ITU-R BO.1130 specifies coded OFDM (COFDM) as one of 
+transmission techniques used for satellite digital sound broadcasting services to vehicular, portable 
+and fixed receivers in the frequency range 1 400-2 700 MHz; 
+c) 
+that Report ITU-R S.2173 provides background material on multi-carrier transmissions 
+over satellite links, including basic operational principles, application scenarios and the 
+performance of multi-carrier-based transmissions over satellite links, analysed through computer 
+simulation, 
+
+=====PAGE 4=====
+2 
+Rec.  ITU-R  S.1878 
+recommends 
+1 
+that Annex 1 should be used as guidance for planning the utilization of a CI-OFDM scheme 
+for multi-carrier satellite radiocommunication systems; 
+2 
+that Annex 2 should be used as guidance for planning the utilization of a MC-CDMA 
+scheme for satellite radiocommunication systems; 
+3 
+that the subject techniques may even be used in combination provided that no basic 
+incompatibility exists among them. 
+ 
+ 
+ 
+Annex 1 
+ 
+CI-OFDM transmission in satellite radiocommunication systems 
+1 
+Introduction 
+This Annex presents a satellite radiocommunication system that makes use of CI-OFDM 
+transmissions and its performance when compared with satellite radiocommunication systems using 
+single-carrier and OFDM transmissions.  
+2 
+System model 
+OFDM is a multi-carrier technology that is used to overcome the frequency selective nature of 
+terrestrial radiocommunications environments. Apart from this advantage, there are several other 
+advantages of OFDM that could be exploited by a satellite radiocommunication system. These 
+advantages are listed in § 5.2 of Report ITU-R S.2173. However, as mentioned in Report 
+ITU-R S.2173, OFDM has high peak to average power ratio (PAPR), which is problematic for the 
+high power amplifier (HPA) in the satellite. 
+CI-OFDM is a type of sub-carrier scrambling technology that can be implemented for an OFDM 
+system at the cost of an additional fast Fourier transform (FFT) module at the transmitter and 
+receiver end of a radiocommunication system, in order to reduce the PAPR of OFDM signals. 
+The detailed operational principles of CI-OFDM are well described in § 6.3 of Report 
+ITU-R S.2173. 
+Figure 1 shows a satellite system employing CI-OFDM transmissions. The data source passes on 
+vector message-words to an encoder, whose rate is set by the adaptive coding and modulation 
+(ACM) controller. The encoded data is then passed on to a symbol mapper, whose output is passed 
+to a multi-carrier signal generator (MSG). The MSG is composed of two blocks for simulation 
+purposes: an OFDM signal generator and a CI-OFDM signal generator. Only one MSG block is 
+used during simulation. Each MSG generates a multi-carrier symbol from a collection of N 
+symbols; where N is the number of subcarriers used for transmission. The output of the MSG is 
+passed on to a HPA. The HPA output is then passed on to an analogue signal up-converter (U/C) 
+that creates an analogue signal from the digital baseband symbols at a desired carrier frequency and 
+sends it through the channel to the satellite. Given a bent-pipe satellite, the received signal is 
+amplified and re-transmitted. A travelling-wave-tube amplifier (TWTA) is often used for satellite 
+transponders and symbol predistortion can be used by the multi-carrier satellite system (MCSS) to 
+
+=====PAGE 5=====
+ 
+Rec.  ITU-R  S.1878 
+3 
+ 
+linearize the output of the TWTA. Note that many modern satellites are now being manufactured 
+with linearized TWTAs (L-TWTA)s, and that the combination of a symbol precoder with a TWTA 
+is essentially a L-TWTA.  
+The receiver receives the transmitted analogue signal corrupted by noise and other impairments, and 
+passes it on to either a signal sampler or channel estimator. The received signal is passed on to the 
+channel estimator if pilot signals are transmitted. The channel estimator estimates the instantaneous 
+carrier-to-noise ratio (CNR) through the channel and selects an appropriate modulation and coding 
+combination (MODCOD). The MODCOD selection is then relayed back to ACM controller at the 
+transmitter and used to set the appropriate modulation and coding to be used in demodulating and 
+decoding the received samples. When data is received by the receiver, the signals are passed on to 
+the signal sampler, which creates a set of samples, sampled at the Nyquist rate, for the multi-carrier 
+processing unit (MPU). The MPU is composed of two modules for simulation: an OFDM 
+processing unit and a CI-OFDM processing unit. The receiver uses the MPU module corresponding 
+to the MSG module used by the transmitter. Each MPU produces a set of N symbol samples from 
+a multi-carrier symbol sample. The MPU output is then passed on to a symbol demapper. 
+The symbol demapper uses the average received constellations of each modulation and their 
+respective error vector magnitudes to create hard- or soft-estimates for each transmitted bit, 
+which are passed on to the decoder. The decoder outputs a decision on the transmitted data and 
+passes it on to the data sink. 
+ 
+ 
+FIGURE 1 
+Simulation block diagram of MCSS employing CI-OFDM transmissions 
+ 
+U/C
+HPA
+D/C
+LNA
+Data source
+Encoder
+Symbol
+mapper
+OFDM
+Sig. gen
+CI-OFDM
+Sig. gen
+Adaptative coding and
+modulation controller
+Signal
+sampler
+OFDM
+Proc. unit
+CI-OFDM
+Proc. unit
+Signal
+demapper
+Channel
+estimator
+Data sink
+Decoder
+Multicarrier signal
+processing
+Adaptative coding and
+modulation demodulator
+Multicarrier signal
+generator
+Adaptative coding
+and modulation
+MODCOD from receiver
+MODCOD to transmitter
+L-TWTA
+ 
+
+=====PAGE 6=====
+4 
+Rec.  ITU-R  S.1878 
+3 
+Performance results of CI-OFDM in a non-linear satellite channel  
+Simulation results presented in this section are obtained using the system model described in § 2 of 
+this Annex. The DVB-S2 ACM scheme1 is used by the system model with 100 belief propagation 
+algorithm decoding iterations2. The baseband symbols are oversampled by a factor of 4 in order to 
+obtain a proper representation of the modulated signal and 64 subcarriers are used to generate the 
+multi-carrier symbols. The L-TWTA is that described in § 10.3.1 of Report ITU-R S.2173. Channel 
+and noise estimation and feedback from the receiver to transmitter are assumed to be error-free.  
+The fairest way to evaluate the performance of a PAPR mitigation technique is by measuring the 
+total degradation (TD) in packet error rate (PER) performance between a system with an ideal linear 
+amplifier3 – henceforth referred to as a linear amplifier – and the system under study4, taking into 
+account the degradation due to input back-off (IBO). Mathematically this is: 
+ 
+ 
+ 
+TD (dB) = CNRnonlinear (dB) - CNRlinear (dB) + IBO                dB 
+(1) 
+ 
+where CNRlinear and CNRnonlinear are the CNRs required to obtain a particular PER for the linear and 
+nonlinear HPA respectively. 
+Table 1 demonstrates the TD caused by passing a different DVB-S2 modulation through 
+a L-TWTA, obtained at a PER of 10–3. Note that to properly compare the CNR of the linear HPA 
+with the CNR of the system with L-TWTA, the equivalent CNR is: 
+ 
+ 
+ 
+CNReq (dB) = CNR (dB) + IBOopt                dB 
+(2) 
+ 
+This conversion must be done to fairly compare the performance of both systems, operating at their 
+maximal output power. The linear HPA always operates at 0 dB IBO (HPA saturation), whereas the 
+L-TWTA is not necessarily operated at saturation. Simulation results for the SCSS with L-TWTA 
+specify that the optimal IBO5 (IBOopt) at which to operate the L-TWTA is 0 dB6. For constant-
+envelope modulation such as M-ary PSK there is no degradation; however the degradation for 
+16-APSK is negligible, while there is a noticeable degradation for 32-APSK. Table 1 demonstrates 
+that a single-carrier satellite system (SCSS) can operate using the DVB-S2 with very little loss 
+when compared to the theoretical system with linear amplifier. 
+                                                 
+1 For more information on DVB-S2 consult § 9.2 of Report ITU-R S.2173. 
+2 For more information on the belief propagation algorithm, please consult § 7.4.4 of Report ITU-R S.2173. 
+3 Note that an ideal linear amplifier has a linear transfer function and no saturation point. This means that 
+the ideal linear amplifier does not introduce noise due to clipping. 
+4 The system under study could be a SCSS with nonlinear amplifier or a MCSS with or without PAPR 
+reduction techniques. 
+5 For more information on how to determine IBOopt, see § 10.3.2 of Report ITU-R S.2173. 
+6 This corroborates the results presented in § 10.3.2 of Report ITU-R S.2173. 
+
+=====PAGE 7=====
+ 
+Rec.  ITU-R  S.1878 
+5 
+ 
+TABLE 1 
+Degradation due to L-TWTA for a satellite system using 
+various combinations of DVB-S2 MODCOD 
+MODCOD 
+Spectral 
+Efficiency 
+ 
+(bit/s/Hz) 
+Linear Amp. 
+L-TWTA 
+CNReq (dB) 
+@ PER = 10–3 
+CNReq (dB) 
+@ PER = 10–3 
+TDL-TWTA (dB) 
+QPSK 1/4 
+0.49 
+–2.96 
+–2.96 
+0 
+QPSK 2/5 
+0.79 
+–0.64 
+–0.64 
+0 
+QPSK 1/2 
+0.99 
+1.13 
+1.13 
+0 
+QPSK 5/6 
+1.65 
+5.05 
+5.05 
+0 
+8-PSK 3/5 
+1.78 
+5.61 
+5.61 
+0 
+8-PSK 3/4 
+2.23 
+7.84 
+7.84 
+0 
+8-PSK 5/6 
+2.48 
+9.31 
+9.31 
+0 
+8-PSK 9/10 
+2.68 
+10.84 
+10.84 
+0 
+16-APSK 3/4 
+2.96 
+10.14 
+10.21 
+0.07 
+16-APSK 4/5 
+3.16 
+10.92 
+11.00 
+0.08 
+16-APSK 5/6 
+3.30 
+11.53 
+11.63 
+0.10 
+16-APSK 8/9 
+3.52 
+12.76 
+12.88 
+0.12 
+16-APSK 9/10 
+3.56 
+12.99 
+13.13 
+0.14 
+32-APSK 3/4 
+3.70 
+12.80 
+13.48 
+0.68 
+32-APSK 4/5 
+3.95 
+13.61 
+14.45 
+0.84 
+32-APSK 5/6 
+4.12 
+14.26 
+15.20 
+0.94 
+32-APSK 8/9 
+4.39 
+15.50 
+16.70 
+1.20 
+32-APSK 9/10 
+4.45 
+15.75 
+16.98 
+1.23 
+ 
+Table 2 demonstrates the TD performance loss for a MCSS using CI-OFDM transmissions when 
+compared with a MCSS using OFDM transmissions. The change in TD for the MCSS systems is far 
+more dramatic than when compared to the SCSS systems. This is because of the high PAPR of 
+multi-carrier signals. It can also be observed that the MCSS with CI-OFDM transmissions has 
+between 0.5 and 4.5 dB gain in terms of TD over the MCSS with OFDM transmissions depending 
+on the MODCOD employed.  
+Figure 2 demonstrates this behaviour by plotting TD with respect to the spectral efficiency (in bits 
+per second per hertz (bit/s/Hz)) of the DVB-S2 ACM scheme. Note that the results are presented in 
+terms of CNReq – as calculated in (2) – for each MCSS system. Also note that the curves are plotted 
+using the maximum spectral efficiency generated by all MODCODs at each CNReq for a particular 
+system. That is, if MODCOD x has higher spectral efficiency than MODCOD y, and MODCOD x 
+has lower CNReq than MODCOD y, then MODCOD y is omitted from Fig. 2. MODCODs not 
+included in Fig. 2 are underlined in Tables 1 and 2. It can be observed that the curve representing 
+the MCSS using OFDM transmission has a much steeper ascent than the MCSS using CI-OFDM 
+transmissions. In fact, up to a spectral efficiency of 3.6 bit/s/Hz, the MCSS with CI-OFDM 
+transmissions has a TD less than 3 dB. This means that the MCSS with CI-OFDM transmissions 
+could be employed for spectral efficiencies of up to 3.6 bit/s/Hz, at no more than double the 
+required transmission power.  
+
+=====PAGE 8=====
+6 
+Rec.  ITU-R  S.1878 
+TABLE 2 
+Comparison of TD performance for MCSS with OFDM and CI-OFDM 
+transmissions using various combinations of DVB-S2 MODCOD 
+MODCOD 
+Spectral 
+Efficiency 
+ 
+(bit/s/Hz) 
+OFDM 
+CI-OFDM 
+CNReq (dB)
+@PER = 10–3
+IBOopt 
+(dB) 
+TD 
+(dB) 
+CNReq (dB) 
+@PER = 10–3 
+IBOopt 
+(dB) 
+TD 
+(dB) 
+QPSK 1/4 
+0.49 
+–2.29 
+0 
+0.67 
+–2.78 
+0 
+0.18 
+QPSK 2/5 
+0.79 
+0.16 
+0 
+0.80 
+–0.44 
+0 
+0.20 
+QPSK 1/2 
+0.99 
+1.73 
+0 
+0.60 
+1.23 
+0 
+0.10 
+QPSK 5/6 
+1.65 
+6.78 
+0 
+1.73 
+5.43 
+0 
+0.38 
+8-PSK 3/5 
+1.78 
+8.12 
+0 
+2.51 
+6.01 
+0 
+0.40 
+8-PSK 3/4 
+2.23 
+11.17 
+0 
+3.33 
+8.29 
+0 
+0.45 
+8-PSK 5/6 
+2.48 
+13.93 
+1 
+4.62 
+9.95 
+0 
+0.64 
+8-PSK 9/10 
+2.68 
+16.69 
+3 
+5.85 
+11.72 
+0 
+0.88 
+16-APSK 3/4 
+2.96 
+15.41 
+2 
+5.27 
+11.53 
+0 
+1.39 
+16-APSK 4/5 
+3.16 
+16.79 
+3 
+5.87 
+12.59 
+0 
+1.67 
+16-APSK 5/6 
+3.30 
+18.08 
+3 
+6.55 
+13.56 
+0 
+2.03 
+16-APSK 8/9 
+3.51 
+20.04 
+5 
+7.28 
+15.42 
+1 
+2.66 
+16-APSK 9/10 
+3.56 
+20.76 
+5 
+7.77 
+15.81 
+1 
+2.82 
+32-APSK 3/4 
+3.70 
+20.40 
+5 
+7.60 
+16.26 
+2 
+3.46 
+32-APSK 4/5 
+3.95 
+22.05 
+6 
+8.13 
+17.47 
+2 
+3.55 
+32-APSK 5/6 
+4.12 
+23.16 
+6 
+8.9 
+18.55 
+2 
+4.29 
+32-APSK 8/9 
+4.39 
+25.43 
+8 
+9.93 
+21.81 
+2 
+6.31 
+32-APSK 9/10 
+4.45 
+25.81 
+8 
+10.06 
+22.75 
+2 
+7.00 
+ 
+ 
+Figure 3 gives the energy efficiency of the SCSS with linear HPA, SCSS with L-TWTA, MCSS 
+with OFDM transmissions and MCSS with CI-OFDM transmissions, by plotting the spectral 
+efficiency of these systems – at a PER of 10-3 – versus CNReq using Tables 1 and 2. Each step in 
+a curve represents the use of a new MODCOD with higher spectral efficiency. Note that as was 
+explained with Fig. 2, only the MODCODs giving a maximum spectral efficiency are used to plot 
+Fig. 3. The results in Fig. 3 reflect those of Fig. 2, with the SCSSs having better energy efficiency 
+than the MCSSs, especially for MODCODs having higher spectral efficiency. In particular, MCSSs 
+using MODCODs with 32-APSK modulation have very poor energy efficiency when compared 
+with the SCSS with L-TWTA. However, it is clear that the CI-OFDM greatly improves the energy 
+efficiency of the MCSS when compared with the MCSS using OFDM transmissions. The spectral 
+efficiency that can be obtained for a MCSS using OFDM transmissions, while limiting the increase 
+in the transmission power to 3 dB or less, is 2.05 bit/s/Hz. This is roughly 1.55 bit/s/Hz lower than 
+it is for the MCSS using CI-OFDM transmissions. 
+
+=====PAGE 9=====
+ 
+Rec.  ITU-R  S.1878 
+7 
+ 
+ 
+ 
+FIGURE 2 
+Total degradation of SCSS and MCSS versus spectral efficiency 
+10
+9
+8
+7
+6
+5
+4
+3
+2
+1
+0
+Total degradation (dB)
+SCSS L-TWTA
+MCSS OFDM
+MCSS CI-OFDM
+0.5
+1.5
+1
+2
+2.5
+3.5
+3
+4
+Spectral efficiency (bit/s/Hz)
+ 
+ 
+
+=====PAGE 10=====
+8 
+Rec.  ITU-R  S.1878 
+FIGURE 3 
+Energy efficiency of SCSS and MCSS for various combinations of DVB-S2 MODCOD 
+32-APSK
+16-APSK
+8-PSK
+QPSK
+SCSS linear
+SCSS L-TWTA
+MCSS CI-OFDM
+MCSS OFDM
+4.5
+3.5
+4
+3
+2.5
+1.5
+2
+1
+0
+0.5
+Spectral efficiency (bit/s/Hz)
+CNR (dB)
+0
+5
+10
+15
+20
+25
+ 
+
+=====PAGE 11=====
+ 
+Rec.  ITU-R  S.1878 
+9 
+ 
+4 
+Summary 
+This Annex demonstrates that it is possible to use CI-OFDM transmissions for satellite 
+radiocommunication systems and obtain spectral efficiencies up to 3.6 bit/s/Hz, while limiting the 
+increase in required transmission power to 3 dB or less. Unmodified OFDM transmissions have 
+high PAPRs and, as a result, can only be used for MCSSs to obtain spectral efficiencies of up to 
+about 2.05 bit/s/Hz, while limiting the increase in the required transmission power to 3 dB or less7. 
+This demonstrates that CI-OFDM allows a MCSS to operate at a spectral efficiency that is roughly 
+1.55 bit/s/Hz greater than a MCSS with OFDM transmissions. 
+ 
+ 
+ 
+ 
+ 
+Annex 2 
+ 
+MC-CDMA in satellite radiocommunication systems  
+1 
+Introduction 
+Annex 2 presents a satellite radiocommunication system with MC-CDMA transmissions and its 
+corresponding performance, evaluated using computer simulations.  
+2 
+System model 
+Figure 4 is a synchronous multibeam geostationary satellite system providing IP-based satellite 
+packet services using an adaptive MC-CDMA scheme. Services for mobile and fixed users are 
+linked to a terrestrial IP core network through a fixed earth station (FES) and satellite. The FES 
+performs adaptive resource allocation on the downlink and is a gateway to link the user services to 
+the terrestrial network. When the satellite has an on-board processing capability, it can perform the 
+adaptive resource allocation.  
+In the synchronous multibeam system, all the downlink signals from a satellite are synchronized in 
+the time and frequency domains. The downlink radio frame consists of multiple frequency/time 
+slots divided in an FDM/TDM fashion. In each time/frequency slot, the radio resource is subdivided 
+by orthogonal spreading codes in a CDM fashion. A radio resource unit (RRU) is defined by 
+a specific spreading code in a specific frequency/time slot. All beams share the orthogonal RRUs 
+for packet transmission. Due to the synchronized transmission, every RRU is orthogonal to one 
+another. A unique pilot symbol sequence for each beam is transmitted in a predefined portion of the 
+frame. The pilot sequence is spread by a beam-specific pilot code.  
+In a slot, the traffic signal is spread by the orthogonal spreading codes, but it is not scrambled by 
+a beam-specific pilot code. Therefore, due to the synchronized transmission on all of the beams, 
+the transmission signals from different beams are orthogonal to each other if the beams use different 
+spreading codes in the same slot. Due to the orthogonality between RRUs, the interbeam 
+interference is minimized, which improves the system capacity.  
+                                                 
+7 It should be noted that these results are specific to multi-carrier systems with 64-subcarriers. 
+
+=====PAGE 12=====
+10 
+Rec.  ITU-R  S.1878 
+In mobile environments, the orthogonality between different spreading codes in the same 
+frequency/time slot may not be maintained due to multipath (frequency-selective) fading. Under 
+heavy load conditions, the number of RRUs available in a beam can be restricted because all beams 
+share RRUs. In order to avoid this resource limitation, the RRUs can be reused if the distance 
+between users is sufficiently large so that the interbeam interference does not become significant as 
+would be problematic. The code limitation problem can be solved by using a MODCOD with a high 
+spectral efficiency, such as 16-QAM. The use of high-order modulation schemes can reduce the 
+number of RRUs required for packet transmission.  
+For the adaptive packet transmission, every user measures the channel state using beam pilots and 
+periodically reports the measured result to the FES through the reverse link. The user report 
+includes the received power and carrier-to-interference ratio on the primary beam and adjacent 
+beam pilots. The primary beam of a user is the beam currently providing packet services to that 
+user. Based on the reported link conditions, the resource management center in the FES performs 
+packet scheduling, selects the best resources for each packet transmission and assigns the transmit 
+power and MODCODs. 
+Forward link IP-based information signals are asymmetric in bandwidth requirement with respect to 
+the reverse link. Combining bursty and high-rate packet transmissions using MC-CDMA makes 
+transmitters more efficient in terms of spectral efficiency. 
+MC-CDMA combines the techniques of CDMA and OFDM in a way that offers the advantages of 
+both. The MC-CDMA satellite system offers a high degree of freedom through its multi-carrier 
+transmission scheme, and thus can provide more efficient adaptive transmissions.  
+FIGURE 4 
+An example of a multibeam satellite system 
+. . .
+. . .
+. 
+.
+.
+Terrestrial 
+network
+Fixed
+earth 
+station
+Forward link
+GSO
+satellite
+Frequency
+slots
+Spreading 
+codes
+Beam 0
+Beam 1
+Frame
+Radio 
+resource 
+unit
+Time slots
+Reverse link
+B0
+B6
+B5
+B4
+B3
+B2
+B1
+User
+ 
+
+=====PAGE 13=====
+ 
+Rec.  ITU-R  S.1878 
+11 
+ 
+ 
+FIGURE 5 
+Block diagram of the adaptive MC-CDMA satellite system 
+ 
+Fading
+Adaptative
+controller
+Frame 
+interleaver
+Channel encoder for user 2
+HPA
+(with
+predistorter)
+Channel encoder for user K
+Channel encoder for user 1
+Channel
+encoder
+ORC
+encoder
+Data
+source
+Symbol spreader for user 2
+Symbol spreader for user K
+Symbol spreader for user 1
+Σ
+Walsh
+spreader
+Symbol
+mapper
+Symbol
+repeater
+Prefix/
+postfix
+inserter
+Multicarrier
+modulator
+(IFT)
+Function for
+PAPR
+reduction
+Spreading
+mode
+switch
+Rain attenuation
+TWTA
+AWGN
+Channel
+quality
+measurement
+Data
+sink
+CRC
+decoder
+Channel
+decoder
+Frame
+deinterleaver
+Symbol
+demapper
+Symbol
+combiner
+Walsh
+despreader and
+combiner
+Prefix/
+postfix
+remover
+Multicarrier
+demodulator
+(FFT)
+De-function
+for PAPR
+reduction
+Spreading
+mode
+switch
+Channel decoder for user 1
+Symbol despreader for user 1
+ 
+
+=====PAGE 14=====
+12 
+Rec.  ITU-R  S.1878 
+Figure 5 shows the block diagram for the transmitter and receiver of an adaptive MC-CDMA 
+satellite system. Adaptive MC-CDMA systems can be used as a countermeasure for atmospheric 
+fading. The adaptive transmitter – as shown in Fig. 5 – changes the coding, modulation, and 
+spreading schemes by a control command determined according to the satellite channel conditions. 
+The channel encoder in the adaptive transmitter changes its encoding parameters using the 
+aforementioned control command. The symbol spreader for each user consists of a symbol mapper, 
+a symbol repeater, a Walsh spreader, and also changes its parameters using the control command. 
+The chip interleaver in the transmitter is for dual mode MC-CDMA schemes, which are especially 
+useful for changing the utilized spreading scheme according to the channel and traffic conditions. 
+Adaptive MC-CDMA systems can also utilize techniques for reducing the PAPR. Additionally, 
+a predistorter is used to linearize the HPA. A number of PAPR reduction techniques and 
+predistortion schemes are discussed in § 6.2 of Report ITU-R S.2173.  
+According to the adaptive operation of the transmitter, the receiver in Fig. 5 also changes its 
+decoding, demodulating, and de-spreading schemes using the control command in synchronization 
+with the command utilized by the transmitter. Multi-carrier demodulation is accomplished by 
+a simple FFT, and all other operations performed by the receiver are applied in reverse-order with 
+respect to those operations performed by the transmitter. 
+Choice of modulation and coding schemes is subject to system implementation. A detailed 
+discussion on channel coding schemes and link adaptation achieved by using ACM are discussed in 
+§§ 7 and 8 of Report ITU-R S.2173, respectively. Simulation results concerning these topics are 
+also given in § 10 of Report ITU-R S.2173. 
+3 
+Performance of MC-CDMA satellite system 
+The system parameters in Table 4 are used to investigate the signal distortions appearing in the 
+symbol constellations due to the nonlinear transfer function of the TWTA in the MC-CDMA 
+satellite system. For simulation purposes, the transfer function of the TWTA is that described in 
+§ 10.3.1 of Report ITU-R S.2173. Figure 6 shows signal distortions for various numbers of users 
+and OBO values. It is assumed that the MC-CDMA system uses 128 subcarriers and a Walsh-
+Hadamard (WH) code of length 16. There are up to 16 active users in the system, and the 
+128 subcarriers are evenly allocated to each active user. In Fig. 6, the small red circles in the 
+constellation represent the signal without distortion; the outer blue dots represent the signal when 
+number of current users, K = 16; the green dots represent the signal when K = 8, and the inner black 
+dots represent the signal when K = 1. The nonlinear distortion produced by the TWTA increases as 
+the number of users increases. It is also evident that the signal distortion increases as the OBO value 
+of TWTA decreases. This signal distortion degrades the BER performance of the system. 
+TABLE 4 
+Parameters for MC-CDMA satellite system 
+Signal constellation 
+QPSK, 16-QAM 
+Spreading sequence 
+Walsh-Hadamard 
+Processing gain 
+16 
+Number of symbol per frame (M) 
+4, 8, 16 
+Number of active user (K) 
+1-16 
+Number of subcarrier (N) 
+64, 128, 256 
+Scrambling code 
+Random code 
+ 
+
+=====PAGE 15=====
+ 
+Rec.  ITU-R  S.1878 
+13 
+ 
+FIGURE 6 
+Signal constellation distorted by the TWTA 
+ 
+Q-channel
+–2.00
+I-channel
+–1.00
+0.00
+1.00
+2.00
+2.00
+–2.00
+–1.00
+0.00
+1.00
+Q-channel
+2.00
+–2.00
+–1.00
+0.00
+1.00
+–2.00
+–1.00
+0.00
+1.00
+2.00
+Q-channel
+2.00
+–2.00
+–1.00
+0.00
+1.00
+Q-channel
+2.00
+–2.00
+–1.00
+0.00
+1.00
+–2.00
+I-channel
+–1.00
+0.00
+1.00
+2.00
+–2.00
+–1.00
+0.00
+1.00
+2.00
+–2.00
+–1.00
+0.00
+1.00
+2.00
+a) QPSK (OBO = 3 dB)
+b) QPSK (OBO = 6 dB)
+c) 16 QAM (OBO = 3 dB)
+d) 16 QAM (OBO = 6 dB)
+I-channel
+I-channel
+ 
+ 
+ 
+Figure 7 examines the uncoded BER performance of a MC-CDMA satellite system with various 
+numbers of users and OBO values. The simulation results in Fig. 7 show that the nonlinear 
+distortion has a larger impact on the 16-QAM constellation than the QPSK constellation. It is also 
+noticeable that the effect of nonlinear distortion on the BER performance of the MC-CDMA 
+satellite system increases as the number of users increase and the OBO values of TWTA decrease – 
+as is suggested by Fig. 6. 
+
+=====PAGE 16=====
+14 
+Rec.  ITU-R  S.1878 
+FIGURE 7 
+BER performance of the MC-CDMA satellite system 
+4.00
+0.00
+8.00
+12.00
+16.00
+E N
+b/
+0
+10
+–6
+10
+–5
+10
+–4
+10
+–3
+10
+–2
+10
+–1
+1
+Bit error rate
+10
+–6
+10
+–5
+10
+–4
+10
+–3
+10
+–2
+10
+–1
+1
+Bit error rate
+4.00
+0.00
+8.00
+12.00
+16.00
+E N
+b/
+0
+20.00
+No distortion
+ K = 1, OBO 1 dB
+K = 8, OBO 1 dB
+K = 1, OBO 3 dB
+QPSK-TWTA
+K = 16, OBO 1 dB
+K = 8, OBO 3 dB
+K = 1, OBO 6 dB
+K = 16, OBO 3 dB
+K = 8, OBO 6 dB
+K = 16, OBO 6 dB
+ K = 1, OBO 1 dB
+K = 8, OBO 1 dB
+K = 1, OBO 3 dB
+K = 16, OBO 1 dB
+K = 8, OBO 3 dB
+K = 1, OBO 6 dB
+K = 16, OBO 3 dB
+K = 8, OBO 6 dB
+K = 16, OBO 6 dB
+16-QAM-TWTA
+No distortion
+a) QPSK
+b) 16-QAM
+ 
+
+=====PAGE 17=====
+ 
+Rec.  ITU-R  S.1878 
+15 
+ 
+Using a symbol predistorter can mitigate the performance degradations caused by the nonlinear 
+distortion of the TWTA. Figure 8 shows the uncoded BER performance of the MC-CDMA satellite 
+system when combined with a L-TWTA, which is the combination of a TWTA and an ideal 
+predistorter – henceforth referred to as an ideal L-TWTA. The results presented demonstrate 
+considerable improvement in the BER performance of the MC-CDMA satellite system with ideal 
+predistortion; especially for the case where larger OBO values are observed. The improvement in 
+BER performance is greater with the 16-QAM constellation because 16-QAM experiences greater 
+nonlinear distortion than QPSK. The improvement in performance is the result of phase distortion 
+compensation and the linearizing effect of the predistorter in the regions below HPA saturation. 
+Although simulations results are presented using an ideal predistorter, the high-peak problems of 
+MC-CDMA cannot be fully resolved. This is because the ideal predistorter linearizes signals only in 
+the regions before saturation, and the saturation region is determined by the OBO value. Therefore, 
+it is very important to reduce the PAPR by using an efficient PAPR reduction method. Doing so can 
+reduce the OBO value and results in efficient power usage, as is demonstrated in Annex 1 for 
+CI-OFDM transmissions. 
+An adaptive MC-CDMA satellite system is investigated when implemented in a mobile satellite 
+channel model for suburban 30/20 GHz band8. Various MODCODs with block turbo codes (BTC)9 
+are used for adaptive transmission. Detailed performance of BTC MODCODs can be found in 
+§ 10.1 of Report ITU-R S.2173. Es/N0 is fixed at 20.5 dB which corresponds to the required Es/N0 
+value of 18.5 dB for BTC MODCOD of 64-QAM (63,56)2 (the superscript “x” indicates an x 
+dimensional BTC) to produce a BER of 10-6, plus an additional 2 dB power margin. Table 5 
+compares the performance of an adaptive MC-CDMA satellite system with that of a conventional 
+non-adaptive MC-CDMA satellite system. In both simulation systems, an ideal L-TWTA with IBO 
+of 3 dB is used.  
+It is clear that the performance of the adaptive MC-CDMA satellite system is superior to that of the 
+non-adaptive MC-CDMA system. For example, the adaptive scheme can achieve a spectral 
+efficiency10 of 1.97 bit/s/Hz, which corresponds to roughly the same spectral efficiency as the 
+8-PSK (31,25)2 MODCOD, but with far better BER performance for the same Es/N0.  
+ 
+TABLE 5 
+Performance of the adaptive MC-CDMA in a mobile satellite channel 
+ 
+Adaptive 
+8-PSK (31,25)2
+8-PSK (15,10)3 BPSK (15,10)3
+BER 
+8.91 × 10–6 
+1.15 × 10–1 
+8.78 × 10–2 
+2.09 × 10–2 
+PER 
+3.10 × 10–4 
+4.59 × 10–1 
+2.81 × 10–1 
+8.31 × 10–2 
+Spectral efficiency (bit/s/Hz) 
+1.97 
+1.95 
+0.89 
+0.30 
+ 
+                                                 
+8 For more information on the mobile satellite channel for suburban 30/20 GHz band, consult reference 
+[Fontán et al., 2001] in § 10.4.3 of Report ITU-R S.2173. 
+9 For more information on BTCs, consult § 7.3.3 of Report ITU-R S.2173. 
+10 Where the definition of spectral efficiency, in this context, is the average spectral efficiency found by 
+averaging the results from Table 5 over all instantaneous channel realizations generated using the channel 
+model in reference [Fontán et al., 2001] in § 10.4.3 of Report ITU-R S.2173. 
+
+=====PAGE 18=====
+16 
+Rec.  ITU-R  S.1878 
+FIGURE 8 
+BER performance of the MC-CDMA with the L-TWTA with an ideal predistorter 
+a) QPSK (K = 16)
+b) 16-QAM (K = 16)
+4.00
+0.00
+8.00
+12.00
+16.00
+E N
+b/
+0
+10
+–6
+10
+–5
+10
+–4
+10
+–3
+10
+–2
+10
+–1
+1
+Bit error rate
+10
+–6
+10
+–5
+10
+–4
+10
+–3
+10
+–2
+10
+–1
+1
+Bit error rate
+4.00
+0.00
+8.00
+12.00
+16.00
+E N
+b/
+0
+20.00
+ OBO 6 dB with PD
+OBO 6 dB
+OBO 3 dB
+OBO 3 dB with PD
+OBO 1 dB with PD
+OBO 1 dB
+16-QAM-TWTA (K = 16)
+No distortion
+No distortion
+ OBO 6 dB with PD
+OBO 6 dB
+OBO 3 dB
+OBO 3 dB with PD
+OBO 1 dB with PD
+OBO 1 dB
+QPSK-TWTA (K = 16)
+ 
+
+=====PAGE 19=====
+ 
+Rec.  ITU-R  S.1878 
+17 
+ 
+4 
+Summary 
+Annex 2 demonstrates that adaptive MC-CDMA can offer improved spectral efficiency and BER 
+performance in MSS system. The adaptive MC-CDMA scheme can be utilized to provide IP packet 
+services through a synchronized multibeam satellite system. 
+ 
+List of abbreviations 
+ACM 
+Adaptive coding and modulation 
+APSK 
+Amplitude and phase shift keying 
+CI-OFDM 
+Carrier interferometry orthogonal frequency-division multiplexing 
+CNR  
+Carrier-to-noise ratio 
+COFDM 
+Coded orthogonal frequency-division multiplexing 
+FES 
+Fixed earth station 
+FFT 
+Fast Fourier transform 
+FSS 
+Fixed-satellite service 
+HPA 
+High-power amplifiers 
+IBO 
+Input back-off 
+IFFT 
+Inverse fast Fourier transform 
+L-TWTA  
+Linearized TWTAs 
+MC-CDMA 
+Multi-carrier code-division multiple access 
+MCSS  
+Multi-carrier satellite system 
+MF-TDMA  
+Multifrequency TDMA 
+MODCOD  
+Modulation and coding combination 
+MPU  
+Multi-carrier processing unit 
+MSG  
+Multi-carrier signal generator 
+MSS 
+Mobile satellite service 
+OBO 
+Output back-off 
+OFDM 
+Orthogonal frequency-division multiplexing 
+OFDMA  
+Orthogonal frequency-division multiplexing – frequency-division multiple 
+access  
+PAPR 
+Peak to average power ratio 
+PER 
+Packet error rate 
+PSK 
+Phase shift keying 
+QAM 
+Quadrature amplitude modulation  
+QPSK 
+Quadrature phase shift keying 
+RF 
+Radio-frequency  
+SCSS  
+Single-carrier satellite system 
+TD 
+Total degradation 
+
+=====PAGE 20=====
+18 
+Rec.  ITU-R  S.1878 
+TWTA 
+Travelling wave tube amplifier 
+U/C  
+Up-converter 
+UW 
+Unique word 
+VSA 
+Vector signal analyser 
+VSG  
+Vector signal generator 
+ 
+ 
+ 

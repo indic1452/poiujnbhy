@@ -1,0 +1,585 @@
+
+=====PAGE 1=====
+US006697975B2
+a2) United States Patent (10) Patent No.: US 6,697,975 B2
+Cameron (45) Date of Patent: Feb. 24, 2004
+(54) GENERALIZED CONVOLUTIONAL 5,886,998 A 3/1999 Voith et al.
+INTERLEAVER/DEINTERLEAVER 5,889,791 A 3/1999 Yang
+5,912,898 A * 6/1999 Khoury ...................... 714/701
+(75) Inventor: Kelly Cameron, Irvine, CA (US) 6,003,147 A * 12/1999 Stephens etal. ............ 714/701
+6,014,761 A 1/2000 Lachish et al.
+in. , 6,035,427 A * 3/2000 Kweon veeccccscsseseseesee 714/702
+(73) Assignee: newocom Corporation, Irvine, CA 6.178.530 BL * 1/2001 Aman et al. cccccccosesse... 714/702
+( ) 6,411,654 Bil * 6/2002 Furutani et al. ............ 375/262
+(*) Notice: Subject to any disclaimer, the term of this FOREIGN PATENT DOCUMENTS
+patent is extended or adyusted under 35
+USC. 154(b) by 0 days. EP 0 681 373 A2 ~~ 11/1995
+EP O 813 309 AQ 12/1997
+GB 2 315 002 A 1/1998
+(21) Appl. No.: 10/325,525 WO WO 95/18489 7/1995
+(22) Filed: Dec. 19, 2002 OTHER PUBLICATIONS
+(05) Prior Publication Data Hanna, S.A.; Convolutional interleaving for digital radio
+US 2003/0093750 Al May 15, 2003 communications; Universal Personal Communications,
+1993. Personal Communications: Gateway to the 21st Cen-
+Related U.S. Application Data tury. Conference Record, 2nd International Conference on,
+vol.: 1, 1993 Page(s): 443-447 v.*
+(63) Continuation of application No. 09/430,456, filed on Oct. S.A. Hanna, “Convolutional Interleaving for Digital Radio
+29, 1999. a Communications,” Personal Communications: Gateway to
+(60) Noone application No. 60/106,482, filed on Oct. 30, the 21° Century, Conference Record, 2" International Con-
+ference, 1993, pp. 443-447, vol. 1, Universal Personal
+(51) Int. Ch! oo. GLLC 29/00; HO3M 13/03 Communications.
+(52) US. Ch oo... 714/702; 714/787; 714/788 * cited by examiner
+(58) Field of Search .......0.cccccccccceeeeseee 714/701, 702, y
+M14/787, 788, 761, 762 Primary Examiner—Albert Decady
+Assistant Examiner—Joseph D. Torres
+(56) References Cited (74) Attorney, Agent, or Firm—Christie, Parker & Hale,
+U.S. PATENT DOCUMENTS LLP
+4.547.887 A 10/1985 Mui (57) ABSTRACT
+4.559.625 A 12/1985 Berlekamp et al.
+5.042.033 A * 8/1991 Costa ceccccccccssesssssseseeee 714/701 A memory-eflicient convolutional interleaver/deinterleaver
+5,241,563 A * 8/1993 Paiketal. ....c.c.c0. 375/262 With a memory array, a write commutator, and a read
+5,483,541 A * 1/1996 Linsky .........c.... 714/701 commutator wherein the commutators perform their respec-
+5,519,734 A * 5/1996 Ben-Efraim ................ 375/341 tive write and read operations relative to a preselected
+5,537,420 A * 7/1996 Huang cece eee eens esas eesesees 714/701 memory cell after q predetermined delay. The delay 1s
+§ 572,532 A 11/1996 Fimott et al. eee eeeeseeseene 714/702 chosen using q modulo-based technique, such that an effi-
+ee n <, ‘005 re et al. cient implementation of a Ramsey Type-II interleaver is
+636, oith et al.
+5719875 A * 21998 Wei cecsceccccccocesveeee. 714/701 alized.
+5,764,649 A _—- 6/1998. Tong
+5,771,239 A * 6/1998 Moroney et al. ........... 370/474 43 Claims, 2 Drawing Sheets
+11 : 13 3
+5} gO 1] 2 fe
+2Eer 67/8 R2
+f ofio) f\L RS
+spe} "Qe? Ran
+fa r3fia] 718 | Rs
++ [oholiy/ | 73 | Re
+:
+:
+— a
+
+=====PAGE 2=====
+U.S. Patent Feb. 24, 2004 Sheet 1 of 2 US 6,697,975 B2
+ye
+CO ma NN &SM Tl O WHO WD
+~~ wf Ow Ow Ww woe we we SY
+~
+»_
+| Pa i
+Nfolo/efsis(2peys
+N) — — — vv —— oo
+1 | ea aad cd 7
+o[Plo
+i
+be |
+e nd
+<=
+i CD ~)
+xy Ow —
+<> é
+=<
+L |
+2 2 ~
+\ \e else 0
+Sc '
+vw ep
+
+=====PAGE 3=====
+U.S. Patent Feb. 24, 2004 Sheet 2 of 2 US 6,697,975 B2
+CN
+ON
+(O
+lie
+ft E tty og
+f
+!
+= ee ee
+Te
+Oo
+=<}
+ad CN
+MN
+
+=====PAGE 4=====
+US 6,697,975 B2
+1 2
+GENERALIZED CONVOLUTIONAL a modulo-based technique, such that an efficient implemen-
+INTERLEAVER/DEINTERLEAVER tation of a Ramsey Type-II interleaver, and a Ramsey
+Type-IIl is realized.
+RELATED APPLICATION
+ae a 5 BRIEF DESCRIPTION OF THE DRAWINGS
+
+This patent application is a continuation of application
+Ser. No. 09/430,456, filed Oct. 29, 1999, which claims the FIG. 1 is an exemplary illustration of an embodiment of
+benefit of the filing date of U.S. Provisional Patent Appli- the present invention, in the form of a Ramsey Type-Hl
+cation Serial No. 60/106,482, filed Oct. 30, 1998 and entitled interleaver.
+
+EFFICIENT CONVOLUTIONAL INTERLEAVERS/ FIG, 2 is an exemplary illustration of an embodiment of
+DEINTERLEAVERS, the entire contents of which are 1° the present invention, in the form of a Ramsey Type-IIl
+hereby expressly incorporated by reference. interleaver
+BACKGROUND OF THE INVENTION DETAILED DESCRIPTION OF EXEMPLARY
+. . EMBODIMENTS
+
+1. Field of the Invention 15 | | |
+
+The invention relates to an apparatus and method for Although convolutional interleavers/deinterleavers are
+convolutional interleaving/deinterleaving. well Known in the art, the design ol memory-ellicient
+
+. devices approaching the theoretical minimum number of
+
+2. Description of the Relevant Art :; , . .
+
+memory locations has been elusive, particularly interleavers/
+
+Present digital communication channels are experiencing deinterleavers of the Ramsey II-type. The invention herein
+oreatly increased demands, which lead to errors in the data ~° provides a generalized memory-efficient interleaver/
+being transmitted in that channel. The error correcting codes deinterleaver that can be reconfigured to selectively operate
+in common use are very good at detecting and correcting as distinct devices, such as a Ramsey I-, Ramsey II-,
+isolated bit errors which occur in a communication channel. Ramsey, III-, or Ramsey IV-type interleaver/deinterleaver.
+However, typical error correction and detection codes are The implementation of the Ramsey-II type of device accord-
+insufficient in a channel which is subject to burst-type errors, 7° ing to the present invention is substantially efficient, to the
+L€., errors which will affect a large number of bits of data at extent where such a design can approach a theoretical
+a time. minimum number of memory cells.
+
+Convolutional interleaving and de-interleaving tech- The concept of convolutional interleaving was first intro-
+niques on either end of the channel transmission path are 3) duced by J. L. Ramsey and G. D. Forney in around 1970.
+used to interleave the data stream, so that the effects of burst See, for example, J. L. Ramsey “Realization of Optimum
+errors become distributed when the data stream 1s Interleavers” IEEE Information Theory, Vol. IT-16, Number
+de-interleaved, and do not overwhelm the error correcting 3, May 1970, pp. 338-345; and G. D. Forney, “Burst-
+and detecting codes. Correcting Codes for the Classic Bursty Channel,” [EEE
+
+Abalance often must be maintained among considerations 3, Trans. Communication ‘Technology, Vol. COM-19, October
+such as, for example, the physical amount of memory used 1971, pp. 772-781. When convolutional interleaving is
+to realize the interleaver/deinterleaver, the total amount of used, the total memory requirements can theoretically be
+device “real estate” available to the device designer, the reduced to approximately N*d. The reduction in memory
+device performance, device flexibility and dynamic results in a memory requirement which is one-fourth the
+re-programmability, and the simplicity of the device design 4, requirement of block interleaving. At the same time, the
+and implementation. In applications where the importance overall latency is reduced by up to approximately the same
+of spatial efficiency is less important, the interleaver/ level C.e., N*d). This is approximately half of the total
+deinterleaver can be implemented using an arbitrary number latency of a block interleaver.
+of memory cells, provided the requisite device performance The implementations of convolutional interleaving
+characteristics are met. Often, interleavers/deinterleavers are 45; described by Ramsey and Forney as well as others are
+realized using distinct designs and implementations, which capable of achieving the reduction of required memory by
+can not be reconfigured dynamically to satisfy, for example, up to a factor of 4 through the use of 2*N separate delay
+the demands of a different environment requiring the use of lines. Each of the delay lines can be implemented by a RAM
+a different type of interleaver/deinterleaver. with its own address. However, when the number of symbols
+
+The tension of this balance is most prominent in single- 59 in a block of data N 1s relatively large, a correspondingly
+chip signal processing device implementations, where spa- large number of separate RAMs are required in order to
+tial efficiency can become a crucial consideration. There is implement the interleaver. In order to improve the efficiency
+a need for efficient implementations of certain types of of the system, it would be desirable to consolidate these
+interleavers/deinterleavers, including, for example, a Ram- memories into a relatively small number of RAMs.
+sey T'ype II device, which to date have not been demon- 55 US. Pat. No. 4,559,625, entitled “Interleavers for Digital
+strated. Furthermore, there is a need for an interleaver/ Communications,” issued Dec. 17, 1985 to E. R. Berlekamp,
+deinterleaver that can be dynamically reconfigurable among et al. describes an interleaving system that requires only one
+the different types of devices, for example, Ramsey I, — RAM for the interleaver and one additional RAM for the
+Ramsey I, Ramsey III, and Ramsey IV. deinterleaver. However, in the described implementation,
+
+60 which is referred to as “helical” interleaving, the interleav-
+SUMMARY OF THE INVENTION ing depth d is restricted to a value that is one greater or one
+
+The invention provides a memory-efficient convolutional less than the number of symbols in a block of data N. That
+interleaver/deinterleaver which includes a memory array, a is, D=N+1. Although the “helical” interleaver disclosed by
+write commutator, and a read commutator; wherein the Berlekamp, et al. works well in some applications, it is
+commutators perform their respective write and read opera- 65 limited in that it cannot be used in applications which require
+tions relative to a preselected memory cell after a predeter- different relationships between the interleaving depth and
+mined delay. The delay is chosen using a technique, such as the number of symbols in a block of data.
+
+=====PAGE 5=====
+US 6,697,975 B2
+3 4
+
+More recently, J. T. Aslanis, et al. described a convolu- In this example, commutators 4, 6 are write commutators,
+tional interleaving system that permits an arbitrary inter- and commutators 5, 7 are read commutators. For the pur-
+leaving depth d wherein the only restriction on the inter- _ poses of clarity, the following exemplary process will be
+leaving depth d is that it must be co-primed with the number —_—_ described from the perspective of interleaver 1; based on this
+of symbols in a block of data N. The described system uses 5 jnformation, a skilled practitioner can readily extend the
+a single RAM implementation with a total memory requires process to deinterleaver 2. It is desirable, but not necessary,
+ment equivalent to 2*N“d. See generally, Aslanis et al. “An that commutators 4, 5 be initialized to the top row of the
+ADSL Proposal for Selectable Forward Error Correction memory array. A symbol S, can be written at a first time to
+with Convolutional Interleaving”, TTEI.4/92-180, Aug. 20, a first row 16 pointed to by write commutator 4. Also
+1992. It should be appreciated that although this system bol S b d dtime. f q 17
+requires just half of the memory required by the block 10 syMDO"S2 Can De read’ al_a second’ time, [rom second row
+; gs wer which is pointed to by read commutator 5. At this point, both
+interleaver, it still requires an amount of memory which is .
+approximately twice as high as the theoretical minimum. pointers can be updated gee ording to at least one predeter-
+
+Also. U.S. Pat. No. 5.764.649. entitled. “Efficient Address mined update technique. It is desirable that read commutator
+
+I ? _ 5 (and write commutator 6) be updated using a predeter-
+
+Generation For Convolutional Interleaving Using A Mini- . . .
+mal Amount Of Memory,” issued Jun. 9, 1998 to Po Tong 15 mined modulo technique. It is most desirable that a com-
+
+oe 7! , mutator “wraps” back on the array in an appropriate manner
+describes an addressing scheme which uses a more reduced
+
+. when the end of an array 1s reached.
+
+amount of memory in the interleaving and deinterleaving
+process, thereby achieving a significant savings in memory Commutator updates can be made using many schemes,
+requirements. However, to realize this savings, a rather , , one being:
+involved addressing scheme is required which involves CommutatorPos,, .=(CommutatorPos,tH) mod N
+generating several arrays which characterize the delays _
+relating to each symbol, as well as the addresses for both the where: rows are labeled 0=R<N; or K, where K is computed
+interleaver and the deinterleaver. by solving the equation:
+
+Each of the above described references 1s incorporated -
+herein in its respective entirety. KD mod N=]
+
+The present invention provides ‘ generalized, emery It will be apparent to those skilled in the art that the
+efficient, convolutional interleaver/deinterleaver, the con- . . .
+
+6 € which be d cally selectabl h difference between the second time and first time is repre-
+guration of which can be dynamically selectable. For the .
+. sentative of a predetermined delay that, in turn represents a
+Perposes ot clarity, and due to th e duality between ah 30 preselected number of symbols S,. Each row 16, 17 of
+interleaver and a deinterleaver, an interleaver/deinterleaver memory array 9 can have a cow osition ointer 1
+will be called an interleaver, as will be understood by skilled ny y 7 . P pom
+
+. associated-therewith, by which, the memory location for
+artisans. Also Known to skilled artisans, a Kamsey types! symbol B, can be selected for a respective read or write
+interleaver is the dual of a Ramsey Type-II interleaver, and operation ‘Tnitial access to row 16 can be performed to an
+
+R Type-Ill inter! is the dual of a R , one a:
+Oey NPS BE RE OE BNE Y 35 arbitrary position within row 16. It also is desirable that a
+Type-IV interleaver. Therefore, a Ramsey Type-I interleaver -ead operation update row position pointer 11
+can be used as a deinterleaver when used in conjunction with Row posi tion poin ter Ho r 4 viven ow 16 17 can be
+7. sassy pee eneaver aterl -aclud updated in conjunction with a read operation or a write
+
+F HRS HOS ae foe an tat ood men 1. an ste operation. It is desirable to update row position pointer 11 in
+, “This de BL for oh of the anor a , - F ve th “40 conjunction with a write operation when interleaving, and
+OF ES COSTE AIG ROE SAC ON NG COTTE EIONS AO MANGAN with a read operation when deinterleaving. Typically, read
+positions relative to the previous position in memory cells and write operations occur in pairs, with a read-after-write
+updated, according to a preselected technique, at least one of sequence being desirable. In such a case, row position
+which being a modulo-based technique. Where only one pointer 11 can be post-incremented if it 1s updated in
+technique 1s 4 modulo-based, the other preselected technique 45 conjunction with a write operation, and pre-incremented if it
+can include updating the respective commutator by an oliset is updated in conjunction with a read operation, with the
+of one or more positions, relative to the previous position in reverse becoming a desirable sequence if the read operation
+the memory cells. precedes the write operation.
+
+FIG. 1 illustrates an exemplary embodiment of a Ramsey The row position increment operation can include any
+Type Il interleaver/deinterleaver. As shown in FIG. 1, the so method of successively pointing to individual memory loca-
+present invention comprehends an interleaver 1, and a tions in a given row 16, 17. One such method can include:
+deinterleaver 2, that convey information through a data
+channel 3. Each of interleavers 1, 2 are shaped approxi- RowPos+! =(RowPos,;+L) mod RowSize
+mately like a triangular memory array. Interleaver 1 includes
+write commutator 4, read commutator 5, and plural rows 16, 55 Where L is an integer such that:
+
+17 of memory array 9. In general, each interleaver and gcd(L, Rowsize)=1
+
+deinterleaver have one write commutator and one read
+
+commutator. Interleaver 1 also includes row position pointer Other patterns and schemes may be used as well, for
+11; it is desirable for each row 16,17 1n memory array 9to — example, any such method which selects the elements in a
+have a row position pointer associated therewith. Deinter- 60 given row, in any order. It is desirable that, once all elements
+leaver 2 includes write commutator 6, read commutator 7, have been selected, the selection sequence repeats.
+
+plural rows 18 of memory array 8, and row position pointer Prior to a read operation row position pointer 11 is
+13. incremented using a preselected technique, such as, for
+
+In the invention herein, memory locations can be refer- example, a modulo technique, with the last position of a
+enced by row and row position. Typically, the row position 65 given row incrementing back to the first location of a row.
+is selected by the read/write commutator; and the position The read operation is then performed from the location
+within a given row is selected by the row position pointer. indicated by row position pointer 11. Where a write opera-
+
+=====PAGE 6=====
+US 6,697,975 B2
+5 6
+
+tion is used for updating, row position pointer 11 can be FIG. 2 illustrates a Ramsey Type-III interleaver 15 and a
+updated using a preselected modulo technique. In general, Ramsey Type-IV device 16 as the corresponding
+the modulo technique according to the present invention de-interleaver. As with devices 1, 2, devices 15, 16 respec-
+comprehends moving the appropriate commutator by a tively employ write commutators 17, 20; read commutators
+{modulo(number of rows)} displacement. 5 19, 22; and row position pointers 24, 25 to perform inter-
+In the case of interleaver 1, write commutator 4 can be leaving and deinterleaving in respective memory arrays 18,
+incremented by a fixed amount, or offset, for example, one 21. Similar to the number of rows, N, in FIG. 1, devices 15,
+position, after each write operation. When the last row of 16 are designed to use I rows of memory cells. As with
+array 9 is reached, the commutator position wraps back interleavers 1, 2, the operation of commutators 19, 20, and
+around to the starting row of array 9 such that the entire 10 perhaps, row position pointers 24, 25, can employ a selected
+cycle is repeated. Currently, it 1s desirable for read commu- modulo-based technique. It is most desirable that each of the
+tator 5 to be updated by K positions after each read opera- commutators 17 and 22, and 19 and 20, and the row position
+
+tion. After successive read/write operations, the last row of pointers, 24, 25, be synchronized.
+the array 1s passed, and the position of read commutator 5 is The foregoing merely illustrates the principles of the
+updated by K rows. Using the desired interleaver block 15 invention, and it will thus be appreciated that those skilled
+length N and interleave depth D, and interleave increment in the art will be able to devise various alternative arrange-
+offset K can be computed by solving the equation: ments which, although not explicitly described herein,
+embody the principles of the invention within the spirit and
+
+KD mod N=1 scope of the following claims.
+
+20 What is claimed is:
+Where memory array 4 consists of N rows ol memory 1. A convolutional interleaver/deinterleaver comprising:
+cells, and the index, R, of a logical sequential arrangement
+of the memory cells satisfies: a memory array having plural array cells, M, with selected
+array cells storing symbols therein, the memory array
+
+O0<ReN having a memory block length, N;
+
+. . | . . an interleaver/deinterleaver having an interleave depth, D;
+starting with the top row, the size of each row in the logical a write commutator operably connected with the memory
+arrangement can be given by: array for writing a symbol B, to a preselected memory
+
+cell at a first time; and
+(D-1) .
+
+S=——R+1 39  aread commutator operably connected with the memory
+array for reading a symbol B, from the preselected
+memory cell at a a second time, wherein a difference
+
+where | is the floor operator. between the second time and the first time is a prede-
+Similarly, the size of each row of the deinterleaver array termined delay, the predetermined delay being related
+can be given by: 35 a desired structure of the memory array, wherein one of
+the read commutator and the write commutator changes
+
+Vy - 7) N-1-R)41 position using a predetermined technique;
+
+Nv wherein M is determined by
+As a result, the total number of memory locations, M, 40 ya c L)D+gcd(N, D-1) +1
+required to implement either the interleaver or the deinter- 7 2
+leaver can be determined by:
+(N -l)D+gcd(N, D-1) +1 where ged(N,D)=1. — |
+M = Sn, 4s 2. The convolutional interleaver/deinterleaver of claim 1,
+wherein the predetermined technique is a predetermined
+modulo technique, which comprises incementing the posi-
+where N and D are arbitrarily selectable parameters, as long tion of the one of the read commutator and the write
+as commutator by K cells, wherein K satisfies the identity,
+gcd(N,D)=1. 30 KD mod N=1;
+The operation of deinterleaver 2 is logically similar to that Wherein D is the interleave depth, and N is the memory
+of interleaver 1 in that write commutator 6 of deinterleaver — block length.
+2 performs write operations on memory array § using an 3. The convolutional interleaver/deinterleaver of claim 2,
+increment offset K for the repositioning of commutator 6, in 55 Wherein the plural rows comprises a selected row, R, having
+the manner that read commutator 5 of interleaver 1 performs a row length, L, determined by one of
+read operations on memory array 9 using the offset K for the
+repositioning of commutator 6. | | _ 1 [= |S - ~R + Lsand
+In the case where rows are sequentially indexed, it is N
+apparent that the length of the rows so configured either 60 (D-1)
+remains the same or increases, as a result of the floor b. L= aa -1- R) +1.
+operation function. Similarly, the length of the rows in
+deinterleaver 2 will remain the same or increase. There is no
+requirement that the logical configuration of the memory 4. The convolutional interleaver/deinterleaver of claim 3,
+correspond with the physical configuration, so that it is 65 further comprising:
+possible to substitute one row for another row. However, it a. an interleaver selected row, R,, having a row length,S,
+is desirable that the interchanged rows be of the same length. determined by
+
+=====PAGE 7=====
+US 6,697,975 B2
+7 S
+each memory array having two row reference pointers,
+_ 2 - De LT and pointing to rows within the memory array, and a
+LON _ column reference pointer, pointing to a column within
+the memory array;
+| | > the first bei ble f lutional
+b. a deinterleaver selected row, R,, having a row length, U, a a — tee
+determined by interleaving of data, with the amount of columns in any
+row R,being determined by
+(D-1)
+y =| w-1-8)] +1; (D —1)
+N 10 S= |= + l,
+herein O=REN. . . 4. .
+nnn . . . . wherein D is a desired interleave depth, N is the number
+5. The convolutional interleaver/deinterleaver of claim 4, of rows of either memory arrav. and; is the number of
+wherein the predetermined delay is selectable among: 1s the row: » »
+. (D-1) (i mod N) symbols, wherein ged(D,D)=1 | | ,
+a. ( )G mod N) symbols, w ere ged(D,D) the second memory array being usable in conjunction
+b. (N) Gi mod D) symbols, wherein D<N; with the first memory array for convolutional deinter-
+c. (D-1) ((N-i-1) mod N) symbols, wherein ged(N,D)=1; leaving of the data, with the amount of columns in any
+and row R., being determined by
+d. (N) ((D-i-1) mod D) symbols, wherein D<N; 20
+wherein D is a predetermined interleave depth, and N — 1) |
+. . “i= ——(N -1-Rg,) + 1,
+is a predetermined memory block length. N
+6. The convolutional interleaver/deinterleaver of claim 5,
+wherein the commutator position of one of the read com- oa,
+mutator and the write commutator increments prior to aread 25 wherein D is the desired interleave depth, N 1s the number
+operation of rows of either memory array, and d is the number of
+7. The convolutional interleaver/deinterleaver of claim 5, the row; and | |
+wherein the commutator position of one of the read com- each memory array having a total size of no more memory
+mutator and the write commutator increments after a write cells than
+operation. 30
+8. The convolutational interleaver/deinterleaver of claim yy — WADE + gcdtN, D-V+1
+2, wherein the predetermined modulo technique comprises 2
+incrementing the position of the other of the read commu-
+an ane the yea oe revlon Py one ee claim 1. 35 wherein D is the desired interleave depth, and N is the
+. . the von fe end enn eaver/ aearn claim I, number of rows of either memory array.
+wherein one of the reac commutator and the write commu- 12. The pair of memory arrays of claim 11, wherein
+tator changes position using a predetermined finite differ- . . .
+; . the column reference pointer in each memory array 1s
+ence equation technique. q ti ‘ater:
+10. A method for memory-efficient interleaving/ deinter- usec’ as a Tow posmen pomn “ts .
+leaving of data, comprising: 40 the first row reference pointer in each memory array 1s
+- . . used as a write commutator, for writing a symbol B, to
+providing a memory array having a plurality M of ,
+. a memory cell, the memory cell being determined by
+memory array cells to which symbols are to be stored; ae ,
+_ the row position pointer and the first row reference
+writing a symbol to a selected array cell of the memory pointer; and
+array by a write commutator at a first time; ; ; ;
+45 the second row reference pointer in each memory array 1s
+selecting the memory array cell in which the symbol is used as a read commutator, for reading a symbol B,
+stored; and from a memory cell, the memory cell being determined
+reading the symbol from the selected memory array cell by the row position pointer and the second row refer-
+by a read commutator at a second time, the difference ence pointer.
+between the second time and the first time being a 50 13. The pair of memory arrays of claim 12, wherein the
+predetermined delay; difference between the time of writing a symbol B, to a
+wherein the plurality M of memory array cells is deter- memory cell and reading the symbol B, from the memory
+mined by: cell is a predetermined delay, the predetermined delay being
+related to a desired structure of the memory arrays.
+(N —l)D+(ecd(N, D-1) +1 55 14. The pair of memory arrays of claim 13, wherein the
+M = ,) , predetermined delay is a predetermined number of symbols
+accessed from the time of writing the symbol Bi until the
+. . time of reading the symbol B..
+and gcd(N,D)=1, D being an interleave depth, and N 15. The pair of memory arrays of claim 14, wherein the
+being a memory block length. _ 60 predetermined number of accessed symbols 1s one of:
+11. A pair of memory arrays, comprising:
+each memory array consisting of memory cells, the (D-1) (i mod N), wherein ged(N, D)=1; NG mod D), wherein
+memory cells being organized as a two-dimensional DIN; (D-1) (N-1-1) mod N), wherein ged(N, D)=1; and
+; N((D-i-1) mod D), wherein D/N;
+array of rows and columns, wherein both memory
+arrays have a same number of rows N, and where the 65 wherein D 1s the desired interleave depth, N is the number
+rows are numbered consecutively within each memory of rows of either memory array, and 1 is the number of the
+array; row symbol B, has been written to.
+
+=====PAGE 8=====
+US 6,697,975 B2
+9 10
+
+16. The pair of memory arrays of claim 14, wherein the the memory cell being determined by the row position
+predetermined number of accessed symbols is selectable pointer and the first row reference pointer; and
+among. the second row reference pointer 1s used as a read
+
+(D-1) (1 mod N), wherein ged(N, D)=1: N(i mod D), wherein commutator, for reading a symbol B; from a memory
+
+D/N; (D-1) ((N-i-1) mod N), wherein gcd(N, D)=1; and cell, the memory cell being determined by the row
+N((D-i-1) mod D), wherein D/N; position pointer and the second row reference pointer.
+
+24. The memory array of claim 23, wherein the difference
+
+wherein D is the desired interleave depth, N 1s the number between the time of writing a symbol B. to a memory cell
+of rows of either memory array, and 1 is the number of the and reading the symbol B. from the memory cell is a
+row symbol B; has been written to. 10 predetermined delay, the predetermined delay being related
+
+17. The pair of memory arrays of claim 12, wherein the to a desired structure of the memory array.
+write commutator and the read commutator in each array 25. The memory array of claim 24, wherein the predeter-
+change positions using a predetermined modulo technique. mined delay is a predetermined number of symbols accessed
+
+18. The pair of memory arrays of claim 17, wherein the from the time of writing the symbol B, until the time of
+modulo technique comprises incrementing a position by K 15 yeadine the symbol B..
+rows, where K is an integer number, K is greater than zero, 26. The memory array of claim 25, wherein the predeter-
+and K satisfies the following equation: mined number of accessed symbols is one of:
+
+KD mod N=1, (D-1) (@ mod N), wherein ged(N, D)=1; N(@i mod D), wherein
+wherein D is the desired interleave depth, and N is the ~” NUD inl) mod Dy, whowin DINE ged, D)=1s and
+number of rows of either memory array. |
+
+19. The pair of memory arrays of claim 12, wherein the —_ wherein D is the desired interleave depth, N is the number
+write commutator and the read commutator in each array of rows of the memory array, and iis the number of the row
+change positions after writing a symbol B,. symbol B, has been written to.
+
+20. The pair of memory arrays of claim 12, wherein the ° 27. The memory array of claim 25, wherein the predeter-
+write commutator and the read commutator in each array mined number of accessed symbols is selectable among:
+change positions before reading a symbol B,.
+
+21. The pair of memory arrays of claim 12, wherein (D-1) (i mod N), wherein gcd(N, D)=1; N(i mod D), wherein
+
+the row position pointer of the first memory array is DIN; (D-1) ((N-i-1) mod N), wherein ged(N, D)=1; and
+
+7 30 N((D-i-1) mod D), wherein D/N;
+updated when the write commutator changes position;
+and wherein D is the desired interleave depth, N is the number
+the row position pointer of the second memory array 1s _ of rows of the memory array, and i is the number of the row
+updated when the read commutator changes position. symbol B, has been written to.
+
+22. A memory array, comprising: 35 28. The memory array of claim 23, wherein the write
+
+consisting of memory cells, the memory cells being commutator and the read commutator change positions
+
+organized as a two-dimensional array of rows and using a predetermined modulo technique.
+columns, and where the rows are numbered consecu- 29. The memory array of claim 28, wherein the modulo
+tively; technique comprises incrementing a position by K rows,
+
+having two row reference pointers, pointing to rows 4° where K is an integer number, K is greater than zero, and K
+
+within the memory array, and a column reference satisfies the following equation:
+pointer, pointing to a column within the memory array;
+
+the memory array being usable for convolutional inter- AD mod Nel,
+
+Re of data, with the amount of columns in any row 45 Wherein D is the desired interleave depth, and N is the
+
+. being determined by
+
+number of rows of the memory array.
+(D-1) 30. The memory array of claim 23, wherein the write
+
+S = |r; +1, commutator and the read commutator change positions after
+
+writing a symbol B..
+50 31. The memory array of claim 23, wherein the write
+wherein D is a desired interleave depth, N 1s the number commutator and the read commutator change positions
+of rows of the memory array, and 11s the number of the before reading a symbol B..
+row; and 32. The memory array of claim 23, wherein the row
+the memory array having a total size of no more memory position pointer 1s updated when the write commutator
+cells than 5° changes position.
+33. A memory array, comprising:
+M = (Wa UD # ged OTN FT consisting of memory cells, the memory cells being
+° organized as a two-dimensional array of rows and
+60 columns, and where the rows are numbered consecu-
+wherein D is the desired interleave depth, and N is the tively;
+number of rows of the memory array. having two row reference pointers, pointing to rows
+
+23. The memory array of claim 22, wherein within the memory array, and a column reference
+
+the column reference pointer is used as a row position pointer, pointing to a column within the memory array;
+
+pointer; 65 the memory array being usable for convolutional deinter-
+the first row reference pointer is used as a write leaving of data, with the amount of columns in any row
+commutator, for writing a symbol B, to a memory cell, Rd being determined by
+
+=====PAGE 9=====
+US 6,697,975 B2
+11 12
+D/N; (D-1) ((N-1-1) mod N), wherein ged(N, D) 1; and
+(D-1) N((D-i-1) mod D), wherein D/N;
+U =| ww -1- Ra] +1.
+wherein D is the desired interleave depth, N is the number
+< of rows of the memory array, and 11s the number of the row
+wherein D is the desired interleave depth, N is the number symbol B, has been written to.
+of rows of the memory array, and d 1s the number of the 38. The memory array of claim 36, wherein the predeter-
+row; and mined number of accessed symbols is selectable among:
+the memory array having a total size of no more memory
+cells than (D-1) (1 mod N), wherein gcd(N, D)=1; NG mod D), wherein
+10 D/N; (D-1) ((N-i-1) mod N), wherein gcd(N, D)=1; and
+y- (N -1)D+gcd(N, D-1) +1 N((D-i-1) mod D), wherein D/N;
+° wherein D is the desired interleave depth, N is the number
+of rows of the memory array, and 11s the number of the row
+wherein D is the desired interleave depth, and N is the 15 symbol B, has been written to.
+number of rows of the Memory array. 39. The memory array of claim 34, wherein the write
+34. The memory array of claim 33, wherein the column commutator and the read commutator change positions
+reference pointer 1s used as a row position pointer; using a predetermined modulo technique.
+the first row reference pointer is used as a write 40. The memory array of claim 39, wherein the modulo
+‘h, mmutator, or eee symb re a" Memory cell, 20 technique comprises incrementing a position by K rows,
+the memory ceil being determined Dy the row position where K is an integer number, K is greater than zero, and K
+pointer and the first row reference pointer; and satisfies the following equation:
+the second row reference pointer is used as a read |
+commutator, for reading a symbol B, from a memory KD mod Nel
+cell, the memory cell being determined by the row -
+position pointer and the second TOW reference pointer. wherein D is the desired interleave depth, and N is the
+35. The memory array of claim 34, wherein the difference number of rows of the memory array.
+between the time of writing a symbol B, to a memory cell :
+. 41. The memory array of claim 34, wherein the write
+and reading the symbol B. from the memory cell is a is
+. . commutator and the read commutator change positions after
+predetermined delay, the predetermined delay being related -
+30 writing a symbol B..
+to a desired structure of the memory array. . . .
+36 Th . 42. The memory array of claim 34, wherein the write
+. The memory array of claim 35, wherein the predeter-
+. . . commutator and the read commutator change positions
+mined delay is a predetermined number of symbols accessed before readino a symbol B
+from the time of writing the symbol B, until the time of 43. Th 5 a Sy e € claim 34. wherein th
+reading the symbol B. « 3. The memory ay ° cam ‘ , Ww ere the row
+37. The memory array of claim 36, wherein the predeter- ee pointer 1S updated when the read commutator
+mined number of accessed symbols is one of: changes position.
+(D-1) (1 mod N), wherein gcd(N, D)=1; NG mod D), wherein eR RR
