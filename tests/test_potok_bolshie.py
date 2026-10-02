@@ -468,7 +468,7 @@ class УскоренияTests(unittest.TestCase):
         x = np.array([0, 1, 1, 0, 1], dtype=np.uint8)
         self.assertEqual([1, 0, 1, 1], sinhro.несовпадения(x, np.array([1, 1], np.uint8)).tolist())
         self.assertEqual([5], sinhro.несовпадения(x, np.array([1, 0, 0, 1, 0], np.uint8)).tolist())
-        self.assertEqual([2], sinhro.несовпадения(x, np.array([0, 1, 0, 1, 0], np.uint8)).tolist())
+        self.assertEqual([3], sinhro.несовпадения(x, np.array([0, 1, 0, 1, 0], np.uint8)).tolist())
         self.assertEqual([], sinhro.несовпадения(x, np.ones(6, np.uint8)).tolist())
         self.assertEqual([1, 0, 1, 1], sinhro.несовпадения(x.astype(bool), np.array([1, 1], np.uint8)).tolist())
         self.assertEqual([1, 0, 1, 1], sinhro.несовпадения(x.astype(np.int64), np.array([1, 1], np.uint8)).tolist())
