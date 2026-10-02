@@ -428,6 +428,8 @@ def config(request: Request) -> dict[str, Any]:
         "llm": {"model": settings.llm_model, "base_url": settings.llm_base_url,
                 "kind": settings.llm_kind},
         "auth_enabled": settings.auth_enabled,
+        # Предел загрузки: окна добавления файлов проверяют размер до отправки, а не после неё.
+        "upload_mb": settings.max_upload_mb,
         "brand": {
             "name": settings.brand_name,
             "short": settings.brand_short,
@@ -3462,24 +3464,69 @@ def pakety_apply_decode_rules(request: Request, cap_id: str) -> dict[str, Any]:
 
 # -- разбор потока: задания по этапам ------------------------------------------------
 
-def _potok(request: Request):
-    """Очередь заданий разбора потока — одна на приложение, папка в data_dir."""
-    задания = getattr(request.app.state, "potok", None)
+#: Задания и сессии заводятся один раз на приложение: два первых запроса одновременно не должны
+#: завести две очереди над одной папкой (каждая подхватила бы незавершённые разборы).
+_ПОТОК_ЗАМОК = threading.Lock()
+
+
+def открыть_задания(app: Any):
+    """Очередь заданий разбора потока — одна на приложение, папка в data_dir; исполнители — по настройкам."""
+    задания = getattr(app.state, "potok", None)
     if задания is None:
-        from ..potok.zadaniya import Задания  # noqa: PLC0415 — numpy только здесь
-        задания = Задания(Path(_settings(request).data_dir) / "potok")
-        request.app.state.potok = задания
+        with _ПОТОК_ЗАМОК:
+            задания = getattr(app.state, "potok", None)
+            if задания is None:
+                from ..potok.zadaniya import Задания  # noqa: PLC0415 — numpy только здесь
+                settings = app.state.settings
+                задания = Задания(Path(settings.data_dir) / "potok",
+                                  разборов=int(getattr(settings, "potok_razborov", 0) or 0),
+                                  стол=int(getattr(settings, "potok_stol", 0) or 0),
+                                  на_человека=int(getattr(settings, "potok_na_cheloveka", 0) or 0),
+                                  процессы=bool(getattr(settings, "potok_processy", True)))
+                app.state.potok = задания
     return задания
+
+
+def _potok(request: Request):
+    return открыть_задания(request.app)
 
 
 def _sessii(request: Request):
     """Сессии работы с потоками — общие столы нескольких файлов и людей."""
     сессии = getattr(request.app.state, "sessii", None)
     if сессии is None:
-        from ..potok.sessii import Сессии  # noqa: PLC0415
-        сессии = Сессии(Path(_settings(request).data_dir) / "sessii")
-        request.app.state.sessii = сессии
+        with _ПОТОК_ЗАМОК:
+            сессии = getattr(request.app.state, "sessii", None)
+            if сессии is None:
+                from ..potok.sessii import Сессии  # noqa: PLC0415
+                сессии = Сессии(Path(_settings(request).data_dir) / "sessii")
+                request.app.state.sessii = сессии
     return сессии
+
+
+def _посчитать(request: Request, user, функция, *args: Any, срок: float | None = None) -> Any:
+    """Тяжёлый расчёт стола — в исполнителе (отдельный процесс), не в процессе сервера.
+
+    Пока исполнитель считает, эта нить сервера только ждёт: интерпретатор свободен для
+    лёгких запросов остальных людей. Ошибки расчёта (ValueError и т. п.) поднимаются здесь —
+    обработчик превращает их в 400, как прежде.
+    """
+    from ..potok import ispolniteli  # noqa: PLC0415
+    try:
+        return _potok(request).посчитать(функция, *args, владелец=user.id, срок=срок)
+    except ispolniteli.СрокВышел as ошибка:
+        raise ServiceError(f"расчёт остановлен: {ошибка}", 504) from None
+    except ispolniteli.Отменено:
+        raise ServiceError("расчёт отменён: сервер останавливается", 503) from None
+    except ispolniteli.ОшибкаИсполнителя as ошибка:
+        raise ServiceError(f"расчёт не выполнен: {ошибка}", 500) from None
+
+
+def _источник(request: Request, job_id: str, stage: int):
+    try:
+        return _potok(request).источник(job_id, int(stage))
+    except (ValueError, OSError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
 
 
 def _мои_сессии(request: Request, user) -> list[str]:
@@ -3594,6 +3641,21 @@ def potok_stage_file(request: Request, job_id: str, stage: int) -> FileResponse:
     return _file_reply(файл, f"{основа}-этап-{stage}{файл.suffix}")
 
 
+@router.post("/potok/{job_id}/cancel")
+def potok_cancel(request: Request, job_id: str) -> dict[str, Any]:
+    """Отменить разбор (или шаги производного потока): ждущий снимается с очереди, идущий
+    останавливается за секунды. Вправе тот, кто запустил, и владелец сессии — как удалить."""
+    user = require_user(request)
+    состояние = _задание_или_404(request, user, job_id)
+    _вправе_удалить(request, user, состояние)
+    итог = _potok(request).отменить(job_id)
+    if not итог:
+        raise ServiceError("задание не ждёт и не идёт — отменять нечего", 409)
+    _repos(request).audit.log("potok.cancel", user=user, object_type="potok", object_id=job_id,
+                              details={"cancel": итог})
+    return {"cancel": итог}
+
+
 @router.post("/potok/{job_id}/continue")
 def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
     """Продолжить разбор с потока после этапа — со снятием слоёв вручную."""
@@ -3610,6 +3672,18 @@ def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     return {"id": ид}
+
+
+@router.post("/potok/{job_id}/stop")
+def potok_stop(request: Request, job_id: str) -> dict[str, Any]:
+    """Остановить автомат: разбор кончается с тем, что уже нашёл (этапы до остановки остаются в таблице)."""
+    user = require_user(request)
+    состояние = _задание_или_404(request, user, job_id)
+    if состояние.get("состояние") not in ("ждёт", "идёт"):
+        raise ServiceError("разбор уже закончен", 409)
+    if not _potok(request).остановить(job_id):
+        raise ServiceError("разбор ещё в очереди — остановить нечего; чтобы он не начался, удалите этот узел", 409)
+    return {"ok": True}
 
 
 # -- растр и ручные инструменты ----------------------------------------------------------
@@ -3643,12 +3717,13 @@ def potok_bits(request: Request, job_id: str, stage: int = 0, start: int = 0,
 @router.get("/potok/{job_id}/periods")
 def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
     """Кандидаты периода по автокорреляции."""
-    from ..potok import cikl, rastr  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     задания = _potok(request)
     _файл_бит_или_400(request, user, job_id, stage)
+    источник = _источник(request, job_id, stage)
     return {"items": задания.запомнить(job_id, stage, "периоды",
-                                       lambda: rastr.периоды(задания.биты_участка(job_id, stage, 0, cikl.ВЫБОРКА)))}
+                                       lambda: _посчитать(request, user, stol_raschety.периоды, источник))}
 
 
 #: График автокорреляции — лаги не дальше этого.
@@ -3658,50 +3733,35 @@ def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, An
 @router.get("/potok/{job_id}/autocorr")
 def potok_autocorr(request: Request, job_id: str, stage: int = 0, max: int = 8192) -> dict[str, Any]:  # noqa: A002
     """Автокорреляция по лагам 0…max (по началу массива, как поиск периода) — для графика в окне поиска."""
-    from ..potok import cikl  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     _файл_бит_или_400(request, user, job_id, stage)
     задания = _potok(request)
     наибольший = min(АВТОКОРРЕЛЯЦИЯ_ДО, max if max > 0 else 8192)
-
-    def посчитать():
-        выборка = задания.биты_участка(job_id, stage, 0, cikl.ВЫБОРКА)
-        лагов = min(наибольший, len(выборка) // 2)
-        r = cikl.автокорреляция(выборка, лагов) if лагов >= 1 else []
-        return {"r": [round(float(x), 4) for x in r], "бит": len(выборка),
-                "шум": round(1.0 / len(выборка) ** 0.5, 5) if len(выборка) else 0.0}
-
-    return задания.запомнить(job_id, stage, f"автокорреляция:{наибольший}", посчитать)
+    источник = _источник(request, job_id, stage)
+    return задания.запомнить(job_id, stage, f"автокорреляция:{наибольший}",
+                             lambda: _посчитать(request, user, stol_raschety.автокорреляция, источник, наибольший))
 
 
 @router.post("/potok/{job_id}/tool")
 def potok_tool(request: Request, job_id: str) -> dict[str, Any]:
     """Быстрый инструмент над потоком этапа или каналом по маске."""
-    from ..potok import rastr  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    этап = int(тело.get("stage") or 0)
+    _файл_бит_или_400(request, user, job_id, этап)
     try:
-        if тело.get("mask"):
-            биты = rastr.по_маске(биты, тело["mask"])
-        найдено = rastr.инструмент(
-            биты, str(тело.get("tool") or ""), int(тело.get("k") or 0),
-            **({"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0),
-                "пропуск": int(тело.get("skip") or 0),
-                "отводы": [int(t) for t in re.findall(r"\d+", str(тело.get("taps") or ""))]}
-               if тело.get("tool") == "скремблер-кадр" else
-               {"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0)}
-               if тело.get("tool") == "поля" else {}))
+        параметры = ({"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0),
+                      "пропуск": int(тело.get("skip") or 0),
+                      "отводы": [int(t) for t in re.findall(r"\d+", str(тело.get("taps") or ""))]}
+                     if тело.get("tool") == "скремблер-кадр" else
+                     {"период": int(тело.get("period") or 0), "сдвиг": int(тело.get("shift") or 0)}
+                     if тело.get("tool") == "поля" else {})
+        return _посчитать(request, user, stol_raschety.инструмент, _источник(request, job_id, этап),
+                          тело.get("mask"), str(тело.get("tool") or ""), int(тело.get("k") or 0), параметры)
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    итог = rastr.в_словарь(найдено)
-    if итог is not None and not any(п.startswith("слой для снятия: ") for п in итог["подробно"]):
-        # Инструмент нашёл то же, что автомат, — и шагом стола это снимается так же (журнал → «Снять»).
-        from ..potok.razbor import слои_находки  # noqa: PLC0415
-        слои = слои_находки(найдено)
-        if len(слои) == 1:
-            итог["подробно"].append(f"слой для снятия: {слои[0]}")
-    return {"found": итог, "bits": int(len(биты))}
 
 
 @router.post("/potok/{job_id}/derive")
@@ -3736,8 +3796,11 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     описание = [rastr.описать_шаг(ш) for ш in шаги if ш["вкл"]]
+    # Без шагов — копия массива для автомата или просто копия: «→ этап 0» не говорит ничего
+    # (так подписывались все узлы автомата, запущенного со стола).
+    без_шагов = ("автомат" if тело.get("analyze") else "копия") + (f" этапа {этап}" if этап else "")
     имя = f"{состояние['имя']} → " + (f"«{конфигурация['имя']}»" if конфигурация
-                                      else "; ".join(описание) or f"этап {этап}")
+                                      else "; ".join(описание) or без_шагов)
     ид = _potok(request).создать(владелец=user.id, имя=имя[:200],
                                  данные=np.packbits(биты).tobytes(),
                                  профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
@@ -3836,25 +3899,17 @@ def potok_config_export(request: Request, config_id: str) -> Response:
 @router.post("/potok/{job_id}/try")
 def potok_try(request: Request, job_id: str) -> dict[str, Any]:
     """Пробно применить шаги (или конфигурацию) к началу потока этапа: что вышло, без задания."""
-    import numpy as np  # noqa: PLC0415
-
-    from ..potok import rastr  # noqa: PLC0415
-    from ..potok.bity import в_байты  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
+    этап = int(тело.get("stage") or 0)
+    _файл_бит_или_400(request, user, job_id, этап)
     шаги = (_конфигурация(request, user, str(тело["config"]))["шаги"] if тело.get("config")
             else list(тело.get("steps") or []))
-    проба = биты[:ПРОБА_БИТ]
     try:
-        шаги = rastr.проверить_шаги(шаги)
-        итог, описание = rastr.применить(проба, шаги)
+        return _посчитать(request, user, stol_raschety.проба_шагов, _источник(request, job_id, этап), шаги, ПРОБА_БИТ)
     except (ValueError, KeyError, TypeError) as ошибка:
         raise ServiceError(f"шаги не выполнились: {ошибка}", 400) from None
-    доля = float(np.mean(итог)) if len(итог) else 0.0
-    return {"бит_на_входе": int(len(проба)), "весь_поток": int(len(биты)), "бит_на_выходе": int(len(итог)),
-            "описание": описание, "доля_единиц": round(доля, 4),
-            "начало": в_байты(итог[:4096]).hex()}
 
 
 # -- рабочий стол анализа: сетка бит, таблица кадров, журнал массива ------------------------
@@ -3956,7 +4011,7 @@ def potok_view_save(request: Request, job_id: str) -> dict[str, Any]:
 @router.post("/potok/{job_id}/period-search")
 def potok_period_search(request: Request, job_id: str) -> dict[str, Any]:
     """Быстрый поиск периода по синхромаркеру: период, первый бит, вес, сам маркер."""
-    from ..potok import rastr  # noqa: PLC0415
+    from ..potok import rastr, stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
     этап = int(тело.get("stage") or 0)
@@ -3967,10 +4022,11 @@ def potok_period_search(request: Request, job_id: str) -> dict[str, Any]:
                      "шаг": int(тело.get("step") or 1), "глубина_от": int(тело.get("depth_min") or 8),
                      "глубина_до": int(тело.get("depth_max") or 64),
                      "качество": float(тело.get("quality") or 90)}
-        нужно = rastr.бит_поиску_периода(параметры["до"], параметры["глубина_до"])
+        rastr.бит_поиску_периода(параметры["до"], параметры["глубина_до"])        # проверка до очереди
+        источник = _источник(request, job_id, этап)
         найдено = задания.запомнить(
             job_id, этап, "поиск_периода:" + json.dumps(параметры, sort_keys=True),
-            lambda: rastr.поиск_периода(задания.биты_участка(job_id, этап, 0, нужно), **параметры))
+            lambda: _посчитать(request, user, stol_raschety.поиск_периода, источник, параметры))
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     return {"items": найдено}
@@ -3983,7 +4039,7 @@ def potok_period_search(request: Request, job_id: str) -> dict[str, Any]:
 @router.post("/potok/{job_id}/scrambler-search")
 def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
     """Поиск скремблера по одной степени: окно перебирает степени по очереди, с ходом и отменой."""
-    from ..potok import skrembler  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
     этап = int(тело.get("stage") or 0)
@@ -3997,29 +4053,11 @@ def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
         # для ПСП со сбросом в каждом кадре.
         кадр = max(0, int(тело.get("frame") or 0))
         начало_кадра = max(0, int(тело.get("frame_start") or 0))
-
-        def посчитать():
-            биты = задания.биты_участка(job_id, этап, первый, первый + skrembler.ВЫБОРКА_ПЕРЕБОРА)
-            итог = skrembler.перебор_степени(биты, степень, отводов)
-            for номер, лучший in enumerate(итог["лучшие"]):
-                # Самосинхронизирующийся: регистр — первые биты потока (с первого бита дескремблера).
-                лучший["самосинхр"] = "".join(str(int(б)) for б in биты[:степень])
-                if аддитивный and номер < СКРЕМБЛЕР_УСТАНОВОК:
-                    уст = skrembler.начальная_установка(
-                        биты, лучший["отводы"], кадр=кадр, начало_кадра=(начало_кадра - первый) % кадр if кадр else 0)
-                    # Места — в битах массива, а не выборки с первого бита.
-                    if уст["способ"] == "кадр":
-                        уст["место"] = (уст["место"] + первый) % кадр
-                        уст["слой"] = уст["слой"].rsplit(" начало ", 1)[0] + f" начало {уст['место']}"
-                    else:
-                        уст["место"] += первый
-                        if " с бита " in уст["слой"]:
-                            уст["слой"] = уст["слой"].rsplit(" с бита ", 1)[0] + f" с бита {уст['место']}"
-                    лучший["аддитивный"] = уст
-            return итог
-
+        источник = _источник(request, job_id, этап)
         return задания.запомнить(
-            job_id, этап, f"скремблер:{степень}:{отводов}:{первый}:{int(аддитивный)}:{кадр}:{начало_кадра}", посчитать)
+            job_id, этап, f"скремблер:{степень}:{отводов}:{первый}:{int(аддитивный)}:{кадр}:{начало_кадра}",
+            lambda: _посчитать(request, user, stol_raschety.скремблер, источник, степень, отводов, первый,
+                               аддитивный, кадр, начало_кадра, СКРЕМБЛЕР_УСТАНОВОК))
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
 
@@ -4074,11 +4112,13 @@ def potok_as_auto(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError("блок — от 64 бит", 400)
     if кадр is not None and not 16 <= кадр <= 1 << 20:
         raise ServiceError("кадр — от 16 бит", 400)
+    from ..potok import stol_raschety  # noqa: PLC0415
     параметры = {"шаг": шаг, "блок": блок, "кадр": кадр, "фм": фм}
+    источник = _источник(request, job_id, этап)
+    # Тяжёлый расчёт (подбор плоскости — до минуты) — в исполнителе, как прочие расчёты стола.
     итог = задания.запомнить(
         job_id, этап, "как-автомат:" + json.dumps(параметры, sort_keys=True, ensure_ascii=False),
-        lambda: razbor.шаг_как_автомат(задания.биты_участка(job_id, этап, 0, razbor.ВЫБОРКА_БИТ), шаг,
-                                       блок=блок, кадр=кадр, фм=фм))
+        lambda: _посчитать(request, user, stol_raschety.как_автомат, источник, шаг, блок, кадр, list(фм)))
     return итог | {"параметры": параметры}
 
 
@@ -4182,7 +4222,7 @@ def potok_stats(request: Request, job_id: str) -> dict[str, Any]:
     ``from`` и ``length`` — участок (бит); ``marks`` — взять размеченные биты массива
     (разметка с сервера), из них — участок.
     """
-    from ..potok import rastr, statistika_bit  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
     этап = int(тело.get("stage") or 0)
@@ -4198,15 +4238,12 @@ def potok_stats(request: Request, job_id: str) -> dict[str, Any]:
     if по_разметке and not (разметка["отрезки"] or разметка["правила"]):
         raise ServiceError("у массива нет разметки", 400)
 
-    def посчитать():
-        # ENT считает байты участка, упакованные с его первого бита.
-        биты = (rastr.по_разметке(задания.биты(job_id, этап), разметка, "взять")[от:от + длина] if по_разметке
-                else задания.биты_участка(job_id, этап, от, от + длина))
-        return statistika_bit.проверить(биты)
-
+    источник = _источник(request, job_id, этап)
     итог = задания.запомнить(job_id, этап, "статистика:" + json.dumps(
         {"от": от, "длина": длина, "разметка": разметка and {к: разметка[к] for к in ("отрезки", "правила")}},
-        sort_keys=True, ensure_ascii=False), посчитать)
+        sort_keys=True, ensure_ascii=False),
+        lambda: _посчитать(request, user, stol_raschety.статистика, источник, от, длина,
+                           разметка if по_разметке else None))
     return итог | {"from": от, "marks": по_разметке}
 
 
@@ -4553,11 +4590,13 @@ def sessions_delete(request: Request, session_id: str) -> dict[str, Any]:
     сессия = _сессия_или_404(request, user, session_id)
     if сессия["владелец"] != user.id:
         raise ServiceError("удалить сессию вправе только её владелец", 403)
-    try:
-        удалены = _potok(request).удалить_сессию(session_id)
-    except ValueError as ошибка:
-        raise ServiceError(str(ошибка), 409) from None
-    _sessii(request).удалить(session_id, user.id)
+    # Под замком сессии: файл, который участник добавляет прямо сейчас, не останется без сессии.
+    with _sessii(request).замок(session_id):
+        try:
+            удалены = _potok(request).удалить_сессию(session_id)
+        except ValueError as ошибка:
+            raise ServiceError(str(ошибка), 409) from None
+        _sessii(request).удалить(session_id, user.id)
     _repos(request).audit.log("sessions.delete", user=user, object_type="session", object_id=session_id,
                               details={"nodes": len(удалены)})
     return {"deleted": удалены}
@@ -4627,56 +4666,48 @@ def sessions_add_file(request: Request, session_id: str, file: UploadFile = File
             происхождение.append("порядок бит в байте задан: " + ("младший" if младший else "старший") + " бит байта первым")
     if младший:
         поток = rastr.развернуть_биты(поток)
-    ид = _potok(request).создать(владелец=user.id, имя=name, данные=поток, профиль="обычно",
-                                 разбирать=analyze in ("1", "true", "да"), происхождение=происхождение,
-                                 сессия=session_id)
-    _sessii(request).тронуть(session_id)
+    with _sessii(request).замок(session_id):
+        _сессия_или_404(request, user, session_id)      # её могли удалить, пока файл читался
+        ид = _potok(request).создать(владелец=user.id, имя=name, данные=поток, профиль="обычно",
+                                     разбирать=analyze in ("1", "true", "да"), происхождение=происхождение,
+                                     сессия=session_id)
+        _sessii(request).тронуть(session_id)
     _repos(request).audit.log("sessions.file", user=user, object_type="session", object_id=session_id,
                               details={"name": name, "bytes": len(поток), "job": ид})
     return {"id": ид, "bytes": len(поток), "bit_order": "lsb" if младший else "msb",
             "bit_order_note": next((п for п in происхождение if п.startswith("порядок бит")), "")}
 
 
-def _биты_поиска(request: Request, user, job_id: str, тело: dict[str, Any]):
-    from ..potok import rastr  # noqa: PLC0415
-    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
-    if тело.get("mask"):
-        try:
-            биты = rastr.по_маске(биты, тело["mask"])
-        except (ValueError, KeyError, TypeError) as ошибка:
-            raise ServiceError(str(ошибка), 400) from None
-    return биты
+def _поиск_в_исполнителе(request: Request, user, job_id: str, тело: dict[str, Any], функция, *args: Any) -> Any:
+    """Поиск над массивом этапа (или каналом по маске) — в исполнителе; ошибки маски и образца — 400."""
+    этап = int(тело.get("stage") or 0)
+    _файл_бит_или_400(request, user, job_id, этап)
+    try:
+        return _посчитать(request, user, функция, _источник(request, job_id, этап), *args)
+    except (ValueError, KeyError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
 
 
 @router.post("/potok/{job_id}/search")
 def potok_search(request: Request, job_id: str) -> dict[str, Any]:
     """Поиск образца (HEX, текст в кодировке, биты) при любом битовом сдвиге и в инверсии."""
-    from ..potok import poisk  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_поиска(request, user, job_id, тело)
-    try:
-        байты, биты_о = poisk.образец(str(тело.get("pattern") or ""), str(тело.get("kind") or "hex"),
-                                      str(тело.get("encoding") or "utf-8"))
-    except ValueError as ошибка:
-        raise ServiceError(str(ошибка), 400) from None
-    найдено = poisk.найти_образец(биты, байты, биты_о, любой_сдвиг=тело.get("anyshift", True) is not False,
-                                  инверсия=bool(тело.get("inverted")))
-    for н in найдено[:300]:
-        н["контекст"] = poisk.контекст(биты, н["бит"], н["инверсия"])
-    return {"найдено": len(найдено), "бит_образца": int(len(биты_о)), "items": найдено[:300],
-            "предел": len(найдено) >= poisk.НАХОДОК_ДО}
+    return _поиск_в_исполнителе(request, user, job_id, тело, stol_raschety.поиск_образца, тело.get("mask"),
+                                str(тело.get("pattern") or ""), str(тело.get("kind") or "hex"),
+                                str(тело.get("encoding") or "utf-8"), тело.get("anyshift", True) is not False,
+                                bool(тело.get("inverted")))
 
 
 @router.post("/potok/{job_id}/files")
 def potok_files(request: Request, job_id: str) -> dict[str, Any]:
     """Файлы внутри потока: сигнатура и структура сошлись, длина — где формат позволяет."""
-    from ..potok import poisk  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_поиска(request, user, job_id, тело)
-    return {"items": poisk.сигнатуры(биты, любой_сдвиг=тело.get("anyshift", True) is not False,
-                                     инверсия=bool(тело.get("inverted")))}
+    return {"items": _поиск_в_исполнителе(request, user, job_id, тело, stol_raschety.сигнатуры, тело.get("mask"),
+                                          тело.get("anyshift", True) is not False, bool(тело.get("inverted")))}
 
 
 @router.get("/potok/{job_id}/carve")
@@ -4698,40 +4729,36 @@ def potok_carve(request: Request, job_id: str, stage: int = 0, bit: int = 0, len
 @router.post("/potok/{job_id}/strings")
 def potok_strings(request: Request, job_id: str) -> dict[str, Any]:
     """Текст в потоке (ASCII, UTF-8, CP1251, UTF-16LE), имена файлов с расширениями, адреса."""
-    from ..potok import poisk  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_поиска(request, user, job_id, тело)
     наименьшая = max(4, min(64, int(тело.get("min") or 8)))
-    итог = poisk.строки(биты, наименьшая=наименьшая,
-                        сдвиги=range(8) if тело.get("anyshift") else (0,), инверсия=bool(тело.get("inverted")))
-    итог["строки"] = итог["строки"][:1500]
-    return итог
+    return _поиск_в_исполнителе(request, user, job_id, тело, stol_raschety.строки, тело.get("mask"), наименьшая,
+                                bool(тело.get("anyshift")), bool(тело.get("inverted")))
 
 
 @router.post("/potok/{job_id}/stuffing")
 def potok_stuffing(request: Request, job_id: str) -> dict[str, Any]:
     """Мультиплекс со стаффингом: каналы управления, позиция возможности и знак — по растру."""
-    from ..potok import stafing  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_поиска(request, user, job_id, {**тело, "mask": None})
     try:
-        найдено = stafing.найти(биты, int(тело.get("period") or 0), int(тело.get("shift") or 0))
-    except ValueError as ошибка:
-        raise ServiceError(str(ошибка), 400) from None
-    return найдено or {"кадров": 0, "группы": []}
+        период, сдвиг = int(тело.get("period") or 0), int(тело.get("shift") or 0)
+    except (TypeError, ValueError):
+        raise ServiceError("период и сдвиг — целые числа бит", 400) from None
+    return _поиск_в_исполнителе(request, user, job_id, тело, stol_raschety.стаффинг, период, сдвиг)
 
 
 @router.post("/potok/{job_id}/ngrams")
 def potok_ngrams(request: Request, job_id: str) -> dict[str, Any]:
     """Частые комбинации от 2 до 8 байт и повторяющиеся блоки вокруг них."""
-    from ..potok import poisk  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_поиска(request, user, job_id, тело)
-    return {"items": poisk.частые(биты, от=int(тело.get("from") or 2), до=int(тело.get("to") or 8),
-                                  сдвиги=range(8) if тело.get("anyshift") else (0,))}
+    return {"items": _поиск_в_исполнителе(request, user, job_id, тело, stol_raschety.частые, тело.get("mask"),
+                                          int(тело.get("from") or 2), int(тело.get("to") or 8),
+                                          bool(тело.get("anyshift")))}
 
 
 def _синхро(биты, тело: dict[str, Any]):
@@ -4751,18 +4778,11 @@ def _синхро(биты, тело: dict[str, Any]):
 @router.post("/potok/{job_id}/sync")
 def potok_sync(request: Request, job_id: str) -> dict[str, Any]:
     """Синхрокомбинация: вхождения (прямые и инверсные), шаг — длина кадра, знакома ли."""
-    from ..potok import rastr  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
-    биты = _биты_задания(request, user, job_id, int(тело.get("stage") or 0))
-    try:
-        if тело.get("mask"):
-            биты = rastr.по_маске(биты, тело["mask"])
-        _, найдено = _синхро(биты, тело)
-    except (ValueError, KeyError, TypeError) as ошибка:
-        raise ServiceError(str(ошибка), 400) from None
-    найдено["позиции"] = найдено["позиции"][:2000]
-    return найдено
+    return _поиск_в_исполнителе(request, user, job_id, тело, stol_raschety.синхро, тело.get("mask"),
+                                {к: тело.get(к) for к in ("columns", "word", "errors")})
 
 
 # -- матрицы над GF(2): Гаусс, ранг, ядро, систематический вид, параметры кода --------------
@@ -4933,28 +4953,23 @@ def _ldpc_окно(request: Request, job_id: str):
 @router.post("/potok/{job_id}/ldpc/preview")
 def potok_ldpc_preview(request: Request, job_id: str) -> dict[str, Any]:
     """«Просмотр»: декодировать начало массива с постобработкой; слои — для «Декодирования»."""
-    import base64  # noqa: PLC0415
-
-    import numpy as np  # noqa: PLC0415
-
-    from ..potok import ldpc_okno  # noqa: PLC0415
-    параметры, задания, этап = _ldpc_окно(request, job_id)
+    from ..potok import stol_raschety  # noqa: PLC0415
+    параметры, _, этап = _ldpc_окно(request, job_id)
     try:
-        итог = ldpc_okno.просмотр(задания.биты_участка(job_id, этап, 0, 1 << 22), параметры)
+        return _посчитать(request, require_user(request), stol_raschety.ldpc_просмотр,
+                          _источник(request, job_id, этап), параметры)
     except (ValueError, KeyError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    ряд = итог.pop("биты")[:1 << 17]
-    return {**итог, "биты": base64.b64encode(np.packbits(ряд).tobytes()).decode("ascii"), "показано": int(len(ряд))}
 
 
 @router.post("/potok/{job_id}/ldpc/auto")
 def potok_ldpc_auto(request: Request, job_id: str) -> dict[str, Any]:
     """«Автомат»: код, схема передачи и начало слова — сами, среди кодов выбранного типа (или всех)."""
-    from ..potok import ldpc, ldpc_katalog, ldpc_okno  # noqa: PLC0415
-    параметры, задания, этап = _ldpc_окно(request, job_id)
+    from ..potok import stol_raschety  # noqa: PLC0415
+    параметры, _, этап = _ldpc_окно(request, job_id)
     try:
-        return ldpc_okno.автомат(задания.биты_участка(job_id, этап, 0, ldpc_okno.АВТОМАТ_БИТ), параметры,
-                                 ldpc_katalog.с_файлами(ldpc.список()))
+        return _посчитать(request, require_user(request), stol_raschety.ldpc_автомат,
+                          _источник(request, job_id, этап), параметры)
     except (ValueError, KeyError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
 
@@ -5013,7 +5028,8 @@ def potok_plane_file(request: Request, name: str) -> Response:
 
 
 def _моддекодер(request: Request, job_id: str, для_перебора: bool = False):
-    """Тело запроса окна декодера → (тело, настройки, выборка от начала массива, всего бит) с проверкой доступа.
+    """Тело запроса окна декодера → (тело, параметры, источник массива, пользователь) с проверкой доступа
+    и параметров (ошибка в них — 400 сразу, без очереди к исполнителю).
 
     ``для_перебора`` — вариант и внешняя таблица не нужны (перебор размечает точки сам), «только_грей» —
     из тела запроса, если есть.
@@ -5031,12 +5047,10 @@ def _моддекодер(request: Request, job_id: str, для_перебора
         параметры = {**параметры, "вариант": 0, "таблица": "",
                      "только_грей": тело.get("только_грей", параметры.get("только_грей", True))}
     try:
-        н = moddekoder.настройки(параметры)
+        moddekoder.настройки(параметры)
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    задания = _potok(request)
-    return тело, н, задания.биты_участка(job_id, этап, 0, moddekoder.ВЫБОРКА_СИМВОЛОВ * н.k), \
-        задания.длина_бит(job_id, этап)
+    return тело, параметры, _источник(request, job_id, этап), user
 
 
 @router.post("/potok/{job_id}/moddecoder/preview")
@@ -5045,34 +5059,19 @@ def potok_moddecoder_preview(request: Request, job_id: str) -> dict[str, Any]:
 
     ``с`` — чтобы строки мини-растра окна шли с той же фазы, что и строки просмотра (первый бит по модулю длины).
     """
-    import base64  # noqa: PLC0415
-
-    import numpy as np  # noqa: PLC0415
-
-    from ..potok import moddekoder  # noqa: PLC0415
-    тело, н, выборка, всего = _моддекодер(request, job_id)
+    from ..potok import moddekoder, stol_raschety  # noqa: PLC0415
+    тело, параметры, источник, user = _моддекодер(request, job_id)
     try:
         показать = min(max(1, int(тело.get("бит") or 4096)), МОДДЕКОДЕР_ПРОСМОТР_ДО)
         с = max(0, int(тело.get("с") or 0))
     except (TypeError, ValueError, OverflowError):
         raise ServiceError("бит и с — сколько бит результата показать и с какого", 400) from None
     try:
-        д = moddekoder.декодер(н)
-        кадр = moddekoder.кадр(тело.get("кадр"))
+        moddekoder.кадр(тело.get("кадр"))
+        return _посчитать(request, user, stol_raschety.моддекодер_просмотр, источник, параметры, показать, с,
+                          тело.get("кадр"))
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    ряд = д.применить(выборка)
-    try:
-        вариантов: int | None = moddekoder.число_вариантов(н)
-    except ValueError:
-        вариантов = None
-    показано = ряд[с:с + показать]
-    return {"биты": base64.b64encode(np.packbits(показано).tobytes()).decode("ascii"),
-            "бит": int(len(показано)), "с": с, "мера": round(moddekoder.мера(ряд, кадр), 3),
-            "мера_исходного": round(moddekoder.мера(выборка[:len(ряд)], кадр), 3),
-            "таблица": list(д.таблица), "номера": list(д.номера), "метки": list(д.метки),
-            "запись": moddekoder.запись(д.таблица or д.метки), "описание": д.описание, "слой": д.слой(),
-            "символов": всего // н.k, "хвост": всего % н.k, "вариантов": вариантов}
 
 
 @router.post("/potok/{job_id}/moddecoder/all")
@@ -5081,16 +5080,17 @@ def potok_moddecoder_all(request: Request, job_id: str) -> dict[str, Any]:
 
     ``кадр`` {длина, начало} — мера ещё и по строкам кода в кадрах (строка просмотра окна).
     """
-    from ..potok import moddekoder  # noqa: PLC0415
-    тело, н, выборка, _ = _моддекодер(request, job_id, для_перебора=True)
+    from ..potok import moddekoder, stol_raschety  # noqa: PLC0415
+    тело, параметры, источник, user = _моддекодер(request, job_id, для_перебора=True)
     try:
         с, по = int(тело.get("с") or 1), int(тело.get("по") or 1)
         лучших = min(100, int(тело.get("лучших") or 20))
     except (TypeError, ValueError, OverflowError):
         raise ServiceError("с, по, лучших — номера и число вариантов", 400) from None
     try:
-        return moddekoder.перебор(выборка, н, с, по, срок=МОДДЕКОДЕР_СРОК, лучших=лучших,
-                                  кадр=moddekoder.кадр(тело.get("кадр")))
+        moddekoder.кадр(тело.get("кадр"))
+        return _посчитать(request, user, stol_raschety.моддекодер_все, источник, параметры, с, по, МОДДЕКОДЕР_СРОК,
+                          лучших, тело.get("кадр"))
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
 
@@ -5112,9 +5112,8 @@ def potok_tkb_modes(request: Request) -> dict[str, Any]:
     return {"items": [tpc_rezhimy.описание(р) for р in tpc_rezhimy.КАТАЛОГ]}
 
 
-def _ткб_этап(request: Request, job_id: str) -> tuple[dict[str, Any], Any, int]:
-    """Тело запроса окна ТКБ → (тело, выборка бит этапа, этап) с проверкой доступа."""
-    from ..potok import tpc_rezhimy  # noqa: PLC0415
+def _ткб_этап(request: Request, job_id: str) -> tuple[dict[str, Any], Any, int, Any]:
+    """Тело запроса окна ТКБ → (тело, источник массива этапа, этап, пользователь) с проверкой доступа."""
     user = require_user(request)
     тело = _body(request)
     try:
@@ -5122,7 +5121,7 @@ def _ткб_этап(request: Request, job_id: str) -> tuple[dict[str, Any], Any
     except (TypeError, ValueError, OverflowError):
         raise ServiceError("stage — номер этапа", 400) from None
     _файл_бит_или_400(request, user, job_id, этап)
-    return тело, _potok(request).биты_участка(job_id, этап, 0, tpc_rezhimy.ВЫБОРКА), этап
+    return тело, _источник(request, job_id, этап), этап, user
 
 
 @router.post("/potok/{job_id}/tkb/search")
@@ -5135,8 +5134,8 @@ def potok_tkb_search(request: Request, job_id: str) -> dict[str, Any]:
     (AHA4501, US7085987): при первой части ищутся по потоку (если не ``без_меток``) и возвращаются,
     окно присылает их обратно; режимы пробуются и на ряде без меток.
     """
-    from ..potok import razbor, tpc, tpc_rezhimy  # noqa: PLC0415
-    тело, ряд, _ = _ткб_этап(request, job_id)
+    from ..potok import stol_raschety, tpc_rezhimy  # noqa: PLC0415
+    тело, источник, _, user = _ткб_этап(request, job_id)
     try:
         с = int(тело.get("с") or 0)
         по = int(тело.get("по") or 10 ** 6)
@@ -5151,115 +5150,56 @@ def potok_tkb_search(request: Request, job_id: str) -> dict[str, Any]:
     if not isinstance(имена, list):
         raise ServiceError("режимы — список имён режимов каталога", 400)
     try:
-        режимы = [tpc_rezhimy.режим(str(и)) for и in имена] or list(tpc_rezhimy.КАТАЛОГ)
+        for и in имена:
+            tpc_rezhimy.режим(str(и))                       # неизвестный режим — 400 до очереди
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    по = min(по, len(режимы))
-    if кадр:
-        кадры = sorted(set(кадры) | {кадр})
-    elif с == 0 and not кадры:
-        кадры = tpc_rezhimy.длины_кадра(ряд, синхрослово)
-        if not синхрослово.strip():
-            # Как автомат: кадр — по служебным словам (cikl.найти сокращает сверхцикл до кадра,
-            # чередующееся слово — пополам). Пик автокорреляции у сверхкадра (у K2964 — 23712 = 8 × 2964)
-            # давал длины, кратные кадру, без самого кадра: слепой поиск шёл по ним, а перебор
-            # режимов по трём длинам — минутами. Кратные кадру длины не пробуются.
-            по_словам = razbor._кадры_модема(ряд, None)
-            if по_словам is not None:
-                кадры = [по_словам[1]] + [к for к in кадры if к % по_словам[1]]
     метки = None
     м = тело.get("метки")
     if isinstance(м, dict):
         try:
-            метки = tpc_rezhimy.Метки(int(м["период"]), int(м["длина"]), int(м["начало"]), str(м.get("слово") or ""),
-                                      int(м.get("через") or 0), int(м.get("инв") or 0))
+            поля = (int(м["период"]), int(м["длина"]), int(м["начало"]), str(м.get("слово") or ""),
+                    int(м.get("через") or 0), int(м.get("инв") or 0))
         except (KeyError, TypeError, ValueError, OverflowError):
             raise ServiceError("метки — {период, длина, начало[, через, инв]} целыми", 400) from None
-        if not 0 < метки.длина < метки.период:
+        if not 0 < поля[1] < поля[0]:
             raise ServiceError("метки: длина — от 1 до периода − 1", 400)
-    elif с == 0 and not тело.get("без_меток") and not тело.get("слепой"):
-        метки = tpc_rezhimy.найти_метки(ряд, tpc_rezhimy.периоды_меток(ряд, кадры))
-    if тело.get("слепой"):
-        варианты = []
-        try:
-            if кадры:
-                данные, находка = tpc.снять_в_кадрах(ряд, razbor.начала_кадров(ряд, кадры[0]), кадры[0])
-                находка.свойства["слой"] = f"ткб кадр {кадры[0]}"
-            else:
-                данные, находка = tpc.снять(ряд)
-                находка.свойства["слой"] = (f"ткб строка {находка.свойства['строка']} начало "
-                                            f"{находка.свойства['начало']} столбец {находка.свойства['столбец']} "
-                                            f"блок {находка.свойства['блок']}"
-                                            + (f" глубина {находка.свойства['глубина']} плоскость "
-                                               f"{находка.свойства['плоскость']}" if находка.свойства.get("глубина")
-                                               else " двумерный"))
-            if находка.уверенность >= tpc_rezhimy.НАЙДЕН_ОТ:
-                в = tpc_rezhimy.Вариант(tpc_rezhimy.КАТАЛОГ[0], int(находка.свойства.get("кадр") or 0),
-                                        int(находка.свойства.get("начало_блока") or 0), float(находка.уверенность),
-                                        чисто=float(находка.уверенность), слепой=True, находка=находка)
-                варианты.append(в.в_словарь())
-        except ValueError:
-            pass
-        return {"найдено": варианты, "по": по, "всего": len(режимы), "кадры": кадры}
-    итог = tpc_rezhimy.поиск(ряд, режимы=режимы, кадры=кадры, с=с, по=по, срок=ТКБ_СРОК, метки=метки)
-    return {"найдено": [в.в_словарь() for в in tpc_rezhimy.упорядочить(итог["найдено"])],
-            "по": итог["по"], "всего": итог["всего"], "кадры": кадры,
-            "метки": метки.в_словарь() if метки is not None else None}
+        метки = {"поля": поля}
+    задание = {"с": с, "по": по, "кадры": кадры, "кадр": кадр, "синхрослово": синхрослово,
+               "режимы": [str(и) for и in имена], "метки": метки, "без_меток": bool(тело.get("без_меток")),
+               "слепой": bool(тело.get("слепой"))}
+    return _посчитать(request, user, stol_raschety.ткб_поиск, источник, задание, ТКБ_СРОК)
 
 
-def _ткб_снять(request: Request, job_id: str, слой: str, весь: bool):
-    """Снять ТКБ слоем окна (``ткб режим …`` или слепой ``ткб …``): (данные, находка, всего бит этапа)."""
-    from ..potok import razbor, tpc_rezhimy  # noqa: PLC0415
-    тело, ряд, этап = _ткб_этап(request, job_id)
+def _ткб_снять(request: Request, job_id: str, слой: str, весь: bool) -> dict[str, Any]:
+    """Снять ТКБ слоем окна (``ткб режим …`` или слепой ``ткб …``) — в исполнителе: просмотр или весь этап."""
+    from ..potok import stol_raschety, tpc_rezhimy  # noqa: PLC0415
+    тело, источник, _, user = _ткб_этап(request, job_id)
     if not слой.lower().startswith("ткб"):
         raise ServiceError("слой ТКБ начинается со слова «ткб»", 400)
-    if весь:
-        ряд = _potok(request).биты_участка(job_id, этап, 0, None)
-    else:
-        ряд = ряд[:max(1, int(тело.get("бит") or tpc_rezhimy.ВЫБОРКА))]
     try:
-        данные, находка = razbor.снять_вручную(ряд, слой)
-    except ValueError as ошибка:
+        бит = None if весь else min(tpc_rezhimy.ВЫБОРКА, max(1, int(тело.get("бит") or tpc_rezhimy.ВЫБОРКА)))
+        return _посчитать(request, user, stol_raschety.ткб_снять, источник, слой, бит, ТКБ_ПРОСМОТР_БИТ)
+    except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    return данные, находка, ряд
 
 
 @router.post("/potok/{job_id}/tkb/preview")
 def potok_tkb_preview(request: Request, job_id: str) -> dict[str, Any]:
     """Просмотр варианта: подробности снятия, начало данных (base64) и первый блок с разметкой мест."""
-    import base64  # noqa: PLC0415
-
-    import numpy as np  # noqa: PLC0415
-
-    from ..potok import tpc_rezhimy  # noqa: PLC0415
     тело = _body(request)
-    слой = str(тело.get("слой") or "").strip()
-    данные, находка, ряд = _ткб_снять(request, job_id, слой, False)
-    показать = min(len(данные), ТКБ_ПРОСМОТР_БИТ)
-    блок: dict[str, Any] | None = None
-    м = re.search(r"режим\s+(\S+)", слой, re.IGNORECASE)
-    if м:
-        # Слой снят — режим в каталоге есть; раскладка — с укорочением B, подобранным по кадру.
-        г = tpc_rezhimy.геометрия(tpc_rezhimy.режим(м.group(1)), бит_укор=(находка.свойства or {}).get("бит_укор"))
-        блок = {"форма": list(г.форма), "метки": base64.b64encode(tpc_rezhimy.метки_мест(г).tobytes()).decode("ascii")}
-    # Первая строка подробностей слоя ТКБ — что снято и мера (находка слоя — «снято по указанию»).
-    return {"что": находка.подробно[0] if находка.подробно else находка.что, "мера": находка.мера,
-            "уверенность": находка.уверенность, "подробно": находка.подробно, "биты": base64.b64encode(np.packbits(данные[:показать]).tobytes()).decode("ascii"),
-            "бит": int(показать), "данных": int(len(данные)), "блок": блок,
-            "свойства": {к: v for к, v in (находка.свойства or {}).items() if isinstance(v, (int, float, str))}}
+    return _ткб_снять(request, job_id, str(тело.get("слой") or "").strip(), False)
 
 
 @router.post("/potok/{job_id}/tkb/save")
 def potok_tkb_save(request: Request, job_id: str) -> Response:
     """«Сохранить REC»: данные ТКБ снятого варианта по всему этапу — файлом (биты упакованы, старший первым)."""
-    import numpy as np  # noqa: PLC0415
     тело = _body(request)
-    слой = str(тело.get("слой") or "").strip()
-    данные, находка, _ = _ткб_снять(request, job_id, слой, True)
-    имя = re.sub(r"[^\w.-]+", "_", str((находка.свойства or {}).get("режим") or "tkb")).strip("_") or "tkb"
-    return Response(np.packbits(данные).tobytes(), media_type="application/octet-stream",
+    итог = _ткб_снять(request, job_id, str(тело.get("слой") or "").strip(), True)
+    имя = re.sub(r"[^\w.-]+", "_", итог["режим"]).strip("_") or "tkb"
+    return Response(итог["данные"], media_type="application/octet-stream",
                     headers={"Content-Disposition": _disposition(f"{имя}.rec"), "X-Content-Type-Options": "nosniff",
-                             "X-Bits": str(len(данные))})
+                             "X-Bits": str(итог["бит"])})
 
 
 # -- разметка вслепую, синхрослово, своя разметка, вход I/Q ----------------------------------
@@ -5288,10 +5228,10 @@ def _целое(тело: dict[str, Any], ключ: str, по: int, от: int, �
     return значение
 
 
-def _биты_разметки(request: Request, user, job_id: str, тело: dict[str, Any]):
+def _источник_разметки(request: Request, user, job_id: str, тело: dict[str, Any]):
     этап = _целое(тело, "stage", 0, 0, 10 ** 6)
     _файл_бит_или_400(request, user, job_id, этап)
-    return _potok(request).биты_участка(job_id, этап, 0, РАЗМЕТКА_БИТ_ДО)
+    return _источник(request, job_id, этап)
 
 
 def _кадры_разметки(биты, кадр: Any, k: int):
@@ -5315,14 +5255,14 @@ def _кадры_разметки(биты, кадр: Any, k: int):
 @router.post("/potok/{job_id}/moddecoder/analysis")
 def potok_moddecoder_analysis(request: Request, job_id: str) -> dict[str, Any]:
     """Анализ на уровне символов (от разметки не зависит): частоты, переходы, период кадра, постоянные места."""
-    from ..potok import razmetka  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
     k = _k_модуляции(тело)
     фаза = тело.get("фаза")
     фаза = None if фаза in (None, "", "авто") else _целое(тело, "фаза", 0, 0, k - 1)
-    биты = _биты_разметки(request, user, job_id, тело)
-    return razmetka.анализ(биты, k, фаза=фаза)
+    источник = _источник_разметки(request, user, job_id, тело)
+    return _посчитать(request, user, stol_raschety.разметка_анализ, источник, РАЗМЕТКА_БИТ_ДО, k, фаза)
 
 
 def _слово_синхро(тело: dict[str, Any]):
@@ -5357,53 +5297,17 @@ def potok_sync_library(request: Request) -> dict[str, Any]:
 @router.post("/potok/{job_id}/moddecoder/sync")
 def potok_moddecoder_sync(request: Request, job_id: str) -> dict[str, Any]:
     """Разметка по синхрослову: постоянные символы кадра ↔ биты слова; непокрытое — перебором по мере."""
-    import numpy as np  # noqa: PLC0415
-
-    from ..potok import razmetka  # noqa: PLC0415
+    from ..potok import stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
     k = _k_модуляции(тело)
-    M = 1 << k
     слово, имя = _слово_синхро(тело)
-    биты = _биты_разметки(request, user, job_id, тело)
-    анализ = razmetka.анализ(биты, k)
-    места = анализ.get("места") or []
-    if not места:
-        raise ServiceError("постоянных мест в кадре не видно: период кадра по символам не найден — синхрослово "
-                           "не к чему приложить", 400)
-    варианты = []
-    for место in места:
-        for символы in [место["символы"]] + ([место["символы_нечётных"]] if место.get("чередуется") else []):
-            for в in razmetka.по_синхрослову(слово, символы, k)[:4]:
-                варианты.append({**в, "место": место["начало"], "соответствие": {str(a): б for a, б in в["соответствие"].items()}})
-    варианты.sort(key=lambda в: (-в["покрыто"], -в["пар"]))
-    if not варианты:
-        raise ServiceError("синхрослово не сходится с постоянными символами кадра ни при одном сдвиге (и инверсии): "
-                           "другое слово или другая модуляция", 400)
-    лучший = варианты[0]
-    соответствие = {int(a): б for a, б in лучший["соответствие"].items()}
-    итог: dict[str, Any] = {"слово": имя, "анализ": {"кадр": анализ.get("кадр"), "фаза": анализ["фаза"]},
-                            "варианты": варианты[:8], "покрыто": лучший["покрыто"], "M": M}
-    if лучший["покрыто"] >= M - 1:
-        итог["таблица"] = razmetka.дополнения(соответствие, M)[0].tolist()
-        итог["как"] = "синхрослово покрыло все символы" if лучший["покрыто"] == M else \
-            "синхрослово покрыло все символы, кроме одного (он — на оставшееся место)"
-        return итог
+    источник = _источник_разметки(request, user, job_id, тело)
     try:
-        таблицы = razmetka.дополнения(соответствие, M)
+        return _посчитать(request, user, stol_raschety.разметка_по_синхрослову, источник, РАЗМЕТКА_БИТ_ДО, k,
+                          слово, имя)
     except ValueError as ошибка:
-        итог["как"] = str(ошибка)
-        return итог
-    символы = razmetka.в_символы(np.asarray(биты), k, анализ["фаза"])
-    мера = razmetka.МераБайт(символы[:razmetka.ВЫБОРКА_БАЙТ], k) if M <= 8 else None
-    if мера is None:
-        итог["как"] = f"покрыто {лучший['покрыто']} из {M}: остальное — «Разметка вслепую» от этого соответствия"
-        return итог
-    р = razmetka.перебор(мера, M, таблицы=таблицы, лучших=5)
-    итог.update(таблица=р["таблицы"][0], как=f"покрыто {лучший['покрыто']} из {M}; остальные "
-                f"{M - лучший['покрыто']} символов — перебором {len(таблицы)} дополнений по байтовой мере "
-                f"(лучшая {р['меры'][0]:g}, отрыв {р['отрыв']:g} разбросов)", дополнения=р)
-    return итог
+        raise ServiceError(str(ошибка), 400) from None
 
 
 @router.post("/potok/{job_id}/moddecoder/blind")
@@ -5411,7 +5315,7 @@ def potok_moddecoder_blind(request: Request, job_id: str) -> dict[str, Any]:
     """Разметка вслепую — в фоне: {поиск}; ход — GET …/blind/{поиск}, остановить — POST …/blind/{поиск}/stop."""
     import numpy as np  # noqa: PLC0415
 
-    from ..potok import razmetka  # noqa: PLC0415
+    from ..potok import ispolniteli, razmetka, stol_raschety  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
     k = _k_модуляции(тело)
@@ -5426,8 +5330,9 @@ def potok_moddecoder_blind(request: Request, job_id: str) -> dict[str, Any]:
     if not 1 <= срок <= РАЗМЕТКА_СРОК_ДО:
         raise ServiceError(f"срок — от 1 до {РАЗМЕТКА_СРОК_ДО:g} с", 400)
     старт = тело.get("старт")
-    биты = np.asarray(_биты_разметки(request, user, job_id, тело))
-    кадры = _кадры_разметки(биты, тело.get("кадр"), k)
+    источник = _источник_разметки(request, user, job_id, тело)
+    кадры = _кадры_разметки(np.asarray(_potok(request).биты_участка(job_id, int(тело.get("stage") or 0), 0,
+                                                                     РАЗМЕТКА_БИТ_ДО)), тело.get("кадр"), k)
     if мера == "строки" and кадры is None:
         raise ServiceError("мера «строки» — по кадрам: включите «Мера по кадрам» (строка просмотра — кадр)", 400)
     старты = None
@@ -5438,9 +5343,34 @@ def potok_moddecoder_blind(request: Request, job_id: str) -> dict[str, Any]:
         except ValueError as ошибка:
             raise ServiceError(str(ошибка), 400) from None
 
+    задания = _potok(request)
+
     def задача(ход):
-        итог = razmetka.искать(биты, k, мера=мера, кадры=кадры, фаза=фаза, срок=срок, ход=ход, старты=старты)
-        return None if итог is None else {**итог.в_словарь(), "фаза": фаза}
+        """Поиск идёт в исполнителе стола; эта нить только передаёт его ход окну и следит за «Стоп»."""
+        последний = [0.0, "начат"]
+
+        def передать(вид: str, данные: Any) -> None:
+            if вид == "ход":
+                последний[:] = данные
+        поиск = задания.подать_расчёт(stol_raschety.разметка_вслепую, источник, РАЗМЕТКА_БИТ_ДО, k, мера, кадры,
+                                      фаза, срок, старты, владелец=user.id, при_сообщении=передать,
+                                      срок_задачи=срок + 120)
+        try:
+            while True:
+                try:
+                    ход(*последний)                   # «Стоп» в окне поднимает здесь Остановлено
+                except razmetka.Остановлено:
+                    поиск.пул.отменить(поиск)
+                    raise
+                try:
+                    итог = поиск.ждать(0.3)
+                except TimeoutError:
+                    continue
+                with suppress(razmetka.Остановлено):
+                    ход(*последний)                   # последний ход (доля 1) — пришёл до итога
+                return итог
+        except ispolniteli.Отменено:
+            raise razmetka.Остановлено from None
 
     ид = razmetka.ПОИСКИ.начать(user.id, задача, f"разметка вслепую: {1 << k} точек, мера «{мера}»")
     return {"поиск": ид}
@@ -5593,12 +5523,13 @@ def _приметы_этапа(request: Request, user, job_id: str, stage: int):
     from ..potok import podskazki  # noqa: PLC0415
     состояние = _задание_или_404(request, user, job_id)
     этап = max(0, min(int(stage), len(состояние.get("этапы") or [])))
+    from ..potok import stol_raschety  # noqa: PLC0415
     for номер in range(этап, -1, -1):
         try:
-            биты = _potok(request).биты(job_id, номер)
+            источник = _potok(request).источник(job_id, номер)
         except (ValueError, OSError):
             continue
-        приметы = podskazki.приметы(биты)
+        приметы = _посчитать(request, user, stol_raschety.приметы, источник)
         return состояние, номер, приметы, podskazki.подсказки(состояние, номер, приметы)
     raise ServiceError("у задания нет битового потока", 400)
 

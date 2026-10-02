@@ -685,7 +685,7 @@ class СтраницаTests(unittest.TestCase):
         # Растр: 0 — чёрный, 1 — зелёный; маски, инструменты, производный поток.
         self.assertIn("const РАСТР_0 = [0, 0, 0];", js)
         self.assertIn("const РАСТР_1 = [0, 200, 83];", js)
-        for кусок in ("'Найти период'", "'Сохранить выделение как канал'", "'Разуплотнить'",
+        for кусок in ("'Поиск периода'", "'Сохранить выделение как канал'", "'Демультиплексировать'",
                       "'/derive'", "'/tool'", "'/periods?stage='", "'HEX', 'DEC'",
                       "'/hints?stage='", "path + '/ask'".replace("path", "путь"),
                       "saveDraft(data.chat.id, data.question);", "'Что дальше?'",
