@@ -353,7 +353,7 @@ class Хранилище:
 
     # -- столбцы --
 
-    def _столбец(self, имя: str, тип: str, от: int = 0, до: int | None = None) -> np.ndarray:
+    def _столбец(self, имя: str, тип: str, от: int, до: int | None) -> np.ndarray:
         n = self.число()
         до = n if до is None else min(до, n)
         if до <= от:

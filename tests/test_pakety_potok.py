@@ -416,17 +416,24 @@ class ХранилищеTests(unittest.TestCase):
         (self.папка / "исходник").write_bytes(bytes(4) + bytes([1]) * 4 + bytes([2]) * 4)
         self.assertEqual((bytes(4), "Linux SLL"), х.кадр(0))
         # Новый канал по ходу разбора: кэш каналов читателя перечитывается, когда нужен номер, которого в нём нет.
+        (self.папка / "исходник").write_bytes(bytes(4) + bytes([1]) * 4 + bytes([2]) * 4 + bytes([3]) * 4)
         self._пакет(п, 1, канал="IP", место=4)
         self._пакет(п, 2, канал="IP", место=8)
+        self._пакет(п, 3, канал="Linux SLL", место=12)
         п.отметить_собранный()
         п.сбросить()
-        self.assertEqual(3, п.записано)
-        self.assertEqual((bytes([1]) * 4, "IP"), х.кадр(1))
-        self.assertEqual([0, 1, 1], х.записи(0, 3)["канал"].tolist())
+        self.assertEqual(4, п.записано)
+        self.assertEqual([(bytes([1]) * 4, "IP"), (bytes([2]) * 4, "IP"), (bytes([3]) * 4, "Linux SLL")],
+                         [х.кадр(1), х.кадр(2), х.кадр(3)])
+        self.assertEqual([0, 1, 1, 0], х.записи(0, 4)["канал"].tolist())
         from reportgen.setevoy.hranilishe import В_КОПИИ, СОБРАННЫЙ
-        self.assertEqual([0, 0, СОБРАННЫЙ], х.записи(0, 3)["признаки"].tolist(), "собранный — только у последнего")
-        self.assertEqual([0, 0, 0], х.записи(0, 3)["запас"].tolist())
-        self.assertEqual([0, 0, 0], х.записи(0, 3)["запас2"].tolist())
+        self.assertEqual([0, 0, 0, СОБРАННЫЙ], х.записи(0, 4)["признаки"].tolist(), "собранный — только у последнего")
+        self.assertEqual([0, 0, 0, 0], х.записи(0, 4)["запас"].tolist())
+        self.assertEqual([0, 0, 0, 0], х.записи(0, 4)["запас2"].tolist())
+        self.assertEqual([{"номер": 1}, {"номер": 4}], [х.сводка(0), х.сводка(3)])
+        for номер in (-1, 4):
+            with self.assertRaises(IndexError):
+                х.сводка(номер)
         # Копирование: байты — в пакеты.bin, даже когда место в исходнике известно.
         п.закрыть()
         папка2 = self.папка / "копия"
