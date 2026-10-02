@@ -1,0 +1,99 @@
+{
+ "имя": "lte_podblok_perm_36212",
+ "описание": "Межстолбцовые перестановки подблочного перемежителя (32 столбца) при согласовании скорости LTE",
+ "источник": [
+  {
+   "файл": "istochniki/lte/ts_136212v190300p.pdf",
+   "страница": 20,
+   "url": "https://www.etsi.org/deliver/etsi_ts/136200_136299/136212/19.03.00_60/ts_136212v190300p.pdf",
+   "что": "Table 5.1.4-1"
+  },
+  {
+   "файл": "istochniki/lte/ts_136212v190300p.pdf",
+   "страница": 25,
+   "url": "https://www.etsi.org/deliver/etsi_ts/136200_136299/136212/19.03.00_60/ts_136212v190300p.pdf",
+   "что": "Table 5.1.4-2"
+  },
+  {
+   "файл": "istochniki/kod/srsRAN_4G/lib/src/phy/fec/turbo/rm_turbo.c",
+   "строки": "70",
+   "url": "https://github.com/srsran/srsRAN_4G/blob/bef8680d5f9714f3e040e6f9cbc88d7888439b6d/lib/src/phy/fec/turbo/rm_turbo.c#L70"
+  },
+  {
+   "файл": "istochniki/kod/srsRAN_4G/lib/src/phy/fec/turbo/rm_conv.c",
+   "строки": "32",
+   "url": "https://github.com/srsran/srsRAN_4G/blob/bef8680d5f9714f3e040e6f9cbc88d7888439b6d/lib/src/phy/fec/turbo/rm_conv.c#L32"
+  }
+ ],
+ "проверка": "перестановки 0..31; для турбо — обращение 5 бит номера; совпали с RM_PERM_TC/RM_PERM_CC srsRAN_4G",
+ "данные": {
+  "turbo_5.1.4-1": [
+   0,
+   16,
+   8,
+   24,
+   4,
+   20,
+   12,
+   28,
+   2,
+   18,
+   10,
+   26,
+   6,
+   22,
+   14,
+   30,
+   1,
+   17,
+   9,
+   25,
+   5,
+   21,
+   13,
+   29,
+   3,
+   19,
+   11,
+   27,
+   7,
+   23,
+   15,
+   31
+  ],
+  "svertka_5.1.4-2": [
+   1,
+   17,
+   9,
+   25,
+   5,
+   21,
+   13,
+   29,
+   3,
+   19,
+   11,
+   27,
+   7,
+   23,
+   15,
+   31,
+   0,
+   16,
+   8,
+   24,
+   4,
+   20,
+   12,
+   28,
+   2,
+   18,
+   10,
+   26,
+   6,
+   22,
+   14,
+   30
+  ]
+ }
+}

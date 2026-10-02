@@ -1,0 +1,533 @@
+<title>A Proposal for a Coded AO-40 Telemetry Format</title>
+<center>
+<h1>Proposed Coded AO-40 Telemetry Format
+<br>v1.2
+<br>7 Jan 2002
+<br>
+<br>Phil Karn, KA9Q
+<br>karn@ka9q.net</h1>
+</center>
+<h1>Introduction and Executive Summary</h1>
+
+The <a href="http://www.amsat.org/amsat/sats/n7hpr/ao40.html">
+AMSAT-OSCAR 40 spacecraft</a>, launched 16 November 2000 by an Ariane
+5 into geostationary transfer orbit, uses a digital telemetry format
+virtually unchanged from that carried on the Phase 3A spacecraft
+launched in 1980.
+
+The <a href="http://www.amsat.org/amsat/sats/ao40/ao40-tlm.html">AO-40
+telemetry format</a> consists of fixed-size blocks of user data
+transmitted at 400 bps with Manchester encoding and binary
+phase-shift-keying on a suppressed RF carrier. Each block consists of
+a 32-bit sync vector, 512 bytes of user data and a 2-byte CRC. There
+is no other error control coding.
+
+<p>
+
+This format works well when link conditions are good, but poorly under
+suboptimal conditions. A particular problem appears when the
+spacecraft antennas are off-pointed from the earth, as they must be at
+certain times to ensure sufficient solar panel illumination and/or to
+control spacecraft temperature. Under these conditions, the
+spacecraft's antenna patterns and its spin
+give rise to periodic fades that can be very deep.
+Overall signal levels are also reduced.
+
+<p>
+
+The intent of the present project is to devise a new format for AO-40
+telemetry that uses strong error control coding and interleaving to
+resist the effects of spin fading. A secondary goal is to reduce
+average signal-to-noise ratio requirements to permit the use of poorer
+(i.e., lower G/T) ground stations.
+
+<h2>Performance</h2>
+
+<p>The format described here has been implemented in software and
+tested on a simulated channel. The channel simulator applies a
+sinusoidal envelope to simulate spin fading (with two nulls
+per cycle) and adds Gaussian noise to simulate receiver and cosmic
+background noise. The improvement over the old uncoded format is,
+quite simply, dramatic: solid copy is easily attained with fade rates
+comparable to those observed in practice, and with average Eb/No
+ratios down to about 7 dB. Because of the rate 0.4 (-4dB) coding, such
+signals "sound" like uncoded BPSK at an average Eb/No of only 3 dB.
+This is barely detectable to the human ear even at the peaks between
+nulls.  In these conditions, approximately 15% (or about 780 out of
+5200) of the raw demodulated channel symbols are in error, but are
+completely corrected by the error control coding. In the present uncoded
+format, just one channel error will ruin an entire frame.
+
+<h2>Implementation</h2>
+
+<h3>Encoder</h3>
+
+The prototype encoder is a UNIX/Linux "filter", written in C, that
+reads user data on standard input and emits 16-bit audio samples on
+standard output representing the encoded and modulated data.
+
+<p>A separate <a href="encode_ref.c">reference implementation</a> of
+the encoder has been written in C.  It is intended to be translated
+into IPS for integration into the operational software running in the
+IHU.
+
+<p>GCC on the Pentium compiles the reference encoder into about 900
+bytes of program space plus about 1300 bytes for variables, lookup
+tables and the output buffer. Several space-time tradeoffs are
+possible; e.g., if additional RAM is available, it can be used for
+extra lookup tables to reduce CPU loading. Prime candidates for
+additional lookup tables are byte parity computation (256 bytes) and
+scrambler sequence generation (320 bytes).
+
+<h3>Demodulator/Decoder</h3>
+<p>The prototype demodulator/decoder is a UNIX/Linux filter that accepts
+16-bit samples from a generic sound card and emits decoded, corrected
+data to standard output, with optional informational messages to
+standard error. The software is primarily in GNU C and can port to any
+environment supported by that compiler; it is intended to be integrated
+into popular telemetry reception programs such as AO40RCV.
+
+<p>Optional assembler code is provided that
+uses the various Intel/AMD IA32 SIMD instruction sets, if available, to
+reduce CPU utilization
+in filtering and Viterbi decoding. All three generations of
+IA32 SIMD instructions are supported: MMX, SSE and SSE2. Demodulating
+and decoding in real time uses less than 1% of a 500 MHz Pentium III
+CPU with SSE.
+
+<p>The demodulator currently uses a purely noncoherent DBPSK technique
+well suited for fading channels with Doppler shift and other carrier
+phase disturbances. A future
+enhancement is to add a coherent demodulator that is expected to
+reduce Eb/No requirements by another 4 dB or so (i.e., to about 3dB)
+on non fading channels, and to automatically select whichever technique
+works best for the current conditions.
+
+<h1>The New Format, in Detail</h1>
+
+<H2>Basic Assumptions</h2>
+
+The AO-40 spacecraft is already in orbit, so no changes can be made to
+the existing on-board hardware. Software changes are possible, subject
+to resource constraints (memory, processing time) in the on-board
+computer.
+
+<p>The AO-40 telemetry hardware follows its heritage to the original
+Phase 3 project begun in the mid 1970s and first flown on the
+ill-fated Phase 3A in May 1980. Software running in the IHU
+formats a telemetry frame in IHU memory, and hardware then takes over: the
+data is converted to a bit serial format, differentially encoded,
+Manchester encoded, low-pass filtered to limit bandwidth, and used to
+phase-shift-key an IF carrier with a balanced modulator. This
+modulated signal is then injected into the transponder where it is
+up-converted to RF, amplified and transmitted along with repeated
+uplink signals in the spacecraft downlink.
+Any new AO-40 telemetry format must therefore use the existing
+differential encoder, Manchester encoder, filter and 400 bps BPSK
+modulator without change. 
+
+<p>However, many elements of the existing telemetry format are
+implemented in software and can be changed or removed. These include
+the sync vector, the CRC and the exact length of a frame.
+
+<h2>Overview of the Proposal</h2>
+
+The new coded format borrows extensively from current practice in
+non-amateur deep space research satellites, particularly from
+standards promulgated by the Consultative Committee for Space Data
+Systems (<a href="http://www.ccsds.org/">CCSDS</a>).
+Of particular importance is
+<a href="http://www.ccsds.org/documents/pdf/CCSDS-101.0-B-5.pdf">
+CCSDS 101.0-B-5: Telemetry Channel Coding. Blue Book. Issue 5. June 2001</a>,
+which should be read along with this document.
+
+The following sections describe each aspect of the proposed format,
+accompanied by a rationale.
+
+<h3>Block Size</h3>
+
+Each encoded frame in the proposed format contains 256 bytes
+of arbitrary (binary or ASCII) user information and takes exactly 13 seconds to
+transmit at 400 symbols/sec.
+
+<p><em>Rationale:</em> Cutting the user payload in half from the
+previous uncoded format creates room for coding overhead while keeping
+approximately the same frame duration as the old format: 13 s for the
+new vs 10.36 s for the present. When the 2.6 s of idle inter-frame
+padding in the old format (but not the new) is considered, the two
+frame formats are nearly the same length.
+
+<p>The most common telemetry frame (A-frame) in current use consists
+of two halves: 256 bytes of relatively static ASCII text followed by
+256 bytes of binary-encoded telemetry data. A 256-byte frame size
+still allows these two blocks of information to be sent separately,
+possibly at different intervals.
+
+<h3>Reed-Solomon Encoding</h3>
+
+Each block of 256 data bytes is byte interleaved into two systematic
+(160,128) Reed-Solomon codewords over GF(256), i.e., with 8-bit
+symbols. The even-numbered bytes of the user data form the 128 data
+bytes of the first Reed-Solomon codeword, and the odd-numbered data
+bytes form the second Reed-Solomon codeword.
+
+<p>The (160,128) Reed-Solomon code is shortened from the standard
+(255,223) Reed-Solomon code specified by the CCSDS. (See CCSDS 101.0-B-5,
+section 3). The shortening is
+accomplished by zero-padding the first 95 symbols of the data field of
+each Reed-Solomon codeword.
+
+<p>The field generator for GF(256) as specified by CCSDS is the polynomial
+
+<pre>
+F(x) = x^8 + x^7 + x^2 + x + 1
+</pre>
+
+<p>The Reed-Solomon code generator polynomial as specified by CCSDS is
+
+<pre>
+g(x) = Product(j=112,j<=143,(x-&alpha;^11j))
+</pre>
+
+i.e., the repeated product of the 32 terms (x-&alpha;^11j) for values of j
+from 112 to 143 inclusive. The factor &alpha;^11 is the primitive root
+specified by CCSDS.
+
+<p>This is another way of saying that the roots of the code generator
+polynomial are &alpha;^11j for values of j from 112 to 143 inclusive.
+
+<p>Multiplied out, the 33 coefficients of the generator polynomial g(x)
+are expressed as the following powers of &alpha;:
+<pre>
+G0  = G32 = 0
+G1  = G31 = 249
+G2  = G30 = 59
+G3  = G29 = 66
+G4  = G28 = 4
+G5  = G27 = 43
+G6  = G26 = 126
+G7  = G25 = 251
+G8  = G24 = 97
+G9  = G23 = 30
+G10 = G22 = 3
+G11 = G21 = 213
+G12 = G20 = 50
+G13 = G19 = 66
+G14 = G18 = 170
+G15 = G17 = 5
+G16 =       24
+</pre>
+
+where g(x) = G0 + G1*x + G2*(x^2) + G3*(x^3) + ... + G32*(x^32)
+
+<p>Note that while the CCSDS standard Reed-Solomon code specifies the
+use of Berlekamp's "dual basis" for each symbol, here the <em>conventional</em>
+polynomial basis is used.
+
+<p><em>Rationale</em>: Large Reed-Solomon block codes are easy to
+generate and provide excellent burst-error detection and correcting
+ability. This particular code can correct up to 16 byte errors in each
+codeword. Reed-Solomon codes are widely used in conjunction with
+Viterbi-decoded convolutional codes (discussed below) to "clean up"
+the errors made by the Viterbi decoder. Because of the nonlinear
+nature of Viterbi decoding, these errors occur in bursts even when the
+channel errors are random, as with Gaussian noise.  In this
+application the burst error correction capability provides a second
+defense against channel fading, although this is the primary
+responsibility of the block interleaver discussed below.
+
+<p>Interleaving the user data in even/odd fashion into the two RS
+codewords allows the parity bytes in the two RS codewords to be
+computed "on the fly" as each data byte is presented, avoiding the
+need to buffer the entire user data frame in the encoder.
+
+<p>Shortening the code allows the data portion of the codeword to be
+set to 128, one half the desired user payload of 256 bytes. Two
+codewords are thus necessary. To handle 256 bytes of user data in a
+single Reed-Solomon codeword, a code over GF(512) could have been
+chosen, but this would imply 9-bit symbols that would be clumsy to
+handle on byte-oriented CPUs.
+
+<p>Shortening the code by padding with zeros at the start makes it
+easy to implement an encoder that simply "skips over" the padded data,
+spending CPU cycles only on actual user data.  The syndrome
+computation in the decoder can be similarly optimized.
+
+<p>CCSDS chose this particular field generator and code generator
+polynomial and specified the dual basis representation to minimize the
+gate complexity of the Galois field multipliers in a custom hardware encoder.
+
+<p>Because the coefficients of the generator polynomial are
+palindromic, there are only half as many distinct coefficients
+as there are terms in the polynomial. This halves the number of distinct
+Galois multiplications that must be performed. Furthermore, two pairs
+are the same (G3 = G29 = G13 = G19 = 4), and another pair (G0 and G32)
+are 0, implying multiplication by unity.
+
+<p>The choice of field generator has no effect on the complexity of a
+software implementation that uses log/anti-log lookup tables and
+ordinary addition to perform Galois field multiplication, while the
+palindromic code generator polynomial does potentially halve the
+required number of distinct Galois field multiplications per data
+byte. So there is no particular reason not to use this aspect of the
+CCSDS standard RS code.
+
+<p>However, the "dual basis" representation actually complicates a
+software RS codec. And since we are implementing this code in
+software the dual-basis representation is not used.
+
+<h3>Scrambling</h3>
+
+After Reed-Solomon coding, the user data is pseudo-randomized
+(scrambled) by XORing with the pseudo-random (PN) sequence generated
+by the CCSDS-specified polynomial
+
+<pre>
+h(x) = x^8 + x^7 + x^5 + x^3 + 1
+</pre>
+
+This PN sequence starts with 8 1's, i.e., the shift register is initialized
+to all 1's, and repeats after 255 bits. The first bit of the sequence
+is XORed with the high order bit of the first data byte, the 8th bit
+of the PN sequence covers the high order bit of the second data byte
+(the first in the second Reed-Solomon codeword), and so on.  The PN
+sequence covers the Reed-Solomon parity bytes as well as the user
+data. (See CCSDS 101.0-B-5 section 6.5.)
+
+<p><em>Rationale:</em> Experimentation showed that DBPSK demodulator
+performance was significantly worse on an all-0's data frame due to
+impaired symbol time tracking caused by insufficient transition
+density in the encoded and interleaved data stream, aggravated by the
+inherent ambiguities of Manchester encoding in this situation. I first
+tried to overcome this by inverting the output of every other symbol
+from the convolutional encoder as called for by the CCSDS spec, taking
+care that these became channel reversals after block
+interleaving, but this still proved insufficient. Covering the
+Reed-Solomon codewords with a PN sequence introduces a sufficient
+transition density to overcome this problem.
+
+<p>In the event that the user data exactly matches the PN sequence
+bits covering the data, the scrambled Reed-Solomon parity symbols
+would still be non-zero. Even though such a frame is clearly unlikely,
+it would still contain a greater number of channel symbol transitions
+than would an unscrambled frame consisting of all zeros.
+
+<h3>Byte Interleaving and Convolutional Coding</h3>
+
+The scrambled Reed-Solomon codewords are next byte-interleaved and
+encoded using the CCSDS standard constraint length 7, rate 1/2 (k=7,
+r=1/2) convolutional code. The encoder shift register starts in the
+all 0's state. The two connection vectors for this code G1 and G2 are,
+in octal, 171 and 133 for an encoder shift register fed from the high
+end.
+
+<p>The output of the G2 taps is inverted, as specified by the CCSDS.
+See CCSDS 101.0-B-5 section 2 for encoder block diagrams and
+connection vectors.
+
+<p>Each 8-bit Reed-Solomon symbol is sent into the convolutional
+encoder in "big endian" order, i.e., most significant bit first.  The
+first 8 bits into the convolutional encoder come from the first data
+byte of the "even" Reed-Solomon codeword. The next 8 bits come from
+the first byte of the "odd" Reed-Solomon codeword, the third 8 bits
+come from the second data byte of the "even" RS codeword, and so
+on. After all the data bytes have been sent, the RS parity bytes are
+sent in identical fashion. When all parity bytes have been encoded,
+six zero bits are encoded (without scrambling)
+to form a "tail" for the convolutional encoder,
+returning the encoder shift register to the all-0's state.
+
+<p><em>Rationale:</em> The use of byte interleaving between
+concatenated Reed-Solomon and convolutional codes is a well
+established technique.  This helps distribute individual error bursts
+from the Viterbi decoder across the two Reed-Solomon codewords to
+reduce the chances of either having an uncorrectable number of byte
+errors (more than 16).  The choice of interleaving pattern, along with
+the ordering of the user data into the Reed-Solomon codewords, allows
+the concatenated RS encoder/byte interleaver/convolutional encoder to
+process user data one byte at a time, without having to explicitly
+store the user data.  Aside from a few variables, the only internal
+encoder state required are the two 32-byte Reed-Solomon shift
+registers and the 5200-bit (650 byte) output interleaver.
+
+<p>The choice of bit order is arbitrary, so there was no particular
+reason to depart from CCSDS practice.
+
+<p>This particular convolutional code has a long and distinguished
+history; it exists in many hardware and software implementations.  My
+own Viterbi decoders for the Intel MMX/SSE/SSE2 instruction sets
+achieve speeds well in excess of what is required here (about 9
+megabits/sec on a 1 GHz Pentium-III with SSE).
+
+<p>There have been several conventions for the ordering and polarity
+of the two encoded symbols. We follow the CCSDS standard, including
+the inversion of the second symbol to help guarantee a minimum channel
+bit transition density.  This isn't really necessary since we also
+have a scrambler, but nor does it hurt.
+
+<p>Encoding this code is extremely simple, and it works well on deep
+space channels with reasonable Viterbi decoder complexity (which is
+exponential with constraint length). However, advances in technology
+now make longer constraint codes entirely practical, and such codes do
+provide greater coding gain on the non-fading Gaussian noise
+channel. However, my references claim that these increased gains are
+not generally realized on fading channels.  There is room in the
+encoded frame to go to a r=1/2 k=9 code, which I have already
+implemented, and it should be tried experimentally at some point.
+
+<h3>Block Interleaving and Sync</h3>
+
+The convolutionally encoded data is next written by rows into a block
+interleaver with dimensions of 80 rows by 65 columns, starting with
+the second row.  Each interleaver element is one bit, for a total
+interleaver size of 5200 bits or 650 bytes. The first row of the
+interleaver is reserved for a fixed 65-bit synchronization vector
+generated by the first 65 bits of the PN sequence produced by the
+polynomial
+
+<pre>
+s(x) = x^7 + x^3 + 1
+</pre>
+
+The 7-bit shift register is set to all 1's at the start of the frame;
+the entire sequence is:
+
+<pre>
+11111110000111011110010110010010000001000100110001011101011011000
+</pre>
+
+<p>The sync bits are the same in each frame and need be written into
+the interleaver only once if they are not disturbed.
+
+<p>When filled, the block interleaver contains 65 sync vector bits and
+5132 symbols from the convolutional encoder. These 5132 symbols in
+turn come from the 2048 bits (256 bytes) of user data, the 512 bits of
+Reed-Solomon parity, and the 6 tail bits, or 2566 in all,
+times two for the rate 1/2 convolutional code:
+
+<pre>
+(2048 + 512 + 6) * 2 = 5132 encoder output symbols
+</pre>
+
+The 5132 symbols from the convolutional encoder plus the 65 sync bits
+make 5197 bits in all, leaving the last 3 bits unused in the block
+interleaver. This space is available for the additional tail bits
+of a longer constraint length convolutional code, if desired.
+
+<p>Once the block interleaver has been filled with sync and encoded
+data, it is read out by columns and sent to the differential encoder,
+Manchester encoder, filter and BPSK modulator. The first symbol transmitted
+is therefore the first bit of the sync vector. This is followed by the first
+symbol from the convolutional encoder, then the 66th and 131st, and so
+on until all 80 rows of the first column have been sent. Then the second
+bit of the sync vector is transmitted followed by the 2nd, 67th and 132nd
+symbols from the convolutional encoder, and so on.
+
+<p><em>Rationale:</em> Here we add something to CCSDS
+practice; this block interleaver and sync vector is wholly new for the
+Phase 3 format. This is because the CCSDS standards are designed for
+non-fading Gaussian noise channels, while our primary concern is
+spin fading. Because this fading can be quite slow, we want to
+interleave over the longest possible time span, i.e., one frame
+time. A block interleaver is the classic way to do this when the data
+is packetized, as it is here.
+
+<p>This leaves the choice of exact interleaver size and
+dimensions. The number 5200 is large enough to accommodate all the
+encoded bits plus the sync vector with only 3 bits left over,
+<em>and</em> it factors into a roughly square (65 x 80) array.
+
+<p>The length of the sync vector was chosen to provide reasonable
+energy for reliable detection in the presence of noise and fading
+without consuming too much overhead. Since the FEC is strong enough to
+operate at an Eb/No of 3 dB (on a non-fading channel, with coherent
+detection), we want the sync vector to have enough energy to permit
+reliable detection under these conditions. The overall code rate is
+(256/320) * (1/2) = 0.4, so the Es/No is 10log10(0.4) = -4 dB relative
+to the Eb/No. So an Eb/No of 3 dB is an Es/No of -1 dB.
+
+<p>A correlator looking for a 65-bit sync vector will have an output
+signal-to-noise ratio 10log10(65) = 16 dB above the input SNR
+(Es/No). So for Es/No = -1dB, the correlator output
+SNR will be +15 dB.  And 15 dB is the usual rule of thumb
+for reasonably reliable detection.
+
+<p>Interleaving the sync vector into the encoded data is an essential
+anti-fading measure. If only the encoded data were interleaved, the
+sync vector would remain as an Achilles heel; a fade that removed the
+sync vector would kill the entire frame, as it does now in the present
+uncoded format.
+
+<h2>Conclusion</h2>
+
+This format, if adopted and implemented, should dramatically improve
+the performance of AO-40 telemetry links, particularly under
+conditions of poor squint angle and/or poor ground station
+performance. The format is practical to implement in IHU software and
+in ground station computers -- even those with limited resources by
+modern PC standards.
+
+
+<h2>Other comments</h2>
+
+<h3>Choice of code rate</h3>
+
+The code rate of 0.4 was chosen to provide reasonable coding gain
+without excessive overhead. It is also reasonably close to the optimum
+code rate for noncoherent binary modulation (DBPSK).
+
+<p>While lower code rates provide asymptotically greater coding gain
+with coherent modulation, this is not the case for noncoherent
+modulation because of a "threshold" effect much like the one in FM
+(which is also noncoherent).  Below the threshold, demodulator output
+SNR falls much more quickly than the input SNR, and this overpowers
+the additional coding gain. There is a minimum Es/No below which the
+system simply won't work very well, regardless of coding,
+placing a lower practical bound on the code rate and implying the
+existence of an "optimum" code rate. The optimum rate is different for
+fading and nonfading channels; it is around 0.5 (1/2) for a nonfading
+channel and about 0.2 for a Rayleigh fading channel (our "spin
+faded" channel is probably somewhere in between.)  Fortunately the
+optimum is fairly broad, so rate 0.4 works reasonably well in both
+cases.
+
+<p>Another lower bound on code rate comes from the increased
+difficulty of carrier and symbol time tracking at the lower Es/No
+ratios implied by these codes. The trend in signal design for
+terrestrial fading channels (e.g., terrestrial digital cellular) is to
+use spread spectrum to provide time tracking and other benefits and to
+add coherent carrier references ("pilots") to assist in carrier phase
+tracking without the "squaring losses" associated with carrier
+recovery from suppressed carrier signals, e.g., with Costas or
+squaring loops. However, this would require hardware that is
+unavailable on the AO-40 IHU.
+
+
+<h3>Why not turbo codes?</h3>
+
+<p>Some readers may ask: why not turbo codes? Why use
+FEC technology that has already been around for 25 years?
+
+<p>The answer is simple: while turbo codes do outperform by 1-2 dB the
+classic concatenated codes proposed here, they were only discovered in
+the early 1990s and as such are surrounded by a minefield of patents
+that will not begin to expire for another decade. The Viterbi decoder
+was invented in the late 1960s, and the concatenated code used here
+has been around, almost in the present form, since before Voyager 1
+and 2 were launched in 1977, so all patents on this technology have
+long since expired.  Block interleaving and noncoherent DBPSK
+demodulation are likewise established techniques that have been around
+for decades.
+
+<p>Technology unencumbered by intellectual property rights seems a
+better match for an organization like AMSAT with limited financial
+resources that depends on volunteer labor and emphasizes the open and
+unrestricted dissemination of its technology to further its educational
+and recreational goals.
+
+
+
+
+
+
+

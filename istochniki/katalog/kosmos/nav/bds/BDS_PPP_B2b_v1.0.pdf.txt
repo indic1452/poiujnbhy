@@ -1,0 +1,5837 @@
+
+=====PAGE 1=====
+China Satellite Navigation Office 2020
+BeiDou Navigation Satellite System
+Signal In Space
+Interface Control Document
+Precise Point Positioning Service Signal PPP-B2b
+(Version 1.0)
+China Satellite Navigation Office
+July, 2020
+
+=====PAGE 2=====
+
+=====PAGE 3=====
+China Satellite Navigation Office 2020
+I
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+TABLE OF CONTENTS
+1
+Statement ······························································································· 1
+2
+Scope ···································································································· 2
+3
+BDS Overview ························································································· 3
+3.1
+Space Constellation ··········································································· 3
+3.2
+Coordinate System ············································································ 3
+3.3
+Time System ··················································································· 4
+4
+Signal Characteristics ················································································· 5
+4.1
+Signal Structure ················································································5
+4.2
+Signal Modulation ·············································································5
+4.3
+Logic Levels ··················································································· 6
+4.4
+Signal Polarization ············································································ 6
+4.5
+Carrier Phase Noise ···········································································6
+4.6
+Spurious ························································································ 6
+4.7
+Correlation Loss ···············································································6
+4.8
+Data/Code Coherence ·········································································6
+4.9
+Signal Coherence ··············································································7
+4.10
+Received Power Levels on Ground ······················································· 7
+5
+Ranging Code Characteristics ······································································· 8
+6
+Navigation Message Structure ····································································· 10
+6.1
+Message Format ··············································································10
+6.1.1
+Brief Description ···································································· 10
+6.1.2
+Cyclic Redundancy Check ························································· 11
+6.1.3
+Coding Methods and Coding Parameters ········································ 11
+6.2
+Message Content ·············································································13
+6.2.1
+Message Type Description ························································· 13
+6.2.2
+Message Type 1 ( Satellite Mask) ·················································15
+
+=====PAGE 4=====
+China Satellite Navigation Office 2020
+II
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+6.2.3
+Message Type 2 (Orbit Correction Parameters and User Range Accuracy
+Index) ···························································································17
+6.2.4
+Message Type 3 (Differential Code Bias Correction) ··························20
+6.2.5
+Message Type 4 (Clock Correction Parameters) ································22
+6.2.6
+Message Type 5 (User Range Accuracy Index) ·································25
+6.2.7
+Message Type 6 (Clock Correction and Orbit Correction - combination 1) 27
+6.2.8
+Message Type 7 (Clock Correction and Orbit Correction - combination 2) 29
+6.2.9
+Message Types 63 ··································································· 31
+6.3
+Information Validity ·········································································31
+7
+User Algorithms ······················································································32
+7.1
+The Target Systems for the PPP-B2b Service ··········································· 32
+7.2
+Time and Space Coordinate System ······················································ 32
+7.3
+Differential Code Bias Correction ·························································32
+7.4
+Orbit Correction ··············································································33
+7.5
+Clock Correction ·············································································34
+7.6
+User Range Accuracy Index (URAI) ····················································· 34
+7.7
+System Time Solution ·······································································34
+8
+Abbreviations ························································································· 35
+Annex
+Non-binary LDPC Encoding and Decoding Methods ··································· 37
+
+=====PAGE 5=====
+China Satellite Navigation Office 2020
+III
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+LIST OF FIGURES
+Figure 5-1
+Ranging code generator of the PPP-B2b_I ············································· 8
+Figure 6-1
+The PPP-B2b_I navigation message frame structure ································10
+Figure 6-2
+H81, 162 reading flow chart ································································13
+Figure 6-3
+Bit allocation of message type 1 ························································15
+Figure 6-4
+Bit allocation of message type 2 ························································17
+Figure 6-5
+Bit allocation of message type 3 ························································20
+Figure 6-6
+Bit allocation of message type 4 ························································23
+Figure 6-7
+Bit allocation of message type 5 ························································25
+Figure 6-8
+Bit allocation of message type 6 ························································27
+Figure 6-9
+Bit allocation of message type 7 ························································29
+LIST OF TABLES
+Table 3-1
+Parameters of the BDCS Reference Ellipsoid ···········································4
+Table 4-1
+Structure of the PPP-B2b signal ···························································5
+Table 4-2
+Logic to signal level assignment ·························································· 6
+Table 5-1
+Ranging code parameters of the PPP-B2b_I ·············································9
+Table 6-1
+Defined message types ···································································· 13
+Table 6-2
+Parameters of message type 1 ···························································· 15
+Table 6-3
+Parameters of message type 2 ···························································· 17
+Table 6-4
+Parameters of message type 3 ···························································· 20
+Table 6-5
+Definitions of signal and tracking modes ···············································22
+Table 6-6
+Parameters of message type 4 ···························································· 23
+Table 6-7
+Correspondence of SubType1 and satellites in message type 4 ····················· 24
+Table 6-8
+Parameters of message type 5 ···························································· 25
+Table 6-9
+Correspondence of SubType2 and satellites in message type 5 ····················· 26
+
+=====PAGE 6=====
+China Satellite Navigation Office 2020
+IV
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Table 6-10
+Parameters of message type 6 ·························································· 27
+Table 6-11
+Parameters of message type 7 ···························································30
+Table 6-12
+Nominal validity ··········································································31
+
+=====PAGE 7=====
+China Satellite Navigation Office 2020
+1
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+1
+Statement
+China Satellite Navigation Office is responsible for the preparation, revision, distribution,
+and retention of the BeiDou Navigation Satellite System (BDS) Signal In Space Interface
+Control Documents (hereinafter referred to as SIS ICD), and reserves the rights for final
+interpretation of this document.
+
+=====PAGE 8=====
+China Satellite Navigation Office 2020
+2
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+2
+Scope
+The construction and development of the BeiDou Navigation Satellite System is divided
+into three phases: BDS-1, BDS-2, and BDS-3 in sequence.
+This document defines the characteristics of the BDS Precise Point Positioning (PPP)
+Service Signal PPP-B2b. Transmitted by the BDS-3 Geostationary Earth Orbit (GEO)
+satellites, the PPP-B2b signal serves as the data broadcasting channel for correction
+parameters, such as satellite precise orbit and clock offset parameters of BDS-3 and other
+Global Navigation Satellite Systems (GNSS), and provides PPP services for users in China
+and surrounding areas.
+
+=====PAGE 9=====
+China Satellite Navigation Office 2020
+3
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+3
+BDS Overview
+3.1
+Space Constellation
+The nominal space constellation of BDS-3 consists of 3 GEO satellites, 3 IGSO satellites,
+and 24 MEO satellites. According to actual situation, spare satellites may be deployed in orbit.
+The GEO satellites operate in orbit at an altitude of 35,786 kilometers and are located at 80°E,
+110.5°E, and 140°E respectively. The IGSO satellites operate in orbit at an altitude of 35,786
+kilometers and an inclination of the orbital planes of 55 degrees with reference to the
+equatorial plane. The MEO satellites operate in orbit at an altitude of 21,528 kilometers and
+an inclination of the orbital planes of 55 degrees with reference to the equatorial plane.
+3.2
+Coordinate System
+BDS adopts the BeiDou Coordinate System (BDCS) whose definition complies with the
+standards of the International Earth Rotation and Reference System Service (IERS). The
+definition
+is
+also
+consistent
+with
+that
+of
+the
+China
+Geodetic
+Coordinate
+System
+2000(CGCS2000). BDCS and CGCS2000 have the same reference ellipsoid parameters,
+which is defined as follows:
+(1) Definition of origin, axis and scale
+The origin is located at the Earth’s center of mass. The Z-Axis is the direction of the
+IERS Reference Pole (IRP). The X-Axis is the intersection of the IERS Reference Meridian
+(IRM) and the plane passing through the origin and normal to the Z-Axis. The Y-Axis,
+together with Z-Axis and X-Axis, constitutes a right-handed orthogonal coordinate system.
+The length unit is the international system of units (SI) meter.
+(2) Definition of the BDCS Reference Ellipsoid
+The geometric center of the BDCS Reference Ellipsoid coincides with the Earth’s center
+of mass, and the rotational axis of the BDCS Reference Ellipsoid is the Z-Axis. The
+parameters of the BDCS Reference Ellipsoid are shown in Table 3-1.
+
+=====PAGE 10=====
+China Satellite Navigation Office 2020
+4
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Table 3-1
+Parameters of the BDCS Reference Ellipsoid
+No.
+Parameter
+Definition
+1
+Semi-major axis
+a=6378137.0 m
+2
+Geocentric gravitational constant
+14
+μ=3.986004418 10
+
+m3/s2
+3
+Flattening
+f=1/298.257222101
+4
+Earth’s rotation rate
+-5
+e =7.2921150 10
+
+
+
+rad/s
+3.3
+Time System
+The BeiDou Navigation Satellite System Time (BDT) is adopted by the BDS as time
+reference. BDT adopts the second of the international system of units (SI) as the base unit,
+and accumulates continuously without leap seconds. The start epoch of BDT is 00:00:00 on
+January 1, 2006 of Coordinated Universal Time (UTC). BDT connects with UTC via UTC
+(NTSC), and the deviation of BDT to UTC is maintained within 50 nanoseconds (modulo 1
+second). The leap second information is broadcast in the navigation message.
+
+=====PAGE 11=====
+China Satellite Navigation Office 2020
+5
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+4
+Signal Characteristics
+This chapter specifies the signal characteristics of the I-component of the PPP-B2b
+signal with a center frequency of 1207.14MHz and a bandwidth of 20.46MHz.
+4.1
+Signal Structure
+PPP service information is broadcast on the open service signal PPP-B2b. The carrier
+frequency, modulation, and symbol rate of the PPP-B2b are shown in Table 4-1.The PPP-B2b
+signal broadcasts the I-component and the Q-component, and the first three BDS-3 GEO
+satellites only broadcast the I-component. This document only describes the characteristics of
+the PPP-B2b I-component (PPP-B2b_I).
+Table 4-1
+Structure of the PPP-B2b signal
+Signal
+Component
+Carrier frequency
+(MHz)
+Modulation
+Symbol rate
+(sps)
+The first
+three GEOs
+Subsequent
+GEOs
+PPP-B2b
+I
+1207.14
+BPSK(10)
+1000
+available
+available
+Q
+1207.14
+TBD
+TBD
+N/A
+available
+4.2
+Signal Modulation
+The PPP-B2b_I signal
+
+B2b_I
+s
+t is generated by modulating the navigation message data
+
+B2b_I
+D
+t and the range code
+
+B2b_I
+C
+t . The mathematical expression of
+
+B2b_I
+s
+t
+is as follows:
+
+
+B2b_I
+B2b_I
+B2b_I
+1
+( )
+2
+s
+t
+D
+t
+C
+t
+
+
+(4-1)
+where
+
+B2b_I
+D
+t is as follows:
+
+
+
+
+B2b_I
+B2b_I
+B2b_I
+B2b_I
+T
+k
+D
+t
+d
+k p
+t
+kT
+
+
+
+
+
+(4-2)
+where
+B2b_I
+d
+is the navigation message data code;
+B2b_I
+T
+is the chip width of the
+corresponding data code; and
+
+B2b_I
+Tp
+t
+is a rectangle pulse with width of
+B2b_I
+T
+.
+The mathematical expression of range code CB2b_I is as follows:
+
+
+
+
+
+B2b_I
+_ B2b_I
+1
+B2b_I
+B2b_I
+B2b_I
+_ B2b_I
+0
+[ ]
+c
+N
+T
+c
+n
+k
+C
+t
+c
+k p
+t
+N
+n
+k T
+
+
+
+
+
+
+
+
+(4-3)
+where
+B2b_I
+c
+is a PPP-B2b_I ranging code sequence (possible values are ± 1);
+B2b_I
+N
+is
+
+=====PAGE 12=====
+China Satellite Navigation Office 2020
+6
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+the ranging code length with a value of 10230;
+c_B2b_I
+c_B2b_I
+=1/
+T
+R
+is the PPP-B2b_I chip period
+of the ranging code, and
+c_B2b_I
+R
+= 10.23 Mbps is the PPP-B2b_I chipping rate; and
+
+_B2b_I
+cTp
+t
+is a rectangle pulse with duration of
+_ B2b_I
+cT
+.
+4.3
+Logic Levels
+The correspondence between the logic level code bits used to modulate the signal and the
+signal level is shown in Table 4-2.
+Table 4-2
+Logic to signal level assignment
+Logic level
+Signal level
+1
+-1.0
+0
++1.0
+4.4
+Signal Polarization
+The transmitted signals are Right-Hand Circularly Polarized (RHCP).
+4.5
+Carrier Phase Noise
+The phase noise spectral density of the un-modulated carrier will allow a third-order
+phase locked loop with 10 Hz one-sided noise bandwidth to track the carrier to an accuracy of
+0.1 radians( RMS).
+4.6
+Spurious
+The transmitted spurious signal shall not exceed -50dBc.
+4.7
+Correlation Loss
+The correlation loss due to satellite-transmitted signal distortions shall not exceed 0.6dB.
+4.8
+Data/Code Coherence
+The edge of each data symbol shall be aligned with the edge of the corresponding
+ranging code chip. The start of the first chip of the periodic ranging codes shall be aligned
+with the start of a data symbol.
+
+=====PAGE 13=====
+China Satellite Navigation Office 2020
+7
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+4.9
+Signal Coherence
+The time difference between the ranging code phases of all signal components shall not
+exceed 10 nanoseconds.
+4.10
+Received Power Levels on Ground
+The minimum received power level of the PPP-B2b_I on ground is -160dBW. It is
+measured at the output of a 0 dBi RHCP user receiving antenna (or 3 dBi linearly polarized
+user receiving antenna) when the satellites are above a 5-degree elevation angle.
+The PPP-B2b_I has the following characteristics: the off-axis relative power shall not
+decrease by more than 2dB from the edge of the Earth to nadir.
+
+=====PAGE 14=====
+China Satellite Navigation Office 2020
+8
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+5
+Ranging Code Characteristics
+The PPP-B2b_I ranging code chip rate is 10.23 Mcps, and the code length is 10230 chips.
+Each ranging code is obtained by expanding the Gold code that is generated by the modulo-2
+addition of the shifted output of the two 13-stage linear feedback shift registers. The generator
+polynomials for each PPP-B2b_I ranging code are
+9
+10
+13
+1
+3
+4
+6
+9
+12
+13
+2
+( )
+1
+( )
+1
+g x
+x
+x
+x
+x
+g
+x
+x
+x
+x
+x
+x
+x
+
+
+
+
+
+
+
+
+
+
+(5-1)
+The implementation of the PPP-B2b_I ranging code generators is shown in Figure 5-1.
+Figure 5-1
+Ranging code generator of the PPP-B2b_I
+In a code generator, the initial bit values of register 1 are all "1" and the initial bit values
+of register 2 are given in Table 5-1, arranged as
+2,1
+2,2
+2,3
+2,13
+,
+,
+,
+,
+s
+s
+s
+s
+
+
+
+
+. At the start of each
+ranging code period, both register 1 and register 2 are simultaneously reset to their
+corresponding initial bit values. Furthermore, register 1 is reset at the end of the 8190th chip in
+each period of a ranging code. A ranging code with the length of 10230 chips is finally
+obtained by repeating the above procedure.
+There are a total of 10 ranging codes for the PPP-B2b_I. The detailed parameters are
+shown in Table 5-1, in which, the values of both the first 24 chips and the last 24 chips are
+expressed in an octal form. The MSB (i.e., the first chip of the ranging codes) is transmitted
+first.
+
+=====PAGE 15=====
+China Satellite Navigation Office 2020
+9
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Table 5-1
+Ranging code parameters of the PPP-B2b_I
+PRN
+Initial bit values of register 2
+(binary)
+The first 24 chips
+(octal)
+The last 24 chips
+(octal)
+1
+1 0 0 0 0 0 0 1 0 0 1 0 1
+26773275
+01362377
+2
+1 0 0 0 0 0 0 1 1 0 1 0 0
+64773151
+54270774
+3
+1 0 0 0 0 1 0 1 0 1 1 0 1
+22571523
+41305112
+4
+1 0 0 0 1 0 1 0 0 1 1 1 1
+03270234
+26377564
+5
+1 0 0 0 1 0 1 0 1 0 1 0 1
+25271603
+71754171
+59
+1 1 1 1 0 1 1 1 1 1 1 1 1
+00100015
+65447760
+60
+1 1 1 1 1 1 0 1 1 0 1 0 1
+24402044
+14703362
+61
+1 1 1 1 1 1 0 1 1 1 1 0 1
+20402615
+26526364
+62
+0 1 0 1 1 1 0 0 0 0 1 0 1
+27426631
+23410705
+63
+0 1 0 1 1 0 0 1 1 1 0 1 1
+10625632
+34572376
+
+=====PAGE 16=====
+China Satellite Navigation Office 2020
+10
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+6
+Navigation Message Structure
+6.1
+Message Format
+6.1.1
+Brief Description
+The basic frame structure of the PPP-B2b_I navigation message is defined in Figure 6-1.
+Figure 6-1
+The PPP-B2b_I navigation message frame structure
+Each message has a length of 486 bits, wherein the highest 6 bits (MesType ID) indicate
+the message type, the lowest 24 bits are CRC, and the remaining 456 bits are the message data
+and its specific contents may vary depending on different message types.
+After 64-ary LDPC(162, 81) encoding, the frame length shall be 972 symbols. These
+symbols will be concatenated together with 16 symbols of the preamble, 6 symbols of the
+PRN and 6 symbols of the reserved flags to form 1000 symbols in total. The front of the first
+symbol of each frame (i.e. the first symbol of the synchronization head) is aligned with the
+edge of whole second of the satellite time, and the broadcast time of each frame is 1 second,
+wherein:
+The first 16 symbols of each frame is preamble (Pre) with the value of 0xEB90 in
+hexadecimal (i.e., 1110 1011 1001 0000 in binary). The MSB is transmitted first. The PRN in
+figure 6-1 is the PRN number of the GEO satellite that is broadcasting the message.
+The reserved flags are only used to identify the status of the PPP service: the "1" in the
+highest bit of the reserved flags means the PPP service of this satellite is unavailable and the
+"0" in the highest bit of the reserved flags means the PPP service of this satellite is available.
+
+=====PAGE 17=====
+China Satellite Navigation Office 2020
+11
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Other symbols are reserved for future purposes. The status of the reserved flags rarely
+changes, so that users can minimize demodulation error by superimposing multiple frames of
+information.
+6.1.2
+Cyclic Redundancy Check
+The CRC check is performed by bit for the 6 bits message type and the 456 bits message
+data. The generator polynomial of CRC is:
+24
+23
+18
+17
+14
+11
+10
+7
+6
+5
+4
+3
+g( )
+1
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+x
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(6-1)
+6.1.3
+Coding Methods and Coding Parameters
+Each frame of the PPP-B2b_I navigation message before error correction encoding has a
+length of 486 bits, containing Message Type (Mestype, 6 bits), message data (456 bits), and
+CRC check bits (24 bits). The encoding scheme adopts 64-ary LDPC(162, 81). Each
+codeword symbol is composed of 6 bits and defined in GF(26) domain with a primitive
+polynomial of
+
+6
+1
+p x = +x+x . A vector representation (MSB first) is used to describe the
+mapping relationship between non-binary symbols and binary bits. The message length k is
+equal to 81 code word symbols, i.e., 486 bits. The check matrix is a sparse matrix H81,162 of 81
+rows and 162 columns defined in GF(26) domain with the primitive polynomial of
+
+6
+1
+p x = +x+x , of which the first 81×81 part corresponds to the information symbols and the
+last 81×81 part corresponds to the check symbols. The locations of its non-zero elements are
+defined as follows:
+H81,162,index=[
+19
+67
+109
+130
+27
+71
+85
+161
+31
+78
+96
+122
+2
+44
+83
+125
+26
+71
+104
+132
+30
+39
+93
+154
+4
+46
+85
+127
+21
+62
+111
+127
+13
+42
+101
+146
+18
+66
+108
+129
+27
+72
+100
+153
+29
+70
+84
+160
+23
+61
+113
+126
+8
+50
+89
+131
+34
+74
+111
+157
+12
+44
+100
+145
+22
+60
+112
+128
+0
+49
+115
+151
+6
+47
+106
+144
+33
+53
+82
+140
+3
+45
+84
+126
+38
+80
+109
+147
+9
+60
+96
+141
+1
+43
+82
+124
+20
+77
+88
+158
+37
+54
+122
+159
+3
+65
+104
+149
+5
+47
+86
+128
+0
+42
+81
+123
+32
+79
+97
+120
+35
+72
+112
+158
+15
+57
+93
+138
+22
+75
+107
+143
+24
+69
+102
+133
+1
+50
+116
+152
+24
+57
+119
+135
+17
+59
+95
+140
+7
+45
+107
+145
+34
+51
+83
+138
+14
+43
+99
+144
+21
+77
+106
+142
+16
+58
+94
+139
+20
+68
+110
+131
+2
+48
+114
+150
+10
+52
+91
+133
+25
+70
+103
+134
+32
+41
+95
+153
+14
+56
+91
+137
+33
+73
+113
+156
+28
+73
+101
+154
+4
+63
+102
+147
+6
+48
+87
+129
+8
+46
+105
+146
+30
+80
+98
+121
+41
+68
+119
+150
+35
+52
+81
+139
+
+=====PAGE 18=====
+China Satellite Navigation Office 2020
+12
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+16
+63
+114
+124
+13
+55
+90
+136
+31
+40
+94
+155
+10
+61
+97
+142
+36
+56
+121
+161
+29
+74
+99
+155
+5
+64
+103
+148
+18
+75
+89
+156
+36
+78
+110
+148
+19
+76
+87
+157
+15
+65
+116
+123
+11
+53
+92
+134
+25
+58
+117
+136
+39
+66
+117
+151
+11
+62
+98
+143
+9
+51
+90
+132
+38
+55
+120
+160
+7
+49
+88
+130
+17
+64
+115
+125
+28
+69
+86
+159
+23
+76
+105
+141
+12
+54
+92
+135
+40
+67
+118
+152
+37
+79
+108
+149
+26
+59
+118
+137
+]，
+where each element is a non-binary symbol in GF(26) domain. The elements are
+described by a vector representation as follows:
+H81,162,element=[
+46
+45
+44
+15
+15
+24
+50
+37
+24
+50
+37
+15
+15
+32
+18
+61
+58
+56
+60
+62
+37
+53
+61
+29
+46
+58
+18
+6
+36
+19
+3
+57
+54
+7
+38
+23
+51
+59
+63
+47
+9
+3
+43
+29
+56
+8
+46
+13
+26
+22
+14
+2
+63
+26
+41
+12
+17
+32
+58
+37
+38
+23
+55
+22
+35
+1
+31
+44
+44
+51
+35
+13
+30
+1
+44
+7
+27
+5
+2
+62
+16
+63
+20
+9
+27
+56
+8
+43
+1
+44
+30
+24
+5
+26
+27
+37
+42
+47
+37
+32
+38
+12
+25
+51
+43
+34
+48
+57
+39
+9
+30
+48
+63
+13
+54
+10
+2
+46
+56
+35
+47
+20
+33
+26
+62
+54
+56
+60
+1
+21
+25
+7
+43
+58
+19
+49
+28
+4
+52
+44
+46
+44
+14
+15
+41
+48
+2
+27
+49
+21
+7
+35
+40
+21
+44
+17
+24
+23
+45
+11
+46
+25
+22
+48
+13
+29
+53
+61
+52
+17
+24
+61
+29
+41
+10
+16
+60
+24
+4
+50
+32
+49
+58
+19
+43
+34
+48
+57
+29
+7
+10
+16
+25
+11
+7
+1
+32
+49
+58
+19
+42
+14
+24
+33
+39
+56
+30
+48
+13
+27
+56
+8
+53
+40
+61
+18
+8
+43
+27
+56
+18
+40
+32
+61
+60
+48
+2
+27
+50
+54
+60
+62
+58
+19
+32
+49
+9
+3
+63
+43
+53
+35
+16
+13
+23
+25
+30
+16
+18
+6
+61
+21
+15
+1
+42
+45
+20
+16
+63
+9
+27
+37
+5
+26
+29
+7
+10
+16
+11
+60
+6
+49
+43
+47
+18
+20
+42
+14
+24
+33
+43
+22
+41
+20
+22
+15
+12
+33
+9
+41
+57
+58
+5
+31
+51
+30
+9
+3
+63
+43
+37
+53
+61
+29
+6
+45
+56
+19
+33
+45
+36
+34
+19
+24
+42
+14
+1
+45
+15
+6
+8
+43
+27
+56
+].
+The above matrix shall be read in a top-down process, and in a left-to-right order
+between columns. In the same column, the four numbers of each row correspond to four non-
+zero elements in the matrix. The reading rules for H81,162 are shown in Figure 6-2.
+
+=====PAGE 19=====
+China Satellite Navigation Office 2020
+13
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Figure 6-2
+H81, 162 reading flow chart
+See Annex for more information about the encoding and decoding methods.
+6.2
+Message Content
+6.2.1
+Message Type Description
+6.2.1.1
+Message Type Definition
+The message type is used to distinguish the information contents broadcast in the valid
+data field. The defined message types are shown in Table 6-1, and others are reserved.
+Table 6-1
+Defined message types
+Message types
+(in decimal)
+Information content
+1
+Satellite mask
+2
+Satellite orbit correction and user range accuracy index
+3
+Differential code bias
+4
+Satellite clock correction
+
+=====PAGE 20=====
+China Satellite Navigation Office 2020
+14
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Message types
+(in decimal)
+Information content
+5
+User range accuracy index
+6
+Clock correction and orbit correction - combination 1
+7
+Clock correction and orbit correction - combination 2
+8-62
+Reserved
+63
+Null message
+6.2.1.2
+Message Type Inter-Relationship
+To ensure the inter-relationship among the information contents of different message
+types, the information is identified with a group of IOD. These IODs include:
+1) IOD SSR: This IOD indicates the issue number of the State Space Representation
+(SSR) data. This field is included in all currently defined message types. If the IOD SSR in
+different message types is the same, the corresponding data can be used together; if the IOD
+SSR is different, the corresponding data cannot be used. In general, IOD SSR shall be updated
+only when the system configuration changes.
+2) IODP: This IOD indicates the issue number of the satellite mask. IODP is broadcast in
+message type 1, message type 4, message type 5, and message type 6. Users can use this field
+to decide whether the data in the above-mentioned message types are matched.
+3) IODN: This IOD indicates the issue number of satellite clock and ephemeris broadcast
+by the downlink signals of GNSS. It is included in message type 2. Users can use IODN to
+judge whether the ephemeris and clock parameters of the broadcast navigation message match
+with the orbit correction in message types 2, 6 and 7. Another IOD, known as IOD Corr, is
+also included in message types 2, 6 and 7 simultaneously, which is used to associate with the
+clock correction in message types 4, 6 and 7. Users can use IODN and IOD Corr to decide
+whether clock correction parameters of the broadcast navigation message match with the
+clock correction in message types 4, 6 and 7.
+4) IOD Corr: This IOD identifies the issue number of the orbit correction and the clock
+correction. It is included in message types 2, 4, 6 and 7. For the same satellite, when the IOD
+Corr of the clock correction is same as that of the orbit correction, the two are matched. (Note:
+the IOD Corr is not in a one-to-one correspondence with the parameter contents. When the
+
+=====PAGE 21=====
+China Satellite Navigation Office 2020
+15
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+clock correction or orbital correction changes, the IOD Corr may not change. When the IOD
+Corr of multiple groups of parameters is identical, the user should use the latest parameters
+available.)
+6.2.2
+Message Type 1 ( Satellite Mask)
+6.2.2.1
+Message Layout
+The format of message type 1 is shown in Figure 6-3.
+Figure 6-3
+Bit allocation of message type 1
+6.2.2.2
+Content Description
+Message type 1 is satellite mask information. The mask contains 255 ID positions, each
+of which occupies one bit. The "1" in a bit means the differential information of the
+corresponding satellite is broadcast; the "0" in a bit means the differential information of the
+corresponding satellite is not broadcast. The unassigned (reserved mask) ID bit should be set
+to "0". The satellite mask assignment and other information contents of the message type 1 are
+described in Table 6-2.
+Table 6-2
+Parameters of message type 1
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Basic description
+MesTypeID
+Message type
+6
+1
+0～63
+--
+See Table 6-1
+Epoch
+Epoch
+17
+1
+0～86399
+s
+BDT seconds within a
+day
+Reserved
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+IOD of SSR
+2
+1
+0～3
+--
+Change as the system
+configuration changes.
+IODP
+IOD of PRN
+4
+1
+0～15
+--
+Issue Of Data of PRN
+
+=====PAGE 22=====
+China Satellite Navigation Office 2020
+16
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Basic description
+mask
+mask
+BDS mask
+Satellite slot 1
+1
+1
+0～1
+--
+Broadcasting ID of the
+first satellite of BDS
+to slot 63
+1
+1
+0～1
+--
+Broadcasting ID of the
+63rd satellite of BDS
+GPS mask
+Satellite slot
+64
+1
+1
+0～1
+--
+Broadcasting ID of the
+first satellite of GPS
+to slot 100
+1
+1
+0～1
+--
+Broadcasting ID of the
+37th satellite of GPS
+Galileo mask
+Satellite slot
+101
+1
+1
+0～1
+--
+Broadcasting ID of the
+first satellite of Galileo
+to slot137
+1
+1
+0～1
+--
+Broadcasting ID of the
+37th satellite of Galileo
+GLONASS
+mask
+Satellite slot
+138
+1
+1
+0～1
+--
+Broadcasting ID of the
+first satellite of
+GLONASS
+to slot 174
+1
+1
+0～1
+--
+Broadcasting ID of the
+37th satellite of
+GLONASS
+Reserved
+mask
+Satellite slot
+175
+1
+1
+0～1
+--
+Reserved
+to slot 255
+1
+1
+0～1
+--
+Reserved
+Reserved bits
+Reserved bits
+174
+1
+--
+--
+--
+CRC
+CRC bits
+24
+--
+--
+--
+--
+The above information is described as follows:
+1) Epoch
+It identifies the epoch corresponding to the observation data used to calculate differential
+message, expressed in seconds within one BDT day. Unless specified elsewhere, the data at
+the latest epoch should be selected to use for all types of data.
+2) IOD SSR
+Changes of IOD SSR indicate that the data generation configuration has changed.
+Different types of data can be used together only when they have same IOD SSR.
+3) IODP
+IODP represents the IOD of PRN mask. If the mask content changes, the IODP will
+change accordingly in a sequential cycle of 0, 1, 2, 3, …, 14, 15, and 0. IODP is also included
+
+=====PAGE 23=====
+China Satellite Navigation Office 2020
+17
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+in message type 4, 5 and 6 to identify the corresponding relationship between the data and the
+mask. When it is consistent with the IODP parameter of message type 1, it means they are the
+same set of data.
+When the IODP parameter in message type 1 is inconsistent with that in message type 4,
+5 and 6, users should not use message type 1 until the IODP of all involved types are
+consistent.
+During the period while IODP parameter is changing, users should use the old mask until
+the IODP in other types is updated to the same value. When it is detected that the IODP in
+other message types has changed first, users should not use these message types until they
+receive a new mask.
+6.2.3
+Message Type 2 (Orbit Correction Parameters and User Range Accuracy Index)
+6.2.3.1
+Message Layout
+The format of message type 2 is shown in Figure 6-4.
+Figure 6-4
+Bit allocation of message type 2
+6.2.3.2
+Content Description
+Message type 2 broadcasts the orbit correction parameters of the satellite. Its information
+contents are described in Table 6-3.
+Table 6-3
+Parameters of message type 2
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+MesType ID
+Message type
+6
+1
+0～63
+--
+See Table 6-1
+Epoch
+Epoch
+17
+1
+0～86399
+s
+BDT seconds
+within a day
+
+=====PAGE 24=====
+China Satellite Navigation Office 2020
+18
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+Reserved
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+IOD of SSR
+2
+1
+0～3
+--
+Change as the
+system
+configuration
+changes.
+Orbit
+correction
+parameters of
+satellite 1
+Sat Slot
+9
+1
+1～255
+--
+Position ID of
+the mask
+IODN
+10
+1
+--
+--
+IOD of the
+broadcast
+navigation
+message
+IOD Corr
+3
+1
+0～7
+--
+IOD of the
+correction
+Radial correction
+15*
+0.0016
+±26.2128
+m
+Radial orbit
+correction
+Along-track correction
+13*
+0.0064
+±26.208
+m
+Along orbit
+correction
+Cross-track correction
+13*
+0.0064
+±26.208
+m
+Cross orbit
+correction
+URAI
+URACLASS
+3
+1
+0～7
+--
+User Range
+Accuracy
+Index of this
+satellite
+URAVALUE
+3
+1
+0～7
+--
+Orbit
+correction
+parameters of
+satellite 2
+--
+69
+--
+--
+--
+The orbit
+correction
+parameters of
+the 2nd
+satellite of this
+type
+…
+…
+…
+…
+…
+…
+…
+Orbit
+correction
+parameters of
+satellite 6
+--
+69
+--
+--
+--
+The orbit
+correction
+parameters of
+the 6th satellite
+of this type
+Rev
+--
+19
+--
+--
+--
+--
+CRC
+CRC bits
+24
+--
+--
+--
+--
+*Note: Represents a binary complement code.
+
+=====PAGE 25=====
+China Satellite Navigation Office 2020
+19
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Please refer to message type 1 for the definitions of "Epoch", "SSR update interval" and
+"IOD SSR" in Table 6-3. Other parameters are described as follows.
+Message type 2 broadcasts the orbit correction parameters of 6 satellites. The orbit
+correction parameters of each satellite include Sat Slot, IODN, IOD Corr, radial correction,
+along
+correction,
+and
+cross
+correction.
+User
+Range Accuracy
+Index
+is
+broadcast
+simultaneously.
+1) Sat Slot
+Sat Slot indicates the location of the satellite in the mask. The starting value is 1 and the
+effective range is 1~255;
+2) IODN
+IODN is used for the IOD corresponding to the orbit and clock correction parameters in
+GNSS. If the IODN broadcast by PPP-B2b does not match the IOD broadcast by GNSS, it
+means that the GNSS has updated its navigation message. Users should continue to use the
+previous navigation message until the IODN in PPP-B2b signals gets updated and matches
+the IOD from GNSS.
+The correspondence relationship between IODN and the broadcast navigation message
+information of GNSS are as follows:
+(1) BDS: corresponding to the IODC in CNAV1 message;
+(2) GPS: corresponding to the IODC in LNAV message;
+(3) Galileo: corresponding to IOD Nav in I/NAV message;
+(4) GLONASS: corresponding to Tb in L1OCd message.
+3) IOD Corr
+Please see the description of message type 4 for the definition and usage of IOD Corr.
+4) Radial, along and cross correction
+See section 7.4 for algorithms.
+5) User Range Accuracy Index (URAI)
+The URAI parameter of a satellite has 6 bits in total. The highest 3 bits are defined as
+user range accuracy class (URACLASS), and the lowest 3 bits are defined as user range
+accuracy value (URAVALUE). The formula for calculating URA is:
+
+
+
+
+CLASS
+URA
+VALUE
+URA mm
+3
+1 0.25 URA
+1
+
+
+
+
+(6-2)
+
+=====PAGE 26=====
+China Satellite Navigation Office 2020
+20
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+where URA is the user range accuracy in mm;
+When URAI = 000000(binary), it means that URA is undefined or unknown, and the
+corresponding satellite correction is not reliable.
+When URAI = 111111(binary), it means that URA > 5466.5 mm.
+6.2.4
+Message Type 3 (Differential Code Bias Correction)
+6.2.4.1
+Message Layout
+The format of message type 1 is shown in Figure 6-5.
+Figure 6-5
+Bit allocation of message type 3
+6.2.4.2
+Content Description
+The contents of message type 3 are described in Table 6-4.
+Table 6-4
+Parameters of message type 3
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+MesTypeID
+Message type
+6
+1
+0～63
+--
+See Table 6-1
+Epoch
+Epoch
+17
+1
+0～86399
+s
+BDT seconds within
+a day
+Reserved
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+IOD of SSR
+2
+1
+0～3
+--
+Change as the
+system
+configuration
+changes.
+Number of
+satellite(s)
+Number of
+satellite(s)
+5
+1
+0～31
+--
+Number of the
+satellite contained in
+this message
+Differential
+code bias of
+Sat Slot
+9
+1
+1～255
+--
+The slot location of
+satellite 1
+
+=====PAGE 27=====
+China Satellite Navigation Office 2020
+21
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+satellite 1
+Number of
+differential code
+bias(es)
+4
+1
+--
+--
+Number of
+differential code
+bias(es) contained in
+satellite 1
+Signal and
+tracking mode 1
+4
+1
+0～15
+--
+The signal
+component and
+processing mode of
+the 1st differential
+code bias value
+Differential
+code bias 1
+12*
+0.017
+±35.746
+m
+The 1st differential
+code bias value
+Signal and
+tracking mode 2
+4
+1
+0～15
+--
+The signal
+component and
+processing mode of
+the 2nd differential
+code bias value
+Differential
+code bias 2
+12*
+0.017
+±35.746
+m
+The 2nd differential
+code bias value
+……
+……
+……
+……
+……
+……
+……
+……
+……
+……
+……
+……
+……
+--
+--
+--
+--
+--
+--
+CRC
+CRC bits
+24
+--
+--
+--
+--
+*Note: Represents a binary complement code.
+Please refer to message type 1 for the definitions of "Epoch", "SSR update interval" and
+"IOD SSR" and message type 2 for the definition of "Sat Slot" in Table 6-4. Other parameters
+are described as follows.
+Message type 3 broadcasts the differential code bias correction parameters of the signal
+components of the satellites involved. The number of satellites contained in each message and
+the number of differential code bias of each satellite are variable. Users should analyze
+dynamically according to the "number of satellites" and the "number of differential code
+bias(es)" of each satellite.
+The "signal and tracking mode" indicates the signal component corresponding to the
+differential code bias and the signal-receiving mode of that component. See Table 6-5 for
+specific definitions.
+
+=====PAGE 28=====
+China Satellite Navigation Office 2020
+22
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Table 6-5
+Definitions of signal and tracking modes
+ID of signal and
+tracking mode
+BDS
+GPS
+GLONASS
+Galileo
+0
+B1I
+L1 C/A
+G1 C/A
+Reserved
+1
+B1C(D)
+L1 P
+G1 P
+E1 B
+2
+B1C(P)
+Reserved
+G2 C/A
+E1 C
+3
+Reserved
+Reserved
+Reserved
+Reserved
+4
+B2a(D)
+L1C(P)
+Reserved
+E5a Q
+5
+B2a(P)
+L1C(D+P)
+Reserved
+E5a I
+6
+Reserved
+Reserved
+Reserved
+Reserved
+7
+B2b-I
+L2C(L)
+Reserved
+E5b I
+8
+B2b-Q
+L2C(M+L)
+Reserved
+E5b Q
+9
+Reserved
+Reserved
+Reserved
+Reserved
+10
+Reserved
+Reserved
+Reserved
+Reserved
+11
+Reserved
+L5 I
+Reserved
+E6 C
+12
+B3 I
+L5 Q
+Reserved
+Reserved
+13
+Reserved
+L5 I+Q
+Reserved
+Reserved
+14
+Reserved
+Reserved
+Reserved
+Reserved
+15
+Reserved
+Reserved
+Reserved
+Reserved
+The "differential code bias" in this message type is the pseudo-range code biases
+between the ranging signal and the clock offset reference signal adopted by the corresponding
+system. Users need to correct the differential code bias accordingly when they are using the
+signals other than the reference signal, otherwise the convergence time of precise point
+positioning may be affected. Please refer to section 7.3 for the user algorithms of differential
+code bias corrections.
+6.2.5
+Message Type 4 (Clock Correction Parameters)
+6.2.5.1
+Message Layout
+Message type 4 is used to broadcast clock correction and its message format is shown in
+Figure 6-6.
+
+=====PAGE 29=====
+China Satellite Navigation Office 2020
+23
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Figure 6-6
+Bit allocation of message type 4
+6.2.5.2
+Content Description
+The parameters of message type 4 are described in Table 6-6.
+Table 6-6
+Parameters of message type 4
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+MesTypeID
+Message type
+6
+1
+0～63
+--
+See Table 6-1
+Epoch
+Epoch
+17
+1
+0～86399
+s
+BDT seconds within a day
+Reserved
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+IOD of SSR
+2
+1
+0～3
+--
+Change as the system
+configuration changes.
+IODP
+IOD of PRN
+mask
+4
+1
+0～15
+--
+Issue Of Data of PRN mask
+SubType1
+Subtype ID 1
+5
+1
+0～31
+--
+Indicates the corresponding
+relationship between the satellite
+and the mask.
+Clock offset
+correction of
+satellite 1
+IOD Corr
+3
+1
+0～7
+--
+Issue Of Data correction
+C0
+15*
+0.0016
+±26.2128
+m
+Invalid if the value exceeds the
+effective range.
+Clock correction of
+satellite 2
+--
+18
+--
+--
+--
+The clock correction of the 2nd
+satellite of this type.
+Clock correction of
+satellite 3
+--
+18
+--
+--
+--
+The clock correction of the 3rd
+satellite of this type.
+…
+…
+18
+--
+--
+--
+…
+Clock correction of
+satellite 23
+--
+18
+--
+--
+--
+The clock correction of the 23rd
+satellite of this type.
+
+=====PAGE 30=====
+China Satellite Navigation Office 2020
+24
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+Rev
+Reserved
+10
+--
+--
+--
+Reserved bits
+CRC
+CRC bits
+24
+--
+--
+--
+--
+*Note: Represents a binary complement code.
+Please refer to message type 1 for the definitions of "Epoch ", "SSR update interval",
+"IOD SSR" and "IODP" in Table 6-6. Other parameters are described as follows.
+In message type 4, Users use the message type, mask (broadcast in message type 1), and
+subtype (SubType1) to determine the satellite corresponding to the clock correction: all
+satellites whose masks are set to 1 are compressed in order of their slot locations in the mask.
+See Table 6-7 for the correspondence of SubType1 and satellites.
+Table 6-7
+Correspondence of SubType1 and satellites in message type 4
+SubType1
+Corresponding satellites
+0
+The 1st ～23rd of the satellites whose masks are set to "1".
+1
+The 24th ～46th of the satellites whose masks are set to "1".
+2
+The 47th ～69th of the satellites whose masks are set to "1".
+3
+The 70th ～92nd of the satellites whose masks are set to "1".
+4
+The 93rd ～115th of the satellites whose masks are set to "1".
+5
+The 116th ～138th of the satellites whose masks are set to "1".
+6
+The 139th ～161st of the satellites whose masks are set to "1".
+7
+The 162nd ～184th of the satellites whose masks are set to "1".
+8
+The 185th ～207th of the satellites whose masks are set to "1".
+9
+The 208th ～230th of the satellites whose masks are set to "1".
+10
+The 231st ～253rd of the satellites whose masks are set to "1".
+11
+The 254th ～255th of the satellites whose masks are set to "1".
+Other values
+Reserved
+According to the actual number of satellites, the system only broadcasts the necessary
+message types. For example, if there are 30 satellites whose masks are set to 1, only the
+information subtypes 0 and 1 will be broadcast and other types will not be broadcast. (Note:
+In such a case, the subtype 0 of message type 4 can also be broadcast together with message
+type 6. Please refer to the description of message type 6 for more details.)
+The clock correction parameters of each satellite include IOD Corr and C0.
+
+=====PAGE 31=====
+China Satellite Navigation Office 2020
+25
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+IOD Corr is the IOD correction, which is also broadcast in message type 2. For the
+correction of the same satellite, the IOD Corr in message type 2 and that in message type 4 is
+identical, which means that C0 matches the orbit correction (broadcast in message type 2) and
+C0 matches the IODN in the orbit correction (see the description of message type 2), so that
+the orbit and clock correction can be used in combination. If the IOD Corr of message type 2
+and 4 are not identical, the C0 and orbital corrections cannot be used in a consistent way.
+C0 is the clock correction of 15 bits binary complement with a quantization unit of
+0.0016 m, and the effective range is ±26.2128 m. See section 7.5 for user algorithms.
+6.2.6
+Message Type 5 (User Range Accuracy Index)
+6.2.6.1
+Message Layout
+Message type 5 broadcasts user range accuracy index. Its message format is shown in
+Figure 6-7.
+Figure 6-7
+Bit allocation of message type 5
+6.2.6.2
+Content Description
+The parameters of message type 5 are described in Table 6-8.
+Table 6-8
+Parameters of message type 5
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+MesTypeID
+Message type
+6
+1
+0～63
+--
+See Table 6-1
+Epoch
+Epoch
+17
+1
+0～86399
+s
+BDT seconds within a
+day
+Reserved
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+IOD of SSR
+2
+1
+0～3
+--
+Change as the system
+configuration changes.
+IODP
+IOD of PRN
+mask
+4
+1
+0～15
+--
+Issue Of Data of PRN
+mask
+SubType2
+Subtype 2
+3
+1
+0～7
+--
+Identify satellite ID.
+
+=====PAGE 32=====
+China Satellite Navigation Office 2020
+26
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+URAI
+(Satellite 1)
+URACLASS
+3
+1
+0～7
+--
+User range accuracy
+index of the 1st satellite
+in this type
+URAVALUE
+3
+1
+0～7
+--
+URAI
+(Satellite 2)
+--
+6
+1
+--
+--
+User range accuracy
+index of the 2nd
+satellite in this type
+……
+……
+……
+……
+……
+……
+……
+URAI
+(Satellite 70)
+--
+6
+1
+--
+--
+User range accuracy
+index of the 70th
+satellite in this type
+Rev
+Reserved
+6
+--
+--
+--
+Reserved bits
+CRC
+CRC bits
+24
+--
+--
+--
+--
+Please refer to message type 1 for the definitions of "Epoch", "SSR update interval",
+"IOD SSR" and "IODP" in Table 6-8. Other parameters are described as follows.
+In message type 5, users use the message type, mask (broadcast in message type 1), and
+subtype (SubType2) to determine the satellite corresponding to the range accuracy: all
+satellites whose masks are set to 1 are arranged after compression in order of their slot
+locations in the mask. See Table 6-9 for the correspondence of SubType2 and satellites.
+Table 6-9
+Correspondence of SubType2 and satellites in message type 5
+SubType2
+Corresponding satellite
+0
+The 1st ～70th of the satellites whose masks are set to "1".
+1
+The 71st ～140th of the satellites whose masks are set to "1".
+2
+The 141st ～210th of the satellites whose masks are set to "1".
+3
+The 211th ～255th of the satellites whose masks are set to "1".
+Other values
+Reserved
+According to the actual number of the satellites, the system only broadcasts the
+necessary message types. For example, if there are 32 satellites whose masks are set to 1, only
+the subtype 0 will be broadcast and other types will not be broadcast. Please refer to the
+description of message type 2 for the definition of "URAI".
+
+=====PAGE 33=====
+China Satellite Navigation Office 2020
+27
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+6.2.7
+Message Type 6 (Clock Correction and Orbit Correction - combination 1)
+6.2.7.1
+Message Layout
+Message type 6 is used to broadcast the clock correction and orbit correction parameters
+in combination. The message format of Message type 6 is shown in Figure 6-8.
+Figure 6-8
+Bit allocation of message type 6
+6.2.7.2
+Content Description
+The parameters of message type 6 are described in Table 6-10.
+Table 6-10
+Parameters of message type 6
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+MesTypeID
+Message type
+6
+1
+0～63
+--
+See Table 6-1
+NumC
+Number of
+satellites with
+clock corrections
+5
+1
+0～22
+--
+--
+NumO
+Number of
+satellites with
+orbit corrections
+3
+1
+0～6
+--
+--
+Content of clock
+corrections
+Epoch of clock
+corrections
+17
+1
+0～86399
+s
+BDT seconds within a
+day
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+2
+1
+0～3
+--
+Change as the system
+configuration changes.
+IODP
+4
+1
+0～15
+--
+IOD of PRN mask
+Slot_S
+9
+1
+0～255
+--
+The location of the 1st
+
+=====PAGE 34=====
+China Satellite Navigation Office 2020
+28
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+satellite in the
+sequence of satellites
+whose masks are set to
+"1"
+Clock
+corrections for
+satellite 1
+18
+1
+--
+--
+The clock correction
+for the 1st satellite in
+this type
+……
+……
+……
+……
+……
+……
+Clock
+corrections for
+satellite NumC
+18
+1
+--
+--
+The clock correction
+for the NumC-th
+satellite in this type
+Content of orbit
+correction
+Epoch of orbit
+corrections
+17
+1
+0～86399
+s
+BDT seconds within a
+day
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+2
+1
+0～3
+--
+Change as the system
+configuration changes.
+Orbit correction
+for satellite 1
+69
+1
+--
+--
+The orbit correction
+for the 1st satellite in
+this type
+……
+……
+……
+……
+……
+……
+Orbit correction
+for satellite
+NumO
+69
+1
+--
+--
+The orbit correction
+for the NumO-th
+satellite in this type
+……
+……
+……
+……
+……
+……
+……
+CRC
+CRC bits
+24
+--
+--
+--
+--
+Please refer to message type 1 for the definitions of "Epoch", "SSR update interval",
+"IOD SSR" and "IODP" in Table 6-10. Other parameters are described as follows.
+NumC is the number of satellites corresponding to the satellite clock correction in this
+type, with an effective range of 0 ～22. NumC can be used to determine the bit length
+occupied by the satellite clock correction: when NumC = 0, the number of bits occupied by
+the clock correction is 0; when NumC > 0, the number of bits occupied by the clock
+correction is 36+NumC×18.
+NumO is the number of satellites corresponding to the satellite orbit correction in this
+type, with an effective range of 0～6. NumO can be used to determine the bit length occupied
+
+=====PAGE 35=====
+China Satellite Navigation Office 2020
+29
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+by the satellite orbit correction: when NumO = 0, the number of bits occupied by the orbit
+correction is 0; when NumO > 0, the number of bits occupied by the orbit correction is 23+
+NumO×69.
+Slot_S indicates the slot location of the first satellite with clock corrections in this type in
+the sequence of all satellites whose masks are set to "1". The satellites with clock corrections
+broadcast in message type 6 are the satellites numbered from Slot_S to Slot_S+NumC-1 in the
+sequence of all satellites whose masks are set to "1". For example, assuming there are 48
+satellites whose masks are set to "1", the clock corrections of the 1st to the 46th satellites will
+be broadcast in message type 4, and the 47th and 48th satellites will be broadcast in message
+type 6.
+Then the Slot_S in the message type 6 should be 47, and the NumC should be 2.
+The 18 bits clock correction of each satellite includes 3 bits IOD Corr and 15 bits C0;
+please refer to message type 4 for details. For the format and the definition of 69 bits orbit
+correction parameters of each satellite, see the contents of message type 2.
+6.2.8
+Message Type 7 (Clock Correction and Orbit Correction - combination 2)
+6.2.8.1
+Message Layout
+Message type 7 is used to broadcast the clock correction and orbit correction in
+combination. It differs from message type 6 in that the correspondence between the satellite
+clock correction and the satellite is through Sat Slot instead of mask.
+The message format of Message type 7 is shown in Figure 6-9.
+Figure 6-9
+Bit allocation of message type 7
+
+=====PAGE 36=====
+China Satellite Navigation Office 2020
+30
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+6.2.8.2
+Content Description
+The parameters of message type 7 are described in Table 6-11.
+Table 6-11
+Parameters of message type 7
+Field
+Name
+Length
+(bit)
+Scale
+factor
+Range
+Unit
+Description
+MesTypeID
+Message type
+6
+1
+0～63
+--
+See Table 6-1
+NumC
+Number of satellites
+of clock correction
+5
+1
+0～15
+--
+--
+NumO
+Number of satellites
+of orbit correction
+3
+1
+0～6
+--
+--
+Content of
+clock
+correction
+Epoch of clock
+correction
+17
+1
+0～86399
+s
+BDT seconds within a
+day
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+2
+1
+0～3
+--
+Change as the system
+configuration changes.
+The clock
+correction
+of
+satellite 1
+Sat Slot
+9
+1
+--
+--
+The clock correction of
+the 1st satellite in this
+type
+IOD
+Corr
+3
+C0
+15
+……
+……
+……
+……
+……
+……
+The clock correction
+of satellite NumC
+27
+1
+--
+--
+The clock correction of
+the NumC-th satellite in
+this type
+Content of
+orbit
+correction
+Epoch of orbit
+correction
+17
+1
+0～86399
+s
+BDT seconds within a
+day
+Reserved
+4
+1
+0～15
+--
+--
+IOD SSR
+2
+1
+0～3
+--
+Change as the system
+configuration changes.
+Orbit correction of
+satellite 1
+69
+1
+--
+--
+The orbit correction of
+the 1st satellite in this
+type
+……
+……
+……
+……
+……
+……
+Orbit correction of
+satellite NumO
+69
+1
+--
+--
+The orbit correction of
+the NumO-th satellite
+in this type
+……
+……
+……
+……
+……
+……
+……
+CRC
+CRC bits
+24
+--
+--
+--
+--
+
+=====PAGE 37=====
+China Satellite Navigation Office 2020
+31
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Please refer to message type 1 for the definitions of "Epoch ", "SSR update interval",
+"IOD SSR" and "IODP" in Table 6-11. Other parameters are described as follows.
+NumC is the number of satellites corresponding to the satellite clock correction in this
+type. NumC can be used to determine the bit length occupied by the satellite clock correction:
+when NumC = 0, the number of bits occupied by the clock correction is 0; when NumC > 0,
+the number of bits occupied by the clock correction is 23+NumC×27.
+NumO is the number of satellites corresponding to the satellite orbit correction in this
+type, with an effective range of 0～6. NumO can be used to determine the bit length occupied
+by the satellite orbit correction: when NumO = 0, the number of bits occupied by the orbit
+correction is 0; when NumO > 0, the number of bits occupied by the orbit correction is 23+
+NumO×69.
+The 27 bits clock correction of each satellite includes 9 bits Sat Slot, 3 bits IOD Corr and
+15 bits C0. Sat Slot indicates the position of the satellite in the mask. IOD Corr and C0 are
+referred to message type 4. For the format and definition of the 69 bits orbit correction
+parameters of each satellite, see the contents of message type 2.
+6.2.9
+Message Types 63
+Message type 63 is null message. When broadcast information is unavailable, it is used
+for blank filling.
+6.3
+Information Validity
+The nominal validities of various kinds of information in the PPP-B2b_I are listed in
+Table 6-12.
+Table 6-12
+Nominal validity
+Information content
+Message type
+Nominal validity(s)*
+Satellite mask
+1
+--
+Orbit correction
+2,6,7
+96
+Differential code bias
+3
+86400
+Clock correction
+4,6,7
+12
+User range accuracy index
+2,5,6,7
+96
+*Note: " Nominal validity " gives the time range suggestion, the messages which out of the range cannot
+ensure the data quality.
+
+=====PAGE 38=====
+China Satellite Navigation Office 2020
+32
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+7
+User Algorithms
+7.1
+The Target Systems for the PPP-B2b Service
+The PPP-B2b signal is designed to provide PPP service for GNSS and their combinations.
+For
+each
+satellite
+navigation
+system,
+the
+reference
+broadcast
+navigation
+messages
+corresponding to various corrections are:
+1) BDS: PPP-B2b information is used to correct the CNAV1 navigation messages of
+B1C signal.
+2) GPS: PPP-B2b information is used to correct the LNAV navigation messages.
+3) Galileo: PPP-B2b information is used to correct the I/NAV navigation messages.
+4) GLONASS: PPP-B2b information is used to correct the L1OCd navigation messages.
+7.2
+Time and Space Coordinate System
+The PPP-B2b signal and PPP services information use BDT, and the coordinate system is
+BDCS. See Chapter 3 for details.
+7.3
+Differential Code Bias Correction
+Due to different satellite tracking modes, each observed value has an offset related to the
+signal tracking mode. During the synchronous processing of signals at different frequencies,
+the first step is to eliminate such DCB correction to realize the synchronous processing. The
+correction algorithm formula is shown in (7-1):
+sig
+sig
+sig
+l
+l
+DCB
+
+
+
+(7-1)
+Where:
+sig
+l—— The observed value of
+sig signal after correction;
+sig
+l —— The observed value of
+sig signal directly captured by signal receiver;
+sig
+DCB —— The differential code bias corresponding to the signal。
+For example:
+If the range signal are B1Cp and B2ap at the user end for BDS, the differential code bias
+of the B1Cp signal broadcast in PPP-B2b message is
+1
+B Cp
+DCB
+, and the differential code bias of
+B2ap signal is
+2
+B ap
+DCB
+, the corresponding differential code bias correction are as follows:
+1
+1
+1
+B Cp
+B Cp
+B Cp
+l
+l
+DCB
+
+
+
+(7-2)
+
+=====PAGE 39=====
+China Satellite Navigation Office 2020
+33
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+2
+2
+2
+B ap
+B ap
+B ap
+l
+l
+DCB
+
+
+
+(7-3)
+The observed values of dual-frequency ionosphere-free combination are:
+1
+2
+1
+2
+1
+2
+1
+1
+1
+B Cp
+B ap
+B Cp
+B ap
+B Cp
+B ap
+IF
+l
+l
+l
+l
+DCB
+DCB
+l
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(7-4)
+Where
+2
+1
+2
+2
+B Cp
+B ap
+f
+f
+
+;
+1
+B Cp
+f
+is the center frequency of B1Cp carrier; and
+2
+B ap
+f
+is the center
+frequency of B2ap carrier.
+7.4
+Orbit Correction
+The parameters included in the orbit correction information are the components of the
+orbit correction vector
+O
+
+in radial, along, and cross directions. The orbit correction value is
+used to calculate the satellite position correction vector
+X
+
+and in combination with the
+satellite position vector
+broadcast
+X
+calculated by broadcast ephemeris. The corrected calculation
+formula is as follows:
+orbit
+broadcast
+X
+X
+X
+
+
+
+(7-5)
+Where:
+orbit
+X
+—— The satellite position corrected by the orbit correction message;
+broadcast
+X
+— —
+The satellite position calculated by the broadcast ephemeris, its IOD
+matches with the IODN of the orbit correction message;
+X
+
+—— The satellite position correction.
+The satellite position correction
+X
+
+is calculated with formulas （7-6）～(7-9):
+radial
+r
+e
+r
+
+(7-6)
+cross
+r
+r
+e
+r
+r
+
+
+
+
+
+(7-7)
+along
+cross
+radial
+e
+e
+e
+
+
+(7-8)
+radial
+along
+cross
+X
+e
+e
+e
+O
+
+
+
+
+
+
+(7-9)
+Where :
+broadcast
+r
+X
+
+—— The satellite position vector of broadcast ephemeris;
+broadcast
+r
+X
+
+
+—— The satellite velocity vector of broadcast ephemeris;
+ie —— Direction unit vector,
+
+
+,
+,
+i
+radial along cross
+
+corresponds to the radial, along and
+cross directions respectively;
+O
+
+—— The orbit correction vector obtained from PPP information in order of radial,
+along and cross components.
+
+=====PAGE 40=====
+China Satellite Navigation Office 2020
+34
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+7.5
+Clock Correction
+The parameter included in the clock correction message is the correction parameter
+relative to the clock offset of the broadcast ephemeris. See formula (7-10) for how to use this
+correction parameter:
+0
+satellite
+broadcast
+C
+t
+t
+c
+
+
+(7-10)
+Where:
+broadcast
+t
+— —
+The satellite clock offset parameters calculated from the broadcast
+ephemeris;
+satellite
+t
+——The satellite clock offset parameters corrected by the clock correction message;
+c —— Velocity of light;
+0
+C ——The clock correction parameters obtained from PPP-B2b message.
+7.6
+User Range Accuracy Index (URAI)
+The parameter URAI of each satellite is 6 bits. The highest 3 bits are defined as user
+range accuracy class (URACLASS), and the lowest 3 bits are defined as user range accuracy
+value (URAVALUE). The calculation formula of URA is:
+
+
+
+
+CLASS
+URA
+VALUE
+URA mm
+3
+1 0.25*URA
+1
+
+
+
+(7-11)
+Where: URA is the user range accuracy in mm (millimeter);
+When URAI =000000 (binary), it means URA is undefined or unknown, and the SSR
+correction of the corresponding satellite is not reliable.
+When URAI = 111111 (binary), it means that URA > 5466.5 mm.
+7.7
+System Time Solution
+All of the correction parameters broadcast by PPP-B2b signal use BDT as their time
+reference. When users use multiple navigation systems to perform precise positioning
+resolution, it is necessary to set different receiver clock offset parameters for different
+navigation systems at each epoch.
+
+=====PAGE 41=====
+China Satellite Navigation Office 2020
+35
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+8
+Abbreviations
+BDCS
+BeiDou Coordinate System
+BDS
+BeiDou Navigation Satellite System
+BDT
+BeiDou Navigation Satellite System Time
+bps
+bits per second
+BPSK
+Binary Phase Shift Keying
+CGCS2000
+China Geodetic Coordinate System 2000
+CRC
+Cyclic Redundancy Check
+GEO
+Geostationary Earth Orbit
+GLONASS
+Global Navigation Satellite System
+GNSS
+Global Navigation Satellite System
+GPS
+Global Positioning System
+ICD
+Interface Control Document
+IERS
+International Earth Rotation and Reference
+Systems Service
+IGSO
+Inclined Geo-Synchronous Orbit
+IOD
+Issue of Data
+IODC
+Issue of Data, Clock
+IODN
+Issue of Data, Navigation
+IODP
+Issue of Data, PRN mask
+IOD SSR
+Issue of Data, SSR
+IRM
+IERS Reference Meridian
+IRP
+IERS Reference Pole
+LDPC
+Low Density Parity Check
+MEO
+Medium Earth Orbit
+NTSC
+National Time Service Center
+OS
+Open Service
+PPP
+Precise Point Positioning
+
+=====PAGE 42=====
+China Satellite Navigation Office 2020
+36
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+PRN
+Pseudo-Random Noise
+RHCP
+Right-Hand Circular Polarization
+RMS
+Root Mean Square
+sps
+symbols per second
+SSR
+State Space Representation
+URA
+User Range Accuracy
+URAI
+User Range Accuracy Index
+UTC
+Universal Time Coordinated
+WN
+Week Number
+
+=====PAGE 43=====
+China Satellite Navigation Office 2020
+37
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+Annex
+Non-binary LDPC Encoding and Decoding Methods
+1. Non-binary LDPC Encoding
+The generator matrix G is obtained from the parity-check matrix
+1
+2
+[
+,
+]
+
+H
+H H
+of the
+non-binary LDPC（n,k）code. And then, the codeword c of length n can be generated by
+encoding the input information sequence m of length k with the generator matrix G, i.e.,
+=
+[
+, ]
+
+
+
+0
+1
+n-1
+c = (c ,c ,
+,c
+) m G
+m p
+, where,
+(0
+)
+j
+n
+
+
+jc
+is the jth codeword symbol, and
+1
+T
+2
+1
+(
+)
+
+
+
+
+p
+m
+H
+H
+is the check sequence.
+The method for generating the generator matrix G is given as follows:
+Step 1: The matrix H of size (n-k) × n is expressed as:
+1
+2
+[
+,
+]
+
+H
+H H
+, where the size of
+1
+H
+is (n-k) × k, and the size of
+2
+H
+is (n-k) × (n-k).
+Step 2: Convert the matrix H into the systematic form, i.e., multiply H with
+1
+2
+
+H
+from
+the left to generate a parity-check matrix
+1
+2
+1
+[
+,
+]
+n k
+
+
+
+
+
+H
+H
+H I
+, where
+n k
+
+I
+is a unit matrix
+of size (n-k) × (n-k).
+Step 3: The generator matrix is computed as
+1
+T
+2
+1
+[
+,(
+) ]
+k
+
+
+
+G
+I
+H
+H
+, where
+kI
+is a unit
+matrix of size k×k.
+(1) Encoding Example
+The B-CNAV3 message data are encoded by one 64-ary LDPC(162, 81) code. Assume
+that the input information is
+[001010 110010 010011 100001 001010 100110 010000 101001 101100 101111 011100
+000101 001110 111010 001001 110100 100010 111111 000101 011100 000110 111101
+000000 110001 110100 110111 000101 011001 010000 110011 011011 111010 001011
+010000 001001 001000 110111 100101 100011 001001 110110 100111 010110 100000
+011001 000100 001111 000111 001011 001111 011010 000011 111001 111100 011111
+011111 010101 111001 010111 000111 110001 011000 001111 011001 000110 001000
+111100 111101 100100 000011 001111 010110 110100 000000 000010 001010 101001
+101110 101001 011100 100011];
+The corresponding 64-ary information is
+[10 50 19 33 10 38 16 41 44 47 28 5
+14 58 9
+52 34 63 5
+28 6
+61
+0
+49 52 55 5
+25 16 51 27 58 11 16 9
+8
+55 37 35 9
+54 39 22
+
+=====PAGE 44=====
+China Satellite Navigation Office 2020
+38
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+32 25 4
+15 7
+11 15 26 3
+57 60 31 31 21 57 23 7
+49 24 15 25
+6
+8
+60 61 36 3
+15 22 52 0
+2
+10 41 46 41 28 35];
+After encoding, the output codeword is
+[001010 110010 010011 100001 001010 100110 010000 101001 101100 101111 011100
+000101 001110 111010 001001 110100 100010 111111 000101 011100 000110 111101
+000000 110001 110100 110111 000101 011001 010000 110011 011011 111010 001011
+010000 001001 001000 110111 100101 100011 001001 110110 100111 010110 100000
+011001 000100 001111 000111 001011 001111 011010 000011 111001 111100 011111
+011111 010101 111001 010111 000111 110001 011000 001111 011001 000110 001000
+111100 111101 100100 000011 001111 010110 110100 000000 000010 001010 101001
+101110 101001 011100 100011 100100 101110 111001 000000 110111 000001 010110
+101101 110010 001001 011011 001001 011010 000011 001011 101001 010101 011111
+001101 101011 011110 001101 111101 011111 010100 001000 000110 100100 000011
+101101 001100 111001 111011 010111 001010 101011 101101 111111 000001 111100
+001111 101111 001010 000110 101000 111000 011000 000010 010011 010011 101110
+101011 010011 111101 011010 000001 000111 111101 001011 110111 110000 101011
+110001 101100 110010 011011 011111 011011 001100 111100 110011 111010 001111
+000110 011101 111101 100111 100110 000101 110101 100010];
+The corresponding 64-ary codeword is
+[10 50 19 33 10 38 16 41 44 47 28 5
+14 58 9
+52 34 63 5
+28 6
+61
+0
+49 52 55 5
+25 16 51 27 58 11 16 9
+8
+55 37 35 9
+54 39 22
+32 25 4
+15 7
+11 15 26 3
+57 60 31 31 21 57 23 7
+49 24 15 25
+6
+8
+60 61 36 3
+15 22 52 0
+2
+10 41 46 41 28 35 36 46 57 0
+55 1
+22 45 50 9
+27 9
+26 3
+11 41 21 31 13 43 30 13 61 31 20
+8
+6
+36 3
+45 12 57 59 23 10 43 45 63 1
+60 15 47 10 6
+40 56
+24 2
+19 19 46 43 19 61 26 1
+7
+61 11 55 48 43 49 44 50 27 31
+27 12 60 51 58 15 6
+29 61 39 38 5
+53 34];
+(2) Mapping Relationship
+After 64-ary LDPC encoding, each codeword symbol is composed of 6 bits, which is
+defined over GF(26) domain with the primitive polynomial of
+
+6
+1
+p x = +x+x . Each element
+
+=====PAGE 45=====
+China Satellite Navigation Office 2020
+39
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+in Galois field can be described by the vector representation and power representation.
+The mapping from the vector representation of 64 field elements to the power
+representation is shown as follows:
+[∞
+0
+1
+6
+2
+12
+7
+26
+3
+32
+13
+35
+8
+48
+27
+18
+4
+24
+33
+16
+14
+52
+36
+54
+9
+45
+49
+38
+28
+41
+19
+56
+5
+62
+25
+11
+34
+31
+17
+47
+15
+23
+53
+51
+37
+44
+55
+40
+10
+61
+46
+30
+50
+22
+39
+43
+29
+60
+42
+21
+20
+59
+57
+58]
+The mapping from the power representation of 63 non-zero elements to the vector
+representation is shown as follows:
+[1
+2
+4
+8
+16
+32
+3
+6
+12
+24
+48
+35
+5
+10
+20
+40
+19
+38
+15
+30
+60
+59
+53
+41
+17
+34
+7
+14
+28
+56
+51
+37
+9
+18
+36
+11
+22
+44
+27
+54
+47
+29
+58
+55
+45
+25
+50
+39
+13
+26
+52
+43
+21
+42
+23
+46
+31
+62
+63
+61
+57
+49
+33]
+.
+2. Non-binary LDPC Decoding
+One codeword
+
+0
+1
+n-1
+c = (c ,c ,
+,c
+)
+generated by the non-binary LDPC （n,k ）
+encoding is transmitted over a channel with the modulation. On the receiving side, the
+corresponding sequence
+
+0
+1
+n-1
+y = (y ,y ,
+,y
+) is received, where
+,0
+,1
+, -1
+(
+,
+,
+,
+)
+j
+j
+j r
+y
+y
+y
+
+jy =
+is
+the received information corresponding to the jth codeword symbol
+jc (
+GF( ),
+2r
+q q
+
+
+jc
+,
+0
+j
+n
+
+
+).
+The parity-check matrix
+H
+of the non-binary LDPC code can be used to check the
+correctness of the received sequence y. The specific method is described as follows:
+A hard decision codeword
+ˆ
+ˆ
+ˆ
+ˆ
+
+0
+1
+n-1
+c = (c ,c ,
+,c
+)
+is obtained by making hard decision on the
+received sequence y bit by bit. The check sum is calculated as
+T
+ˆ
+
+s
+cH
+. If
+
+s
+0 ,
+ˆc
+is
+output as the correct decoding, otherwise
+ˆc is erroneous.
+The parity-check matrix H describes the connection relationship of the check node CN
+and the variable node VN, i.e., the reliability information can be transmitted between the
+connected CN and VN. For the parity-check matrix
+H
+of size
+m
+n
+
+, each element
+,
+GF( )
+i j
+h
+q
+
+is an element in
+GF( )
+q , while each row corresponds to a check node CN and
+each column corresponds to a variable node VN.
+Two index sets are given as follows:
+,
+{ : 0
+,
+0},0
+j
+i j
+M
+i
+i
+m h
+j
+n
+
+
+
+
+
+,
+{ :0
+,
+0},0
+i
+i j
+N
+j
+j
+n h
+i
+m
+
+
+
+
+
+
+=====PAGE 46=====
+China Satellite Navigation Office 2020
+40
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+If
+,
+0
+i j
+h
+
+, the check node CNi is connected to the variable node VN j . The reliability
+vector transmitted from the variable node VN j to the connected check node CNi (
+j
+i
+M
+
+)
+is denoted as
+V2C j
+i
+, and can be used to calculate the check sum of
+CNi . The reliability
+vector transmitted from the check node CNi to the connected variable node VN j (
+i
+j
+N
+
+)
+is denoted as C2Vi
+j
+, and can be used to estimate the symbol value of VN j . V2C j
+i
+
+and
+C2Vi
+j
+
+are iteratively updated by using the reliability transmitting decoding algorithm to
+correct the received sequence y, and then the codeword c is correctly estimated.
+Two iterative reliability transmitting decoding algorithms used to estimate the codeword
+c are listed in the following contents.
+(1) Extended Min-Sum Method
+Set the mean noise value of the additive white Gaussian noise channel as zero and the
+variance as
+2
+
+. The reliability vector
+j
+L
+is calculated according to the received symbol
+vector
+j
+y
+corresponding to each codeword symbol
+jc . The reliability vector
+j
+L
+consists
+of all q Galois field elements
+GF( )
+x
+q
+
+and their logarithmic likelihood ratio (LLR) values
+LLR( )
+x , where the lth ( 0
+l
+q
+
+
+) element of
+j
+L
+consists of the lth Galois field symbol x and
+its LLR value. The logarithmic likelihood ratio of the Galois field element x in the reliability
+vector
+j
+L
+is
+1
+,
+,
+0
+2
+2
+|
+|
+ˆ
+(
+| )
+LLR( )
+log(
+)
+(
+| )
+r
+j b
+j b
+b
+y
+P
+x
+x
+P
+x
+
+
+
+
+
+
+j
+j
+y
+y
+where
+ˆx is the element in GF( )
+q
+which maximizes the probability
+(
+| )
+P
+x
+jy
+, i.e., the
+hard decision symbol of
+j
+y . The bit sequences of the Galois field elements
+x
+and
+ˆx are
+0
+1
+1
+(
+,
+,....,
+)
+r
+x
+x
+x
+x 
+
+and
+0
+1
+1
+ˆ
+ˆ
+ˆ
+ˆ
+(
+,
+,....,
+)
+r
+x
+x
+x
+x 
+
+, respectively.
+,
+ˆ
+ XOR 
+j b
+b
+b
+x
+x
+
+
+, where XOR is
+exclusive-OR operation, that is, if
+bx
+and
+ˆbx
+are the same,
+,
+0
+j b
+
+
+, otherwise,
+,
+1
+j b
+
+.
+In the extended Min-Sum decoding algorithm, the length of each reliability vector
+j
+L
+is reduced from q to
+ (
+)
+m
+m
+n
+n
+q
+
+, i.e., truncating the
+m
+n
+most reliable field elements (i.e.,
+the smallest LLR values) from the reliability vector. The extended Min-Sum decoding
+algorithm is shown as follows:
+Initialization: Set the maximum number of iterations as
+max
+itr
+and the current
+iteration number itr as zero. The reliability vector
+j
+L
+( 0
+j
+n
+
+
+) is calculated from the
+
+=====PAGE 47=====
+China Satellite Navigation Office 2020
+41
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+received vector
+jy . Initialize all V2C j
+i
+
+vectors of each variable node VN j with
+j
+L .
+Step 1: For each variable node
+VN j
+( 0
+j
+n
+
+
+), the decision symbol
+ˆ jc
+and the
+reliability vector V2C j
+i
+
+are calculated according to the variable node updating rule.
+Step 2: Calculate the check sum
+T
+ˆ
+
+s
+cH . If
+
+s
+0 , output the decision sequence
+ˆc
+as decoding result and exit the decoding, otherwise, go into Step 3.
+Step 3: For each check node
+CNi
+( 0
+i
+m
+
+), the reliability vector
+C2Vi
+j
+
+is
+calculated according to the check node updating rule.
+Step 4: Let itr=itr+1. If
+max
+itr
+itr
+
+, exit decoding and declare a decoding failure,
+otherwise, go into Step 1.
+1) Updating Rules of Variable Nodes
+If the current iteration number itr=0, the reliability vector
+j
+L
+of each codeword symbol
+is arranged in ascending order according to its LLR values of the q field elements. The first
+m
+n
+elements
+in
+the
+sorted
+j
+L
+constitute
+the
+truncated
+reliability
+vector
+(
+,LLR(
+))
+
+m
+m
+m
+j,n
+n
+n
+L
+x
+x
+. Initialize V2C j
+i
+
+as
+m
+'
+j,n
+L
+:
+,
+,
+V2C
+. 
+(
+ 
+,LLR(
+))
+j
+i
+i j
+i j
+h
+h
+
+
+
+m
+m
+m
+m
+j,n
+j,n
+n
+n
+'L
+L
+x
+.
+x
+where
+m
+n
+x
+is the vector containing the
+m
+n
+truncated Galois field elements, and
+,
+. i j
+h
+m
+n
+x
+is the Galois field multiplication of
+,i j
+h
+and
+m
+n
+Galois field elements in
+m
+n
+x
+.
+If the current iteration number
+itr
+0
+
+, it is assumed that
+C2Vf
+j
+
+is the reliability
+vector of length
+m
+n
+which is transmitted from the check node
+CN f
+to the connecting
+variable node VN j and then the reliability vector V2C j
+i
+
+can be calculated by using all the
+received reliability vectors, C2V
+(
+,
+)
+f
+j
+j
+f
+M
+f
+i
+
+
+
+, as follows:
+1
+,
+,
+,
+V2C
+. (
+C2V
+. 
+(
+,
+)
+)
+m
+j
+j
+i
+i j
+f
+j
+f j
+n
+f
+j
+i
+j
+M
+f
+i
+i
+h
+h
+
+
+
+
+
+
+
+
+
+
+j
+L
+Rs
+R
+where the Galois field element
+1
+,f j
+h
+is the inverse element of
+,f j
+h
+, i.e.,
+1
+,
+,
+.
+1
+f j
+f j
+h
+h
+
+. In
+the above equation, the sum operation adds the LLR values of the same elements in each
+reliability vector
+1
+,
+C2V
+.
+f
+j
+f j
+h
+
+.
+( )
+m
+n
+operation indicates that the field elements in the
+reliability vector are sorted by ascending order and then the first
+m
+n
+different Galois field
+elements are truncated.
+j
+i
+
+Rs
+is a vector consisting of the first
+m
+n
+Galois field elements,
+and
+j
+i
+
+R
+is a vector consisting of the corresponding LLR values. The LLR of the
+m
+q
+n
+
+Galois field elements discarded from the reliability vector
+C2Vf
+j
+
+is set as the sum of the
+
+=====PAGE 48=====
+China Satellite Navigation Office 2020
+42
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+maximum LLR value in C2Vf
+j
+
+and a fixed offset. After each reliability vector
+V2C j
+i
+
+is
+calculated, the LLR value of each element in the reliability vector subtracts
+min
+LLR
+which is
+the minimum LLR value in this reliability vector.
+In addition, a decision should be made on each variable node in each iteration. The
+Galois field element corresponding to
+min
+LLR
+in the reliability vector
+1
+,
+{
+C2V
+. 
+}
+j
+f
+j
+f j
+f
+M
+h
+
+
+
+
+j
+L
+of length q is selected as a decision value. The related decision formula is
+1
+,
+GF( )
+ˆ
+arg min {
+C2V
+. 
+},0
+j
+f
+j
+f j
+x
+q
+f
+M
+h
+j
+n
+
+
+
+
+
+
+
+
+
+j
+j
+c
+L
+The decision symbol
+ˆ jc
+is transmitted together with the reliability vector
+V2C j
+i
+
+to
+the corresponding check node. It is checked whether the current iteration decoding vector
+ˆ
+ˆ
+ˆ
+ˆ
+(
+,
+,....,
+)
+
+0
+1
+n-1
+c
+c c
+c
+satisfies that
+T
+ˆ
+
+s
+cH
+is a zero vector.
+2) Updating Rules of Check Nodes
+For each check node
+CNi
+( 0
+i
+m
+
+), all reliability vectors
+V2C j
+i
+
+from the
+connected variable nodes are received. The reliability vector C2Vi
+j
+
+is calculated by
+,
+C2V
+V2C
+i
+i
+j
+i
+N
+j
+
+
+
+
+
+
+
+
+where, each sum operation is defined as the basic calculation of the check node; when
+two reliability vectors containing
+m
+n
+Galois field elements and their LLR vectors are
+inputted, the candidate elements are obtained by the sum of the Galois field elements of
+different reliability vectors, and their LLR values are calculated at the same time. The LLR
+values of the candidate elements are sorted by ascending order and then the first
+m
+n
+LLR
+values are truncated. The output reliability vector consists of the
+m
+n
+LLR values and their
+Galois field elements.
+The two input reliability vectors of the check nodes is given as (
+,
+)
+s
+U U
+and (
+,
+)
+s
+Q Q ,
+and the output reliability vector is given as (
+,
+)
+s
+V V , where
+U , Q ,
+V are the LLR vectors
+of length
+m
+n
+arranged in ascending order, and
+s
+U ,
+s
+Q ,
+s
+V
+are the corresponding Galois
+field element vectors. According to the input reliability vectors, the reliability matrix M of
+size
+m
+m
+n
+n
+
+and the Galois field element matrix
+s
+M
+are constructed as follows:
+[ , ]
+[ ]
+[ ]
+s
+s
+s
+M d
+U d
+Q
+
+
+
+
+[ , ]
+[ ]
+[ ]
+M d
+U d
+Q
+
+
+
+
+
+=====PAGE 49=====
+China Satellite Navigation Office 2020
+43
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+where,
+,
+{0,1,...,
+1}
+m
+d
+n
+
+
+and is the Galois field addition operation.
+The basic formula for the check node is
+[ ]
+[ , ]
+,
+[0,1,...,
+1]
+[ ]
+min
+{
+[ ,
+]}
+,0
+s
+s
+m
+V
+M
+d
+m
+d
+n
+V
+M d
+n
+
+
+
+
+
+
+
+
+
+
+
+
+The implementation of the above equations can be completed by operating the register S
+of size
+m
+n
+as follows:
+Initialize: Store the first column of
+M
+into S, and let
+[ ]
+[ ,0]
+S
+M
+
+
+
+,
+{0,1,...,
+1}
+m
+n
+
+
+. Let
+0
+
+.
+Step 1: Find the minimum value in S. (Suppose
+[ ,
+]
+M d 
+is the smallest value of the
+corresponding S.)
+Step 2: If the Galois field element corresponding to the found minimum value does
+not exist in Vs,
+[ ]
+V 
+is filled with the minimum value in S, and
+[ ]
+s
+V 
+is filled with the
+corresponding Galois field element, and
+1
+
+
+
+. Otherwise, no action.
+Step 3: Replace the minimum value in S by
+[ ,
+1]
+M d 
+, i.e., the element on the right
+of the corresponding element in M.
+Step 4: Go to Step 1 until
+m
+n
+
+.
+(2) Fixed Path Decoding Method
+The fixed path decoding method is an efficient decoding algorithm, and its algorithm
+procedure is consistent with that of the extended Min-Sum method, except that the check
+node updating rules are different. Take check nodes with row weight dc=4 (i.e., each check
+node receives four input reliability vectors) as an example, the check node updating rules of
+the fixed path decoding method are described as follows:
+For each check node
+CNi
+( 0
+i
+m
+
+), the fixed path deviation value vector
+(
+,
+)
+
+i
+i
+i
+E
+Rs R
+of length 8+2
+m
+n
+is calculated by using four received reliability vectors
+V2C
+(
+,
+)
+j
+i
+j
+i
+j
+i
+
+
+
+Rs
+R
+(
+i
+j
+N
+
+) transmitted from the connected variable nodes, where
+i
+Rs
+is the
+Galois field element vector of length 8+2
+m
+n
+(the vector may contain the same Galois field
+elements), and
+i
+R
+is the corresponding LLR vector.
+In order to compute each fixed path deviation value, the four reliability vectors
+V2C j
+i
+
+are sorted in ascending order according to the LLR values
+[1]
+j
+i
+R 
+of the second elements
+V2C
+[1]
+(
+[1],
+[1])
+j
+i
+j
+i
+j
+i
+Rs
+R
+
+
+
+
+(i.e., its subscript is “1”) of
+V2C j
+i
+. The four sorted vectors are
+
+=====PAGE 50=====
+China Satellite Navigation Office 2020
+44
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+defined as 
+
+,
+l,i
+l,i
+Rs
+R
+,
+0
+4
+l
+
+, i.e.,
+0,
+1,
+2,
+3,
+[1]
+[1]
+[1]
+[1]
+i
+i
+i
+i
+R
+R
+R
+R
+
+
+
+, where
+l,i
+Rs
+is the Galois
+field element vector of length
+m
+n , and
+l,i
+R
+is the corresponding LLR vector. Then, the fixed
+path deviation value vector
+(
+,
+)
+
+i
+i
+i
+E
+Rs R
+is computed according to
+l,i
+Rs
+and
+l,i
+R
+which
+are calculated by the equations as follows:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,
+0
+4
+1,
+,
+0
+4,
+1
+0,
+4,
+,
+1
+4,
+4
+0,
+1,
+2,
+3,
+0,
+1,
+2,
+3,
+10,
+,
+0
+4,
+10
+,
+0 ,
+0
+1
+0 ,
+1
+4
+1
+1
+0 ,
+5
+7
+0
+1
+1
+0 ,
+8
+0
+1
+0
+1 ,
+9
+2
+0 ,
+10
+14
+l i
+l
+e
+i
+l i
+l
+l e
+i
+e
+i
+l i
+l
+l e
+i
+i
+i
+i
+i
+i
+i
+i
+i
+e
+i
+l i
+l
+l e
+i
+Rs
+e
+Rs
+Rs
+e
+Rs
+Rs
+Rs
+e
+Rs
+Rs
+Rs
+Rs
+e
+Rs e
+Rs
+Rs
+Rs
+Rs
+e
+Rs
+Rs
+e
+Rs
+e
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,
+0
+4,
+,
+,
+0
+4,
+11
+0 ,
+14
+11
+8
+0 ,
+11
+8
+2
+l i
+m
+l
+l
+i
+m
+l i
+m
+m
+l
+l
+Rs
+e
+n
+Rs
+e
+n
+Rs
+n
+e
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1,
+0,
+4,
+1,
+6,
+10,
+,
+,
+0,
+0
+1 ,
+1
+4
+1
+1 ,
+5
+7
+1
+1 ,
+8
+9
+2 ,
+10
+14
+11 ,
+14
+11
+8
+,
+11
+8
+2
+e
+i
+i
+e
+i
+i
+i
+e
+i
+e
+i
+i
+m
+i
+m
+m
+m
+e
+R
+e
+R
+R
+e
+R e
+R
+R
+e
+R
+e
+R
+e
+e
+n
+R
+e
+n
+n
+e
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Where, 
+and
+
+represent the subscripts l of the vector
+l,i
+R
+whose ( 
+/ 2
+1
+
+
+
+
+
+m
+n
+)th
+LLR values (i.e., its subscript is
+2
+m
+n
+
+
+
+) are the minimum and second smallest values,
+respectively. The sum operation and 
+in the above equation are the Galois field addition
+operation.
+Set two flag vectors T and
+T
+of length 8+2
+m
+n
+and initialize them to all “1” vectors.
+The updating rules for the first
+0
+8
+2
+R
+m
+k
+n
+
+
+
+values of the flag vectors T and
+T
+are
+defined by the following equations:
+,
+,
+,
+,
+1,
+[
+]
+[
+/ 2 ]
+[
+]
+0,
+[
+]
+[
+/ 2 ]
+1,
+[
+]
+[
+/ 2 ]
+[
+]
+0,
+[
+]
+[
+/ 2 ]
+i
+R
+i
+m
+R
+i
+R
+i
+m
+i
+R
+i
+m
+R
+i
+R
+i
+m
+R k
+R
+n
+T k
+R k
+R
+n
+R k
+R
+n
+T k
+R k
+R
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+According to the fixed path deviation vector and the flag vectors, four output reliability
+
+=====PAGE 51=====
+China Satellite Navigation Office 2020
+45
+BDS-SIS-ICD-PPP-B2b-1.0
+2020-07
+vectors 
+
+,
+,
+i,l
+i l
+Us
+U
+of length
+m
+n
+are updated by the following equations:
+
+
+,
+(
+0 )
+m
+i
+l i
+n
+Rs w
+Rs
+
+
+i,l
+Us
+
+(
+)
+m
+i
+n
+R w
+
+i,l
+U
+where,
+0
+4
+l
+
+, and the value range of
+w
+is determined by the different cases. In the
+case of
+0
+l , if
+0
+
+, the value range of
+w is
+
+
+
+| [ ]
+1
+{
+0} {1
+4} {8
+10} {10
+11
+}
+m
+w T w
+w
+w
+w
+w
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+otherwise, the value range of
+w is
+
+
+
+|
+[ ]
+1
+{
+0}
+{1
+4}
+{8
+10}
+{10
+14}
+{
+11
+}
+m
+w T w
+w
+w
+w
+w
+w
+n
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+In
+the
+case
+of
+1
+4
+l
+
+
+, if l
+
+
+, the value range of
+w is
+
+
+
+
+|
+[ ]
+1
+{0
+7}
+{10
+14}
+{
+11
+}
+{
+1}
+{
+4
+}
+{
+10
+}
+m
+w T w
+w
+w
+w
+n
+w
+l
+w
+l
+w
+l
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+oth
+erwise, the value range of
+w is
+
+
+
+
+| [ ]
+1
+{0
+7}
+{10
+11
+}
+{
+1} {
+4
+} {
+10
+}
+m
+w T w
+w
+w
+n
+w
+l
+w
+l
+w
+l
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,i l
+Us
+z
+( 0
+m
+z
+n
+
+
+) corresponds to
+
+
+, 0
+i
+l i
+Rs w
+Rs
+
+calculated by the
+m
+n
+smallest values of
+w ,
+which doesn’t need to eliminate the same symbols of
+
+,i l
+Us
+z . Meanwhile,
+
+,i l
+U
+z
+is the
+corresponding LLR value of
+
+,i l
+Us
+z .
+The order of the four reliability vectors 
+
+,
+,
+i,l
+i l
+Us
+U
+is aligned with the four sorted input
+vectors 
+
+,
+,
+l,i
+l i
+Rs
+R
+. Each input vector
+
+
+,
+,
+l,i
+l i
+Rs
+R
+corresponds to a
+V2C j
+i
+
+vector. Each
+reliability vector C2V
+(
+,
+)
+i
+j
+
+i,l
+i,l
+Us
+U
+, (
+i
+j
+N
+
+) is updated and output according to the sequence
+order between 
+
+,
+,
+l,i
+l i
+Rs
+R
+and V2C j
+i
+.

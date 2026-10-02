@@ -1,0 +1,713 @@
+
+=====PAGE 1=====
+INTERNATIONAL  TELECOMMUNICATION  UNION
+ITU-T
+V.22 bis
+TELECOMMUNICATION
+STANDARDIZATION SECTOR
+OF  ITU
+DATA  COMMUNICATION
+OVER  THE  TELEPHONE  NETWORK
+2400  BITS  PER  SECOND  DUPLEX MODEM
+USING  THE  FREQUENCY  DIVISION
+TECHNIQUE  STANDARDIZED  FOR  USE  ON
+THE  GENERAL  SWITCHED  TELEPHONE
+NETWORK  AND  ON  POINT-TO-POINT
+2-WIRE  LEASED  TELEPHONE-TYPE
+CIRCUITS
+ITU-T  Recommendation V.22 bis
+(Extract from the Blue Book)
+
+=====PAGE 2=====
+NOTES
+1
+ITU-T Recommendation V.22 bis was published in Fascicle VIII.1 of the Blue Book. This file is an extract from
+the Blue Book. While the presentation and layout of the text might be slightly different from the Blue Book version, the
+contents of the file are identical to the Blue Book version and copyright conditions remain unchanged (see below).
+2
+In this Recommendation, the expression “Administration” is used for conciseness to indicate both a
+telecommunication administration and a recognized operating agency.
+  ITU  1988, 1993
+All rights reserved. No part of this publication may be reproduced or utilized in any form or by any means, electronic or
+mechanical, including photocopying and microfilm, without permission in writing from the ITU.
+
+=====PAGE 3=====
+Fascicle VIII.1 - Rec. V.22 bis
+1
+Recommendation V.22 bis
+Fascicle VIII.1 - Rec. V.22 bis
+2400 BITS PER SECOND DUPLEX MODEM
+USING THE FREQUENCY DIVISION TECHNIQUE STANDARDIZED FOR USE
+ON THE GENERAL SWITCHED TELEPHONE NETWORK AND ON
+POINT-TO-POINT 2-WIRE
+LEASED TELEPHONE-TYPE CIRCUITS
+(Malaga-Torremolinos, 1984; and al Melbourne, 1988)
+The CCITT,
+considering
+(a)
+that there is a demand for data transmission at 2400 bit/s in the duplex mode over the General Switched
+Telephone Network (GSTN) and on point-to-point 2-wire leased telephone-type circuits;
+(b)
+that there is a demand to have the fall-back mode compatibility with modems in accordance with
+Recommendation V.22;
+(c)
+that in this case the frequency division technique shall be used,
+(unanimously) declares
+that the characteristics of the modems for this service shall provisionally be as follows:
+1
+Introduction
+These modems are intended for use on connections on the GSTN and on point-to-point 2-wire leased telephone-
+type circuits (see Note). The principal characteristics of these modems are as follows:
+a) duplex mode of operation on the GSTN and point-to-point leased circuits,
+b) channel separation by frequency division,
+c) quadrature amplitude modulation for each channel with synchronous line transmission at 600 baud (nominal),
+d) inclusion of a scrambler,
+e) inclusion of an adaptive equalizer and a compromise equalizer,
+f)
+inclusion of test facilities,
+g) data signalling rates of:
+2400 bit/s synchronous,
+2400 bit/s start-stop,
+1200 bit/s synchronous,
+1200 bit/s start-stop,
+h) it is compatible with a V.22 modem operating in Modes i) or ii) at the 1200 bit/s signalling rate and includes
+automatic bit rate recognition.
+Note - In certain countries the use of such modems over the GSTN may not be allowed.
+
+=====PAGE 4=====
+2
+Fascicle VIII.1 - Rec. V.22 bis
+2
+Line signals
+2.1
+Carrier and guard tone frequencies
+The carrier frequencies shall be 1200 ± 0.5 Hz for the low channel and 2400 ± 1 Hz for the high channel. A
+guard tone of 1800 ± 20 Hz, to be transmitted only when the modem is transmitting in the high channel, may be disabled
+as a national option. An alternative guard tone of 550 ± 20 Hz, to be transmitted only when the modem is transmitting in
+the high channel, may be incorporated as a national option.
+2.2
+Data and guard tone line signal levels
+The 1800 Hz or 550 Hz guard tones shall be levels 6 ± 1 dB or 3 ± 1 dB, respectively, below the level of the
+data signal power in the high channel. Because of the 1800 Hz guard tone, the power level of data signals in the high
+channel will be approximately 1 dB lower than that of data signals in the low channel.
+2.3
+Fixed compromise equalizer
+Fixed compromise equalization shall be incorporated in the modem transmitter.
+2.4
+Spectrum and group delay characteristics
+The transmitted line signals, excluding the characteristics of the fixed compromise equalizer, shall have a
+frequency amplitude spectrum equivalent to the square root of a raised cosine shaping with 75% roll-off and within the
+limits shown in Figure 1/V.22 bis. Similarly, the group delay of the transmitter output shall be within the range of ± 150
+microseconds over the frequency ranges 900-1500 Hz (low channel) and 2100-2700 Hz (high channel). These figures are
+provisional.
+FIGURE 1/V.22 bis
+Amplitude limits for transmitted line signal (unequalized)
+2.5
+Modulation
+2.5.1
+Data signalling rates
+The data rate transmitted to line shall be 2400 bit/s or 1200 bit/s ± 0.01% with a modulation rate of
+600 baud ± 0.01%.
+
+=====PAGE 5=====
+Fascicle VIII.1 - Rec. V.22 bis
+3
+2.5.2
+Encoding of data bits
+2.5.2.1
+2400 bits per second
+The data stream to be transmitted shall be divided into groups of 4 consecutive bits (quadbits). The first two bits
+of a quadbit shall be encoded as a phase quadrant change relative to the quadrant occupied by the preceding signal
+element. (See Figure 2/V.22 bis and Table 1/V.22 bis.)
+The last two bits of each quadbit define one of 4 signalling elements associated with the new quadrant (see
+Figure 2/V.22 bis). The left hand bits in Table 1/V.22 bis and Figure 2/V.22 bis are the first of each pair in the data
+stream as it enters the modulator portion of the modem after the scrambler.
+TABLE 1/V.22 bis
+Line encoding
+First two bits in quabit (2400 bit/s)
+or dibit values (1200 bit/s)
+Phase
+quadrant change
+00
+1→ 2
+2→ 3
+3→ 4
+4→ 1
+90°
+01
+1→ 1
+2→ 2
+3→ 3
+4→ 4
+0°
+11
+1→ 4
+2→ 1
+3→ 2
+4→ 3
+270°
+10
+1→ 3
+2→ 4
+3→ 1
+4→ 2
+180°
+
+=====PAGE 6=====
+4
+Fascicle VIII.1 - Rec. V.22 bis
+FIGURE 2/V.22 bis
+Signal constellation
+2.5.2.2
+1200 bits per second
+The data stream to be transmitted shall be divided into groups of 2 consecutive bits (dibits). The dibits shall be
+encoded as a phase quadrant change relative to the quadrant occupied by the preceding signal element (see Table
+1/V.22 bis). The signalling elements corresponding to 01 in the signal constellation (Figure 2/V.22 bis) shall be
+transmitted irrespective of the quadrant concerned. This ensure compatibility with Recommendation V.22.
+2.6
+Received signal frequency tolerance
+The receiver shall be able to operate with received frequency offsets of up to ± 7 Hz.
+3
+Interchange circuits
+3.1
+Essential and optional interchange circuits
+These are listed in Table 2/V.22 bis.
+3.2
+Circuits 106 and 109 response times
+After the handshaking sequences, circuit 106 will follow OFF to ON or ON to OFF transitions of circuit 105
+within 3.5 ms. The OFF to ON transition of circuit 109 is part of the handshake sequence specified in § 6. Circuit 109
+shall turn OFF 40 to 65 ms after the level of the received signal appearing at the line terminal of the modem falls below
+the relevant threshold defined in § 3.3. In the fall-back mode, the response time may be reduced to a value in the 10 to 24
+ms range specified in Recommendation V.22. Following a dropout, after the initial handshake, circuit 109 shall turn ON
+40 to 205 ms after the level of the received signal appearing at the line terminal of the modem exceeds the relevant
+threshold defined in § 3.3.
+
+=====PAGE 7=====
+Fascicle VIII.1 - Rec. V.22 bis
+5
+3.3
+Circuit 109 threshold
+High channel threshold:
+- greater than
+-43 dBmcircuit 109 ON
+- less than
+-48 dBmcircuit 109 OFF
+Low channel threshold:
+- greater than
+-43 dBmcircuit 109 ON
+- less than
+-48 dBmcircuit 109 OFF
+The condition of circuit 109 between the ON and OFF levels is not specified except that the signal detector shall
+exhibit a hysteresis action, such that the level at which the OFF to ON transition occurs shall be at least 2 dB greater than
+that for the ON to OFF transition.
+Circuit 109 thresholds are specified at the input to the modem when receiving scrambled binary 1.
+Administrations are permitted to change these thresholds where transmission conditions are known.
+Circuit 109 shall not respond to the 1800 Hz or the 550 Hz guard tones, or the 2100 Hz (nominal) answer tone
+during the handshake sequence.
+3.4
+Circuit 111 and data rate control
+Data rate selection may be by switch (or similar means) or by circuit 111 or a combination of both.
+The ON condition on circuit 111, where provided, shall select 2400 bit/s operation and the OFF condition shall
+select 1200 bit/s operation.
+TABLE 2/V.22 bis
+Interchange circuit (Note 1)
+Interchange circuit
+Notes
+No.
+Description
+102
+103
+104
+105
+106
+107
+108/1
+108/2
+109
+111
+112
+113
+114
+115
+125
+140
+141
+142
+Signal ground or common return
+Transmitted data
+Received data
+Request to send
+Ready for sending
+Data set ready
+Connect data set to line
+Data terminal ready
+Data channel received line signal detector
+Data signalling rate selector (DTE source)
+Data signalling rate selector (DCE source)
+Transmitter signal element timing (DTE source)
+Transmitter signal element timing (DCE source)
+ Receiver signal element timing (DCE source)
+Calling indicator
+Loopback/maintenance test
+Local loopback
+Test indicator
+Note 2
+Note 3
+Note 3
+Note 4
+Note 5
+Note 6
+Note 6
+Note 7
+Note 1 - All essential interchange circuits and any others which are provided must comply with the functional and operational
+requirements of Recommendation V.24. All interchange circuits provided must be properly terminated in the data terminal equipment
+in accordance with the appropriate Recommendation for electrical characteristics (see § 3.5).
+
+=====PAGE 8=====
+6
+Fascicle VIII.1 - Rec. V.22 bis
+Note 2 - Some automatic calling equipments are designed to emit a calling tone to line by turning ON circuit 105 to the calling modem.
+The general switched telephone network (GSTN) constant carrier handshake is such that no calling tone will be emitted by the V.22 bis
+modem when used with these equipments.
+Note 3 - This circuit shall be capable of operation as circuit 108/1 or 108/2 depending on its use.
+Note 4 - This circuit is optional.
+Note 5 - When the modem is not operating in a synchronous mode at the interface, any signals on this circuit shall be disregarded.
+Many DTEs operating in an asynchronous mode do not have a generator connected to this circuit.
+Note 6 - When the modem is not operating in a synchronous mode at the interface, this circuit shall be clamped to the OFF condition.
+Many DTEs operating in an asynchronous mode do not terminate this circuit.
+Note 7 - This circuit is for use with the general switched telephone network only.
+3.5
+Electrical characteristics of interchange circuits
+3.5.1
+Use of electrical characteristics conforming to Recommendation V.28 is recommended together with the
+connector and pin assignment plan specified by ISO 2110.
+Note - Manufacturers may wish to note that the long-term objective is to replace electrical characteristics
+specified in Recommendation V.28, and that Study Group XVII has agreed that the work shall proceed to develop a more
+efficient, all-balanced, interface for the V-Series application which minimizes the number of interchange circuits.
+3.6
+Fault condition of interchange circuits
+See Recommendation V.28, § 7 for association of the receiver failure detection types.)
+3.6.1
+The DTE should interpret a fault condition on circuit 107 as an OFF condition using failure detection type 1.
+3.6.2
+The DCE should interpret a fault condition on circuits 105 and 108 as an OFF condition using failure detection
+type 1.
+3.6.3
+All other circuits not referred to above may use failure detection types 0 or 1.
+4
+Modes of operation
+The modem can be configured for the following modes of operation:
+Mode 1 2400 bit/s ± 0.01% synchronous
+Mode 2 2400 bit/s start-stop 8, 9, 10 or 11 bits per character
+Mode 3 1200 bit/s ± 0.01% synchronous
+Mode 4 1200 bit/s start-stop 8, 9, 10 or 11 bits per character.
+4.1
+Transmitter
+4.1.1
+In the synchronous modes of operation, the modem shall accept synchronous data from the DTE on circuit 103
+under control of circuit 113 or circuit 114. The data shall then be scrambled in accordance with § 5 and then passed to the
+modulator for encoding in accordance with § 2.5.
+4.1.2
+In the start-stop modes, the modem shall accept a data stream of start-stop characters from the DTE at a
+nominal rate of 2400 or 1200 bits per second. The start-stop data to be transmitted shall be converted in conformity with
+Recommendation V.14 to a synchronous data stream suitable for transmission in accordance with § 4.1.1
+4.2
+Receiver
+Demodulated data shall be decoded in accordance with § 2.5.2, then descrambled in accordance with § 5.2 and
+then passed to the converter in conformity with Recommendation V.14 for regaining the data stream of start-stop
+characters.
+The intracharacter signalling rate provided to the DTE over circuit 104 shall be in the ranges given in Table
+3/V.22 bis when operating in the basic or in the extended signalling rate ranges, respectively.
+
+=====PAGE 9=====
+Fascicle VIII.1 - Rec. V.22 bis
+7
+TABLE 3/V.22 bis
+Intracharacter signalling rate range
+Data rate
+Signalling rate range
+Basic
+Extended
+2400 bit/s
+1200 bit/s
+2400 to 2424 bit/s
+1200 to 1212 bit/s
+2400 to 2455 bit/s
+1200 to 1227 bit/s
+5
+Scrambler and descrambler
+5.1
+Scrambler
+A self synchronizing scrambler having the generating polynomial 1 ⊕ x-14 ⊕ x-17 shall be included in the modem
+transmitter. The message data sequence applied to the scrambler shall be effectively divided by the generating
+polynomial. The coefficients of the quotients of this division, taken in descending order, form the data sequence which
+shall appear at the output of the scrambler. The scrambler output data sequence shall thus be:
+where
+Ds
+is the data sequence at the output of the scrambler
+Di
+is the data sequence applied to the scrambler
+⊕
+denotes module 2 addition
+.
+denotes binary multiplication.
+Figure 3/V.22 bis shows a suitable implementation.
+To prevent occasional inadvertent instigation of remote loop 2 caused by scrambler lockup, circuitry shall be
+included to detect a sequence of 64 consecutive ones at the scrambler output (Ds) and, if detected, invert the next input to
+the scrambler (Di) and reset the counter of 64 consecutive ones. This circuitry shall operate whenever the scrambler is
+operational. No scrambler initialization is required during the handshake or retrain sequence.
+FIGURE 3/V.22 bis
+Scrambler
+
+=====PAGE 10=====
+8
+Fascicle VIII.1 - Rec. V.22 bis
+5.2
+Descrambler
+A self synchronizing descrambler having the polynomial 1 ⊕ x-14 ⊕ x-17 Shall be provided in the modem
+receiver. The message data sequence produced after demodulation shall be effectively multiplied by the generating
+polynomial 1 ⊕ x-14 ⊕ x-17 to form the descrambled message. The coefficients of the recovered message sequence taken
+in descending order form the output data sequence Do which is given by
+where the notation is as defined in § 5.1.
+Circuitry may be included to detect a sequence of 64 consecutive ones at the input to the descrambler (Ds) and, if
+detected, invert the next output from the descrambler (Do) This detector shall operate whenever the descrambler is
+operational.
+Figure 4/V.22 bis shows a suitable implementation.
+FIGURE 4/V.22 bis
+Descrambler
+6
+Operating sequences
+6.1
+Channel allocation and signalling rate selection
+6.1.1
+GSTN
+On the general switched telephone network, the modem at the calling data station shall transmit in the low
+channel and receive in the high channel (call mode). The modem at the answering data station shall receive in the low
+channel and transmit in the high channel (answer mode).
+In some situations however, such as when calls are established on the GSTN by operators, bilateral agreement on
+channel allocations will be necessary.
+Signalling rate selection at the call mode modem shall be either manual or by means of a logical condition
+applied on circuit 111 (if this circuit is provided). The handshake sequence, as defined in § 6.3.1, allows each modem to
+automatically condition itself to operate at the correct signalling rate.
+6.1.2
+Point-to-point leased circuits
+Channel allocation and signalling rate selection on point-to-point leased circuits will, in general, be by bilateral
+agreement between users.
+6.2
+V.25 automatic answering sequence
+The V.25 automatic answering sequence shall be transmitted from the answer mode modem on international
+GSTN connections. The transmission of the sequence may be omitted in national connections on point-to-point leased
+circuits or on the GSTN, where permitted by the Administrations.
+
+=====PAGE 11=====
+Fascicle VIII.1 - Rec. V.22 bis
+9
+6.3
+Handshake sequence
+6.3.1
+GSTN
+The means of achieving synchronism between the calling modem and the answering modem on international
+GSTN connections is shown in Figures 5/V.22 bis, 6/V.22 bis and 7/V.22 bis. Both calling and answering modems shall
+be manually conditioned to operate either in the synchronous modes (Modes 1 and 3), or in the start-stop modes (Modes
+2 and 4). If both calling and answering modems are V.22 bis modems, the handshake will normally condition both
+modems to operate at 2400 bit/s. If however one or both of the modems has been set to operate at 1200 bit/s, either
+manually or via circuit 111, then the handshake will condition both modems to operate at 1200 bit/s. If either the calling
+or answering modem is a V.22 modem operating in V.22 Modes i) or ii) the handshake will condition both the V.22 bis
+and V.22 modem to operate at 1200 bit/s. The signalling rate is communicated to the DTE by a logical condition on
+circuit 112. The handshake sequence is independent of which modem, calling or answering, is connected to line first.
+6.3.1.1
+Interworking at 2400 bit/s
+6.3.1.1.1 Calling modem
+a)
+On connection to line the calling modem shall be conditioned to receive signals in the high channel at
+1200 bit/s and transmit signals in the low channel at 1200 bit/s in accordance with § 2.5.2.2. It shall apply
+an ON condition to circuit 107 in accordance with Recommendation V.25. The modem shall initially
+remain silent.
+b)
+After 155 ± 10 ms of unscrambled binary 1 has been detected, the modem shall remain silent for a further
+456 ± 10 ms then transmit an unscrambled repetitive double dibit pattern of 00 and 11 at 1200 bit/s for
+100 ± 3 ms. Following this signal the modem shall transmit scrambled binary 1 at 1200 bit/s.
+c)
+If the modem detects scrambled binary 1 in the high channel at 1200 bit/s for 270 ± 40 ms, the handshake
+shall continue in accordance with §§ 6.3.1.2.1 c) and d). However, if unscrambled repetitive double dibit
+00 and 11 at 1200 bit/s is detected in the high channel, then at the end of receipt of this signal the modem
+shall apply an ON condition to circuit 112.
+d)
+600 ± 10 ms after circuit 112 has been turned ON the modem shall begin transmitting scrambled binary 1 at
+2400 bit/s, and 450 ± 10 ms after circuit 112 has been turned ON the receiver may begin making 16-way
+decisions.
+e)
+Following transmission of scrambled binary 1 at 2400 bit/s for 200 ± 10 ms, circuit 106 shall be
+conditioned to respond to circuit 105 and the modem shall be ready to transmit data at 2400 bit/s.
+f)
+When 32 consecutive bits of scrambled binary 1 at 2400 bit/s have been detected in the high channel the
+modem shall be ready to receive data at 2400 bit/s and shall apply an ON condition to circuit 109.
+6.3.1.1.2 Answering modem
+a)
+On connection to line the answering modem shall be conditioned to transmit signals in the high channel at
+1200 bit/s in accordance with § 2.5.2.2 and receive signals in the low channel at 1200 bit/s. Following
+transmission of the answer sequence in accordance with Recommendation V.25, the modem shall apply an
+ON condition to circuit 107 and then transmit unscrambled binary 1 at 1200 bit/s.
+b)
+If the modem detects scrambled binary 1 or 0 in the low channel at 1200 bit/s for 270 ± 40 ms, the
+handshake shall continue in accordance with §§ 6.3.1.2.2 b) and c). However, if unscrambled repetitive
+double dibit 00 and 11 at 1200 bit/s is detected in the low channel, at the end of receipt of this signal the
+modem shall apply an ON condition to circuit 112 and then transmit an unscrambled repetitive double dibit
+pattern of 00 and 11 at 1200 bit/s for 100 ± 3 ms. Following these signals the modem shall transmit
+scrambled binary 1 at 1200 bit/s.
+c)
+600 ± 10 ms after circuit 112 has been turned ON the modem shall begin transmitting scrambled binary 1 at
+2400 bit/s, and 450 ± 10 ms after circuit 112 has been turned ON the receiver may begin making 16-way
+decisions.
+d)
+Following transmission of scrambled binary 1 at 2400 bit/s for 200 ± 10 ms, circuit 106 shall be
+conditioned to respond to circuit 105 and the modem shall be ready to transmit data at 2400 bit/s.
+e)
+When 32 consecutive bits of scrambled binary 1 at 2400 bit/s have been detected in the low channel the
+modem shall be ready to receive data at 2400 bit/s and shall apply an ON condition to circuit 109.
+
+=====PAGE 12=====
+10
+Fascicle VIII.1 - Rec. V.22 bis
+FIGURE 5/V.22 bis
+Handshake sequence at 2400 bit/s (with V.25 automatic answering)
+FIGURE 6/V.22 bis
+Handshake sequence at 1200 bit/s with V.22 calling modem (with V.25 automatic answering)
+
+=====PAGE 13=====
+Fascicle VIII.1 - Rec. V.22 bis
+11
+FIGURE 7/V.22 bis
+Handshake sequence at 1200 bit/s with V.22 answering modem (with V.25 automatic answering)
+6.3.1.2
+Interworking at 1200 bit/s
+The following handshake is identical to the Recommendation V.22 alternative A and B handshake.
+6.3.1.2.1 Calling modem
+a)
+On connection to line the calling modem shall be conditioned to receive signals in the high channel at
+1200 bit/s and transmit signals in the low channel at 1200 bit/s in accordance with § 2.5.2.2. It shall apply
+an ON condition to circuit 107 in accordance with Recommendation V.25. The modem shall initially
+remain silent.
+b)
+After 155 ± 10 ms of unscrambled binary 1 has been detected, the modem shall remain silent for a further
+456 ± 10 ms then transmit scrambled binary 1 at 1200 bit/s (a preceding V.22 bis signal, as shown in
+Figure 7/V.22 bis, would not affect the operation of a V.22 answer modem).
+c)
+On detection of scrambled binary 1 in the high channel at 1200 bit/s for 270 ± 40 ms the modem shall be
+ready to receive data at 1200 bit/s and shall apply an ON condition to circuit 109 and an OFF condition to
+circuit 112.
+d)
+765 ± 10 ms after circuit 109 has been turned ON, circuit 106 shall be conditioned to respond to circuit 105
+and the modem shall be ready to transmit data at 1200 bit/s.
+
+=====PAGE 14=====
+12
+Fascicle VIII.1 - Rec. V.22 bis
+6.3.1.2.2 Answering modem
+a)
+On connection to line the answering modem shall be conditioned to transmit signals in the high channel at
+1200 bit/s in accordance with § 2.5.2.2 and receive signals in the low channel at 1200 bit/s.
+Following transmission of the answer sequence in accordance with V.25 the modem shall apply an ON
+condition to circuit 107 and then transmit unscrambled binary 1 at 1200 bit/s.
+b)
+On detection of scrambled binary 1 or 0 in the low channel at 1200 bit/s for 270 ± 40 ms the modem shall
+apply an OFF condition to circuit 112 and shall then transmit scrambled binary 1 at 1200 bit/s.
+c)
+After scrambled binary 1 has been transmitted at 1200 bit/s for 765 ± 10 ms the modem shall be ready to
+transmit and receive data at 1200 bit/s, shall condition circuit 106 to respond to circuit 105 and shall apply
+an ON condition to circuit 109.
+Note - Manufacturers may wish to note that in certain countries, for national purposes, modems are in service
+which emit an answering tone of 2225 Hz instead of unscrambled binary 1.
+6.3.2
+Point-to-point leased circuits
+6.3.2.1
+ Interworking at 2400 bit/s
+Operation on leased circuits shall be continuous carrier in both directions. On initial power on and after line
+signal interruptions, operation shall be according to § 6.5.
+6.4
+Retrain sequence (2400 bit/s operation)
+A retrain may be initiated during data transmission between two V.22 bis modems if either modem incorporates
+a means of detecting loss of equalization.
+Transmission of a retrain sequence shall be initiated either by detection of loss of equalization or by detection of
+unscrambled repetitive double dibit 00 and 11 at 1200 bit/s from the distant modem.
+The following sequence of events shall take place during the retrain:
+a)
+Following detection of loss of equalization or the end of detection of unscrambled repetitive double dibit
+00 and 11 at 1200 bit/s from the distant modem, the OFF condition shall be applied to circuit 106 and
+circuit 104 may be clamped to binary 1. The modem shall transmit an unscrambled repetitive double dibit
+pattern of 00 and 11 at 1200 bit/s for 100 ± 3 ms. Following this signal the modem shall transmit scrambled
+binary I at 1200 bit/s.
+b)
+600 ± 10 ms after the end of detection of unscrambled repetitive double dibit 00 and 11 at 1200 bit/s from
+the distant modem, the modem shall begin transmitting scrambled binary 1 at 2400 bit/s and 450 ± 10 ms
+after the end of this detection the receiver may begin making 16-way decisions.
+c)
+Following transmission of scrambled binary 1 at 2400 bit/s for 200 ± 10 ms, circuit 106 shall be
+conditioned to respond to circuit 105 and the modem shall be ready to transmit data at 2400 bit/s.
+d)
+When 32 consecutive bits of scrambled binary 1 at 2400 bit/s have been detected from the remote modem,
+the modem shall be ready to receive data at 2400 bit/s and shall remove the clamp from circuit 104.
+A retrain between two modems is shown in Figure 8/V.22 bis. Clocks presented on circuits 114 and 115 shall
+remain at 2400 bit/s during the entire retrain sequence.
+If a modem has transmitted a retrain signal and has not received unscrambled repetitive double dibit 00 and 11 at
+1200 bit/s immediately prior, or during, or within a time interval equal to the maximum expected two-way propagation
+delay, the modem shall return to the beginning of the retrain signal as defined above and repeat the procedure until
+unscrambled repetitive double dibit 00 and 11 is received from the remote modem. A time interval of 1.2 seconds is
+recommended for the maximum expected two-way propagation delay.
+If the modem fails to synchronize on the received retrain sequence, the modem shall transmit another retrain signal.
+During this retraining, circuits 109 and 107 shall remain ON.
+
+=====PAGE 15=====
+Fascicle VIII.1 - Rec. V.22 bis
+13
+FIGURE 8/V.22 bis
+A retrain at 2400 bit/s
+6.5
+Operation after loss of line signal
+When the modem detects loss of received line signal (as specified in §§ 3.2 and 3.3) it shall turn OFF circuit 109
+and shall clamp circuit 104 to binary 1. If received line signal is then detected (as specified in §§ 3.2 and 3.3) the modem
+shall turn ON circuit 109 but shall leave circuit 104 clamped to binary 1. If during the next 100 ms the modem detects a
+retrain sequence it shall proceed according to § 6.4 above. If the modem has not detected a retrain sequence by the end of
+the same 100 ms it shall remove the clamp from circuit 104. If at any time after turning ON circuit 109 following a drop
+out the modem detects loss of equalization, it shall proceed according to § 6.4 above.
+6.6
+Optional rate signalling
+A modem may optionally instigate a rate change in response to a change in circuit 111 or manually, by a switch
+(or other means). The request may be made to change the operating rate from 1200 bit/s to 2400 bit/s or from 2400 bit/s
+to 1200 bit/s without disconnection from the GSTN (Note 1).
+
+=====PAGE 16=====
+14
+Fascicle VIII.1 - Rec. V.22 bis
+6.6.1
+Instigation of a rate change
+a)
+Upon initiation of a rate change, manually or by a change in the condition of circuit 111, the modem shall
+apply an OFF condition to circuit 106, clamp circuit 104 to binary ones and shall transmit unscrambled
+repetitive double dibit 00 and 11 at 1200 bit/s for 100 ± 3 ms. During this procedure, circuits 109 and 107
+shall remain on.
+b)
+Following this, the modem shall transmit scrambled R1 as defined in Table 3/V.22 bis at a rate of
+1200 bit/s.
+c)
+450 ± 10 ms after detection of unscrambled repetitive double dibit 00 and 11 at 1200 bit/s from the distant
+modem, the receiver shall examine the descrambled repetitive dibits R2 from the distant modem to
+determine the operating rate for subsequent transmission as defined in Table 3/V.22 bis; at this time, the
+receiver may begin making decisions at the rate indicated by R2 which may differ from R1.
+d)
+600 ± 10 ms after detection of unscrambled repetitive double dibit 00 and 11 at 1200 bit/s from the distant
+modem, the transmission shall begin transmission of scrambled binary ones at a rate indicated by the dibit
+R2 from the distant modem. Following transmission of 200 ± 10 ms of scrambled binary ones, the modem
+shall condition circuit 106 to respond to circuit 105 and the modem shall be ready to transmit data.
+e)
+When 32 consecutive bits of scrambled binary one at the rate indicated by dibit R2 from the distant modem
+have been detected, the modem shall set circuit 112 to indicate the operating rate and unclamp circuit 104.
+f)
+If a modem has transmitted a rate change sequence and has not received unscrambled repetitive double
+dibit 00 and 11 at 1200 bit/s immediately prior, or during, or within a time interval equal to the maximum
+expected two-way propagation delay, the modem may return to the beginning of the rate change sequence
+as defined above and repeat the procedure until unscrambled repetitive double dibit 00 and 11 is received
+from the remote modem. A time interval of 1.2 seconds is recommended for the maximum expected two-
+way propagation delay.
+6.6.2
+Response to a rate change
+a)
+When the modem detects unscrambled repetitive double dibit 00 and 11 at 1200 bit/s from the distant
+modem, the modem shall turn circuit 106 OFF and clamp circuit 104 to binary one. During this procedure,
+circuit 109 and 107 shall remain on.
+b)
+When the end of unscrambled repetitive double dibit 00 and 11 at 1200 bit/s from the distant modem is
+detected, the modem shall condition its receiver for operation at 1200 bit/s and examine the descrambled
+repetitive dibit Rl (Note 2).
+c)
+After having detected 32 consecutive rate dibits Rl, at 1200 bit/s, the modem shall transmit unscrambled
+repetitive double dibit 00 and 11 at 1200 bit/s for 100 ± 3 ms followed by transmission of scrambled
+repetitive dibit R2 defining the operating rate (Note 3).
+d)
+450 ± 10 ms after the detection of 32 consecutive rate dibits Rl at 1200 bit/s from the distant modem, the
+modem may condition its receiver to begin operation at the data rate indicated by R2.
+e)
+600 ± 10 ms after the detection of 32 consecutive rate dibits Rl at 1200 bit/s, the modem shall begin
+transmission of scrambled binary ones at the data rate indicated by R2. After 200 ± 10 ms of scrambled
+binary ones, the modem shall condition circuit 106 to respond to circuit 105 and the modem shall be ready
+to transmit data.
+f)
+When 32 consecutive bits of scrambled binary one, at the rate indicated by the dibit R2 have been detected
+from the distant modem, the modem shall set circuit 112 to indicate the operating rate and unclamp circuit
+104.
+Note 1 - This mode of operation, where implemented, should be provided on both GSTN circuits and leased
+circuits.
+Note 2 - In the event where the initiating modem is requesting a retrain, the responding modem may delay
+transmission of the S1 sequence (which should be transmitted immediately following the detection of the end of receipt of
+the S1 sequence per § 6.4) by more than 32 dibit duration after receipt of the end of the S1 sequence from the initiating
+modem.
+Note 3 - It is the intent that for a rate change to occur, dibit R2 be set equal to dibit R1. Modems not supporting
+this option may return a dibit R2 that differs from Rl.
+
+=====PAGE 17=====
+Fascicle VIII.1 - Rec. V.22 bis
+15
+TABLE 4/V.22 bis
+Operating rate
+Dibit R1 and R2
+2400
+1200
+11
+01 or 10
+FIGURE 9/V.22 bis
+Optional rate change sequence
+7
+Testing facilities
+7.1
+Test loops
+Test loops 2 (local and remote) and 3 as defined in Recommendation V.54 shall be provided. Interface operation
+shall be as defined in Recommendation V.54. Instigation and termination sequences are not compatible with
+Recommendation V.54.
+
+=====PAGE 18=====
+16
+Fascicle VIII.1 - Rec. V.22 bis
+7.1.1
+Instigation of remote loop 2
+Signals controlling the application of remote loop 2 may only be transmitted after the synchronizing handshake
+has been completed.
+As in Recommendation V.54, the modems are referred to as Modem A and Modem B.
+When Modem A is instructed to instigate a remote loop 2, the modem shall transmit an initiation signal of
+unscrambled binary 1 at 2400 bit/s (or 1200 bit/s).
+Modem B shall detect 154-231 ms of the initiation signal, and then transmit to Modem A scrambled alternating
+binary ones and zeros (reversals) at 2400 bit/s (or 1200 bit/s).
+Modem A shall detect 231-308 ms of scrambled reversals, cease transmission of the initiation signal, and then
+transmit scrambled binary 1 at 2400 bit/s (or 1200 bit/s).
+Modem B shall detect the loss of initiation signal and achieve loop 2 within Modem B.
+Modem A, upon receiving 231-308 ms of scrambled binary 1 shall indicate to the DTE that it may begin sending
+test messages.
+7.1.2
+Termination of remote loop 2
+When Modem A is instructed to terminate a remote loop 2 the line signal shall be suppressed for a period of
+77 ± 10 ms, after which transmission shall be restored.
+Modem B detects the loss of line signal in 40 to 65 ms and detects the re-appearance of the signal within
+155 ± 50 ms, after which the modem B returns to normal operation.
+7.2
+Self tests
+7.2.1
+Self test end-to-end
+Upon activation of the self test switch, an internally generated data pattern of alternative binary ones and zeros
+(reversals) at the selected bit rate shall be applied to the scrambler. An error detector, capable of identifying errors in a
+stream of reversals, shall be connected to the output of the descrambler. The presence of errors shall be indicated by a
+visual indicator. All generating interchange circuits except 114 (if used), 115, 125 and 142 shall be clamped to the
+binary 1 or OFF condition. If circuit 113 is used, the DCE shall disregard this interchange circuit and use its internal
+clock.
+7.2.2
+Self test with loop 3
+Loop 3 shall be applied to the modem as defined in Recommendation V.54. The self-test switch shall be
+activated and DCE operation shall be as in § 7.2.1.
+7.2.3
+Self test with remote loop 2
+The modem shall be conditioned to instigate a loop 2 at the remote modem as specified in § 7.1. The self-test
+switch shall be activated and DCE operation shall be as in § 7.2.1.
+It shall be possible to perform the above tests (in §§ 7.2.1, 7.2.2 and 7.2.3) with or without the DTE connected to
+the modem. These tests employ an internally generated data pattern that is controlled by a switch on the DCE.
+7.2.4
+During any self-test mode, interchange circuits 103, 105 and 108 will be ignored. Note that self tests do not test
+asynchronous-to-synchronous converter circuits in either the transmitter or receiver.
+Note - Inclusion of remote loop signalling according to Recommendation V.54 is for further study.

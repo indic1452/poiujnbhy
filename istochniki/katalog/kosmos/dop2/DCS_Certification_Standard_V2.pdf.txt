@@ -1,0 +1,3547 @@
+
+=====PAGE 1=====
+GOES Data Collection Platform Radio Set 
+(DCPRS) CERTIFICATION STANDARDS 
+at 300 bps and 1200 bps 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Version 2.0 
+ 
+ 
+NOAA / NESDIS 
+ 
+ 
+Effective date: June 2009 
+ 
+ 
+Prepared by Noblis under Contract No. DG133E-07-CQ-0030 
+
+=====PAGE 2=====
+ 
+Version 2.0 
+June, 2009 
+ii 
+TABLE OF CONTENTS 
+ 
+SECTION 1 - DCPRS Certification Documentation Requirements ................................................ 1 
+1.1 
+Required Documentation ................................................................................................. 1 
+1.2 
+Emission Designators ....................................................................................................... 1 
+1.3 
+Nameplate Information .................................................................................................... 1 
+SECTION 2 - DCPRS Data Rate and Operating Mode Requirements ............................................ 2 
+2.1 
+DCPRS Self-Timed reporting Mode Accuracy................................................................ 2 
+2.1.1 
+Inhibiting Transmissions .............................................................................................. 2 
+2.1.2 
+Proof of Performance ................................................................................................... 2 
+2.2 
+DCPRS Random Reporting Mode Requirements ............................................................ 2 
+2.3 
+DCPRS Interrogate Reporting Mode Requirements ........................................................ 2 
+SECTION 3 - DCPRS Data Format Requirements ......................................................................... 3 
+3.1  
+DCPRS Message Format ................................................................................................. 3 
+3.2  
+Data Scrambling ............................................................................................................... 4 
+3.3  
+Trellis Encoding ............................................................................................................... 4 
+3.4  
+Encoder Flush and Carrier Turn-Off ................................................................................ 5 
+3.5  
+DCPRS Modulation Encoding ......................................................................................... 6 
+3.6  
+DCPRS Data Formats ...................................................................................................... 6 
+3.6.1 
+Prohibited Characters ................................................................................................... 6 
+3.6.2  
+End Of Transmission (EOT) ........................................................................................ 6 
+SECTION 4 - DCPRS Performance Requirements ......................................................................... 7 
+4.1.1  
+RF Power Output ......................................................................................................... 7 
+4.1.2  
+DCPRS Antenna .......................................................................................................... 8 
+4.1.2.1 Antenna Polarization ........................................................................................................ 8 
+4.1.2.2 DCPRS Antenna Gain ...................................................................................................... 8 
+4.2  
+GOES DCS Operating Frequency Requirements ............................................................ 8 
+4.2.1  
+Operating Channels and Frequencies ........................................................................... 8 
+4.2.2  
+Frequency Stability, Long Term .................................................................................. 8 
+4.2.3  
+Short Term Frequency Stability ................................................................................... 8 
+4.3  
+DCPRS Modulation Output Symbol Rate ....................................................................... 9 
+4.4 
+DCPRS Phase Modulation and Noise .............................................................................. 9 
+4.4.1 
+Carrier Phase Noise ...................................................................................................... 9 
+4.4.2 
+Phase Modulation Bias ................................................................................................. 9 
+4.4.3 
+RMS Phase Error ......................................................................................................... 9 
+4.5 
+DCPRS Transmit Spectrum ............................................................................................. 9 
+4.6  
+Fail-safe Operating Requirements.................................................................................. 11 
+APPENDIX A - Recommended Test Equipment and Test Set Up ................................................ 13 
+APPENDIX B - GOES DCS Pseudo-Binary Data and Other Definitions..................................... 18 
+APPENDIX C - Filter Definition for the DAMS-NT Receiver/Demodulator ............................... 23 
+APPENDIX D - GOES DCPRS Transmit Frequencies ................................................................. 27 
+APPENDIX E - GOES DCPRS Phase Noise Budget .................................................................... 31 
+ 
+
+=====PAGE 3=====
+ 
+Version 2.0 
+June, 2009 
+iii 
+ 
+LIST OF FIGURES 
+ 
+Figure 1. Trellis Encoder Functional Diagram ................................................................................ 5 
+Figure 2. Emission Mask for 300 bps Operation ........................................................................... 10 
+Figure 3. Emission Mask for 1200 bps Operation ......................................................................... 11 
+Figure A-1. Typical test set-up....................................................................................................... 14 
+Figure A-2.   Spectrum Analysis Reference Levels ....................................................................... 17 
+Figure B-1. DCPRS Transmit Format ............................................................................................ 18 
+Figure B-2. DCPRS Message or Sensor Data Format ................................................................... 18 
+Figure B-3. 12-Bit Precision Data .................................................................................................. 19 
+Figure B-4. 18-Bit Precision Data .................................................................................................. 19 
+ 
+
+=====PAGE 4=====
+ 
+Version 2.0 
+June, 2009 
+iv
+GOES DCS 300/1200 BPS DCPRS CERTIFICATION STANDARDS 
+FOR SELF-TIMED, RANDOM REPORTING, and INTERROGATE OPERATION 
+ 
+Introduction 
+ 
+DCPRS Certification is achieved by demonstrating that a radio transmitter fulfills each of the 
+requirements set forth in this document. NESDIS certification is "type certification", wherein a 
+representative production unit is tested and found to fulfill all stated requirements. NESDIS 
+certification of individual production units (those having the same model number) is not required. 
+As a standard, this document represents mandatory requirements—waivers will not be 
+accepted.  
+To obtain “Type Acceptance” the manufacturer shall submit the DCPRS schematics, data flow 
+chart, electronics parts design data, unit, and system test data, and perform tests to demonstrate 
+that each requirement herein is met. This includes but is not limited to analysis of the DCPRS‟ 
+design and performance characteristics, performing unit tests at room temperature, and over a 
+range of temperatures and power supply (battery voltage) variations. 
+Certification testing shall be performed using standard laboratory test equipment from a 
+nationally recognized manufacturer, using the NOAA supplied Certification Test Set, or using 
+other test equipment for which NOAA approval has been obtained as described in Appendix A. 
+Test guidelines, procedures, etc. are also described in Appendix A of this document. The NOAA 
+Certification Test Set will be loaned for a period of up to sixty (60) days to manufacturers after 
+the required documentation and design data requirements in Section 1 have been accepted and/or 
+approved by the NOAA NESDIS Certification Official. 
+Manufacturers are required to supply all other test equipment needed to demonstrate compliance 
+with the certification requirements. All test equipment to be used must be identified in the 
+manufacturer‟s initial request for DCP certification and have verified calibrations to an 
+established test laboratory. A list of the recommended test equipment, a typical test set up, and 
+some of the capabilities of the NOAA provided test set are included in Appendix A. Specific test 
+channels for use by manufacturers shall be assigned by NESDIS OSDPD as required. 
+ 
+Document Organization 
+ 
+The GOES DCPRS certification requirements are set forth in the following four sections. The 
+first section identifies the DCPRS certification documentation required. The second section 
+defines the DCPRS certification reporting mode requirements. The third section focuses upon the 
+DCPRS transmit data format requirements which are not considered to be temperature dependent. 
+The fourth section involves requirements for which performance may vary over temperature and 
+power supply variation such as output power, frequency stability, modulation stability, carrier 
+phase noise, transmit spectrum, etc.    
+
+=====PAGE 5=====
+Version 2.0  
+June, 2009 
+1
+SECTION 1 - DCPRS Certification Documentation Requirements 
+ 
+1.1 
+Required Documentation 
+Manufacturers shall submit the following documentation at least 60 days prior to 
+beginning the formal DCPRS certification testing. While NESDIS may review and 
+comment on this documentation, all documentation is considered „PROPRIETARY‟ – for 
+government eyes only, and not available to any other party unless so identified by the 
+manufacturer. 
+a. DCPRS Model Number with its respective data and/or specification sheet(s). 
+b. DCPRS electrical and electronic circuit schematics. 
+c. DCPRS software flow-charts that identify how the DCPRS reporting method(s) - 
+random, self-timed, interrogated,  message formatting/generation, frequency and time 
+stability functions, Fail-safe operation, other functions are fulfilled. 
+d. DCPRS antenna gain, polarization, axial ratio, and VSWR information. This 
+information shall be used with the power amplifier output to determine the DCPRS 
+EIRP for Certification purposes. 
+e. Manufacturers Proposed Test Procedures including test data sheets. 
+f. DCPRS oscillator aging analysis data to demonstrate that the specified aging 
+requirements are met. 
+g. Preliminary DCPRS Transmit Spectrum (see paragraph 4.5). 
+1.2 
+Emission Designators 
+The official emission designations for the DCPRS transmissions are provided below and 
+shall be used whenever an emission designator is required. 
+a. For 300 bps user data rate:  300HG1D. 
+b. For 1200 bps user data rate:  1K20G1D. 
+1.3 
+Nameplate Information 
+Each DCPRS shall include a durable nameplate on its outer surface that shall contain the 
+following information as a minimum: 
+a. Manufacturer‟s name, model number, and serial number 
+b. Certification date for this model 
+c. Defined input voltage range (see Section 4.0) 
+d. Maximum and minimum output power in dBm 
+e. Approved antenna gain, polarization, and type for use with this DCPRS (e.g. 11 dBi 
+RHCP Yagi) 
+f. Emission designator(s) applicable to this model 
+
+=====PAGE 6=====
+ 
+Version 2.0 
+June, 2009 
+2
+SECTION 2 - DCPRS Data Rate and Operating Mode Requirements 
+ 
+A DCPRS may be designated for either 300 bps or for 1200 bps. Further, the DCPRS 
+manufacturer shall clearly state the reporting mode(s) for the Model/unit (i.e. Self-timed, 
+Random, or Interrogate). A combination of two operating modes is permitted providing this is so 
+identified and that all applicable mode requirements are met. The DCPRS certification official 
+will identify specific channels, GOES ID/DCP Address, and time slots as needed for any „on-the-
+air‟ or „GOES testing.‟ 
+2.1 
+DCPRS Self-Timed reporting Mode Accuracy 
+All DCPRS transmissions shall control the start time of their initial carrier-only period to 
+be within less than or equal to ±0.25 seconds from the assigned reporting time (referenced 
+to UTC) over the full range of operating conditions. 
+2.1.1 Inhibiting Transmissions 
+The DCPRS shall include an algorithm to ensure that transmissions are inhibited 
+whenever it is possible that any part of a transmission might occur outside of the assigned 
+reporting period ±0.25 seconds. The algorithm shall be included in the Certification test 
+report and shall contain a written explanation of the time required for 0.25 seconds 
+deviation from UTC and all other factors used to ensure this requirement is met. 
+2.1.2 Proof of Performance 
+During Certification tests the manufacturer shall show how the difference between the 
+internal clock and UTC is calculated and shall show how the requirement of 2.1.1 will be 
+met. The manufacturer shall demonstrate the basic factor(s) such as drift rate, used in the 
+calculations. 
+2.2 
+DCPRS Random Reporting Mode Requirements  
+For random reporting certification, manufacturers shall demonstrate that the DCPRS 
+transmits at a maximum total transmit time of 3 seconds for 300 bps and 1.5 seconds for 
+1200 bps. Definitions of pseudo binary and other concepts are included in Appendix B. 
+Random reporting certification testing requires that manufacturer‟s demonstrate random 
+message generation on an approved NESDIS channel and transmit DCP messages in the 
+random mode for eight (8) or more hours with an average repeat interval of 15 minutes. 
+One of the data values to be transmitted in this testing shall be a message number counter.  
+2.3 
+DCPRS Interrogate Reporting Mode Requirements 
+For DCPRS interrogate mode certification, the unit shall be tested as a transmit/receive 
+system. Thus not only all the DCPRS transmit but also the GOES Command Receiver 
+requirements must be demonstrated. The DCPRS command receiver requirements shall be 
+set forth in a separate document (TBD) that will be referenced here when created.  
+
+=====PAGE 7=====
+ 
+Version 2.0 
+June, 2009 
+3
+SECTION 3 - DCPRS Data Format Requirements 
+3.1  
+DCPRS Message Format 
+The format of all messages shall meet the following requirements. 
+ 
+ 
+ 
+  
+ 
+ NOTES: 
+ASCII EOT use for ASCII and Pseudo Binary Formats 
+ 
+ 
+ 
+International EOT used for Binary Format 
+ 
+ 
+ 
+Actual Message Length may not Exceed Fail-Safe Limits 
+ 
+Carrier: 
+0.500 ±0.005 seconds for 300 bps 
+ 
+ 
+0.250 ±0.005 seconds for 1200 bps 
+ 
+ 
+The turn-on time shall be less than 10.0 mS to less than 1 dB below the 
+average output power that occurs during the carrier-only period. Any 
+positive overshoot is not included in the turn-on time. 
+ 
+Clock:    
+3 symbol periods, first 180°, then 0°, then 180°, as shown below: 
+ 
+ 
+ 
+Frame Synchronization Sequence (FSS): 
+The following 15-bit pattern shall be sent at the appropriate symbol rate with "0" 
+representing 0 degrees and "1" representing 180 degrees: 
+(MSB) 001111100110101 (LSB) The left most bit is transmitted first. 
+ 
+After the FSS is transmitted the GOES ID and all data shall be scrambled, and trellis 
+encoded, as defined below. 
+ 
+ 
+GOES ID/DCP address: 
+ 
+ 
+31 bits plus an extra "0" inserted as the LSB to form four 8-bit Bytes  
+ 
+The GOES ID is a 31-bit Bose-Chaudhuri-Hocquenghem (BCH) encoded address with a 
+zero included as the 32nd LSB. This address shall be transmitted as the first 4 bytes of the 
+data in the message in exactly the same manner as all the other data bytes in the message. 
+For example, given the Hex ID of CE 12 00 B8, the first byte transmitted is CE Hex, 
+Carrier 
+0.5s/ 
+0.25s 
+Clock 
+States 
+3 ‘0-1’ 
+FSS 
+15 bits 
+GOES ID 
+32 bits 
+Flag 
+Word 
+8 bits 
+DCP DATA 
+Max: 32,000 bits @ 300 bps 
+128,000 bits @ 1200 bps 
+EOT 
+Encoder 
+Flush 
+32 bits 
+Start of Scrambling and Coding 
+0 
+180 
+1 symbol period 
+0.5 or 0.25 second of carrier only 
+Start of 
+FSS 
+
+=====PAGE 8=====
+ 
+Version 2.0 
+June, 2009 
+4
+followed by 12  Hex, followed by 00 Hex, followed by B8 Hex or: 
+ 
+11001110 00010010 00000000 10111000 
+ 
+ 
+Flag Word:  (LSB)  Bit 1 spare, undefined 
+ 
+Bit 2 Clock updated since last transmission = 1, not = 0 
+ 
+Bit 3 Data Compression on =1, off = 0 Possible Future 
+Enhancement 
+ 
+ 
+Bit 4 New Coding on = 1, off = 0 Possible Future Enhancement 
+(Code format not yet defined) 
+ 
+ 
+Bit 5 spare, undefined 
+ 
+Bit 6 = 1 if ASCII or Pseudo Binary, otherwise = 0 
+ 
+ 
+ 
+ 
+Bit 7 = 1 if Pseudo Binary or Binary, otherwise = 0 
+        (MSB)  Bit 8 Odd parity for ASCII formatted data 
+ 
+3.2  
+Data Scrambling 
+Starting with the first bit of the GOES ID, all DCPRS data shall be scrambled. The 
+DCPRS serial data stream shall be “exclusive ORed” (XOR) with the serial binary string 
+represented by the table below. It is shown as 40 bytes using Hex symbols for 
+convenience, and shall be used in a circular fashion throughout the message. 
+ 
+53 
+12 
+72 
+B2 
+54 
+62 
+AA 
+E4 
+DB 
+A7 
+56 
+08 
+A8 
+09 
+B4 
+BF 
+61 
+DC 
+50 
+E3 
+AB 
+7F 
+00 
+87 
+6D 
+F5 
+58 
+CC 
+CF 
+3E 
+E7 
+2A 
+7E 
+9B 
+5C 
+4D 
+CE 
+A5 
+3C 
+0A 
+ 
+Scrambling shall be performed on a byte-by-byte basis. For example, the first byte of the 
+GOES ID example, CE (Hex), would be XOR with the first byte in the table, 53 (Hex), 
+i.e., the serial string 1100 1110 XOR with the serial string 0101 0011 to produce 1001 
+1101, or 9D (Hex). Then the second byte of the GOES ID, 12 (Hex), would be XOR with 
+the second byte in the table, 12 (Hex), to produce 00 (Hex), and so on. After the last byte 
+of the table 0A (Hex), has been XOR with the 40th byte of the DCPRS message, the table 
+would be cycled and the 41st message byte XOR with the first byte in the table, 53 (Hex). 
+This sequence would continue as many times as required for the duration of the message, 
+including the EOT and flush bits. 
+3.3  
+Trellis Encoding 
+Figure 1 provides a Functional Block Diagram of the Trellis encoder required.  
+
+=====PAGE 9=====
+ 
+Version 2.0 
+June, 2009 
+5
+Figure 1. Trellis Encoder Functional Diagram 
+ 
+This logic generates sets of tri-bits, which are used to generate each 8-PSK symbol to be 
+modulated. 
+Each data byte contains 8 bits. These bits are split into four 2-bit pairs as shown in the 
+table below. Each 2-bit pair is fed into the trellis encoder in order. Pair 1 is fed into the 
+encoder, then pair 2, pair 3, and pair 4. Then pair 1 of the next byte, pair 2, etc. 
+ 
+MSB 
+ 
+ 
+            LSB 
+Bits 7 & 6 
+Bits 5 & 4 
+Bits 3 & 2 
+Bits 1 & 0 
+Bit Pair 4 
+Bit Pair 3 
+Bit Pair 2 
+Bit Pair 1 
+ 
+The trellis encoder takes a 2-bit pair and encodes it to a 3-bit symbol. This 3-bit symbol is 
+then mapped to one of the eight phases for transmission as shown in Table 1, Section 3.5. 
+The initial state of the encoder shall be all zeros. 
+3.4  
+Encoder Flush and Carrier Turn-Off 
+At the end of the message after the EOT, an additional 32 zero (0) data bits shall be input 
+to the scrambler to flush the encoder and decoder. After the resulting 16 symbol periods 
+are transmitted, the carrier power shall be turned off. The turn-off transition shall not start 
+until the end of the 16th symbol period and shall be a maximum of 15 milliseconds in 
+duration, in which time the power shall be reduced by at least 50 dB. 
+Q1
+Q2
+Q3
+Q4
+Q5
+Q6
+Q7
+LSB
+Clock
+E-0
+E-1
+E-2
+MSB
+Exclusive OR
+Shift Register
+Exclusive OR
+
+=====PAGE 10=====
+ 
+Version 2.0 
+June, 2009 
+6
+ 
+3.5  
+DCPRS Modulation Encoding 
+The transmitted data shall be phase mapped from the trellis encoder as follows: 
+ 
+E-2 
+MSB 
+E-1 
+Bit 
+E-0 
+LSB 
+Phase Symbol 
+Degrees 
+0 
+0 
+0 
+0 
+0 
+0 
+1 
+45 
+0 
+1 
+0 
+135 
+0 
+1 
+1 
+90 
+1 
+0 
+0 
+180 
+1 
+0 
+1 
+225 
+1 
+1 
+0 
+315 
+1 
+1 
+1 
+270 
+ 
+Table 1. Phase Encoding Table 
+3.6  
+DCPRS Data Formats 
+Three data formats shall be demonstrated: ASCII, Pseudo Binary, and Binary. HDR 
+pseudo binary shall be compatible with the description in Appendix B.  
+3.6.1 Prohibited Characters 
+The requirement in previous versions of this document, that transmission of certain 
+specified control characters was prohibited, has been deleted. Requirements for Binary 
+Mode will be set when a binary format is proposed and accepted. Manufacturers should be 
+aware that the receivers are programmed to end reception of any message when an EOT 
+character (defined below) is detected and may therefore wish to ensure an EOT is never 
+transmitted in the body of a message. 
+3.6.2  End Of Transmission (EOT) 
+ASCII and Pseudo Binary Format Mode - An EOT character, bit pattern 00000100, 
+transmitted with the LSB first, shall be sent immediately after the last symbol of sensor 
+data. This bit pattern is an ASCII EOT with odd parity.  
+Binary Mode shall be in accordance with the Binary Protocol Specification, published 
+separately. (When created and accepted, the document name will be inserted here.) 
+ 
+
+=====PAGE 11=====
+ 
+Version 2.0 
+June, 2009 
+7
+SECTION 4 - DCPRS Performance Requirements  
+ 
+DCPRS performance requirements shall be demonstrated over a -40°C to 50C temperature 
+range and over a power supply voltage range that is defined by the manufacturer. The DC power 
+supply voltage shall be monitored both before and during a transmission and the RF transmission 
+shall be inhibited if the defined range is exceeded. 
+ 
+4.1  
+DCPRS Effective Isotropic Radiated Power (EIRP) 
+4.1.1  RF Power Output 
+a. When transmitting to the GOES-13 or later satellites, the DCPRS shall operate with an 
+effective EIRP of 37 to 41 dBmi for a 300 bps link. For 1200 bps, the DCPRS shall 
+operate with an EIRP of 43 to 47 dBmi. 
+b. When transmitting to the GOES-11 or GOES-12 satellites, the DCPRS may be 
+operated with a maximum EIRP up to 44 dBmi for 300 bps and up to 50 dBmi for 
+1200 bps. 
+c. The actual range of transmit output power that any DCPRS is designed to produce 
+shall be stated by the manufacturer and listed on the nameplate. The manufacturer 
+shall show during Certification testing that all applicable parameters are met at both 
+the high and low power extremes to the satisfaction of the Certification Official and at 
+any other intermediate power level that the Certification Official may consider 
+necessary to ensure the requirements of these parameters will be met at all powers and 
+operational conditions. 
+d. The manufacturers stated limits shall not be exceeded under any combination of 
+normal operational conditions. 
+e. During actual operation of the DCPRS the effective EIRP level shall be determined by 
+comparison to the level of the Pilot signal(s) transmitted from the NOAA site(s), as 
+viewed at the CDA Stations. 
+f. A means of adjusting the output power is required. Access to the power adjustment 
+shall only be possible through a digital interface so that changing the power level 
+requires an external computer. The digital interface shall be made accessible by 
+commands received from a distant location (including, but not limited to, the DCP 
+Command system). 
+g. The minimum power adjustment step size shall be equal to or less than 1 dB 
+ 
+NOTE: The GOES-13 and later satellite transponders have been designed to operate over the 
+uplink EIRPs listed in subsection a) above. An EIRP that is higher that the maximum will 
+tend to overload the transponder and is prohibited. An EIRP that is less than the minimum 
+may not provide an acceptable error rate when a large number of channels are 
+simultaneously active. Performance also depends on the sensitivity of the receiving station 
+and the system design assumes this G/T is at least 15 dB/K. The minimums are cited 
+because they are the lower limits of the system design, but users are permitted to use 
+lower EIRP at their own risk. 
+
+=====PAGE 12=====
+ 
+Version 2.0 
+June, 2009 
+8
+4.1.2  DCPRS Antenna 
+4.1.2.1 Antenna Polarization 
+DCPRS antenna polarization shall be right-hand circular, according to IEEE Standard 
+65.34.159 and have an axial ratio not more than 6 dB on axis. 
+4.1.2.2 DCPRS Antenna Gain 
+The DCPRS antenna transmit gain shall be such that in combination with the DCP output 
+power the maximum EIRP is not exceeded. 
+4.2  
+GOES DCS Operating Frequency Requirements 
+4.2.1  Operating Channels and Frequencies 
+The DCPRS shall be able to operate at any of the designated channel center frequencies. 
+For DCPRS operating at 300 bps: 
+The DCPRS shall be able to tune to 532 channels at 750 Hz increments, from 401.701000 
+MHz to 402.099250 MHz. The channel 1 center frequency shall be 401.701000 MHz, the 
+center frequency of the next channel (301) shall be 401.701750 MHz, the next channel (2) 
+center frequency shall be 401.702500 MHz, etc., up to channel 566 at 402.099250 MHz. 
+For DCPRS operating at 1200 bps: 
+The DCPRS shall be able to tune the following sub-groups of channels in 2250 Hz 
+increments. The first such channel shall be channel number 301, then channel number 3, 
+channel number 304, etc., up to channel number 565, at 402.097750 MHz. 
+The assigned DCPRS operating channel center frequencies for 300 bps and for 1200 bps 
+operations are set forth in Appendix D. All frequencies listed in Appendix D shall be 
+provided for 300 bps operation. Only those shown in bold shall be available for 1200 bps 
+operation. However, actual operation at 1200 bps will be authorized only on a subset of 
+these potential channels by the Office of the NOAA GOES DCS Program Manager. 
+For certification testing, manufacturers shall demonstrate the synthesis of each of these 
+over the entire range of the possible operation and at a minimum of five frequencies for 
+300 bps and five for 1200 bps selected at random by the NESDIS Certification Official. 
+4.2.2  Frequency Stability, Long Term 
+The DCPRS output frequency shall be maintained to within ±125 Hz of the channel center 
+frequency due to any combination of operational conditions and for any channel. 
+4.2.3  Short Term Frequency Stability 
+The DCPRS output frequency shall maintain a short term stability rate of less than ±1 
+Hz/second. This rate shall apply for any time period from 10 milliseconds to 110 seconds 
+
+=====PAGE 13=====
+ 
+Version 2.0 
+June, 2009 
+9
+and over all rated operating conditions. For certification testing the frequency shall be 
+measured using at least a 12 digits per second frequency counter and a measurement 
+interval of less than one second. The required rate shall be shown for the actual time 
+intervals between each measurement over a period of at least 60 seconds, or for the 
+duration of the failsafe timeout period, whichever is shorter. The transmitter turn-on 
+transient shall be included in either case. 
+4.3  
+DCPRS Modulation Output Symbol Rate 
+a. 300 bps certification the output symbol rate shall be 150 symbols per second ±0.025% 
+b. 1200 bps certification the output symbol rate shall be 600 symbols per second 
+±0.025% 
+For certification testing the DCPRS is to be set to transmit 0.5 second of carrier and then a 
+continuous stream of “0-1” or 0º and 180º clock transitions at the respective symbol rate. 
+The symbol period is to be measured at the “I” output of the test demodulator. 
+4.4 
+DCPRS Phase Modulation and Noise 
+For certification testing phase modulation and noise measurements shall be referenced to 
+the zero degrees modulation phase transmitted during the message preamble and perfect 
+45 degree increments around the 360 degree circle. 
+4.4.1 Carrier Phase Noise 
+The phase noise of the unmodulated carrier shall be equal to, or less than 2.0 degrees 
+RMS, when integrated over the range 2 Hz to 150 Hz for 300 bps, and 6 Hz to 600 Hz for 
+1200 bps. Certification testing may use any frequency range that includes either or both of 
+these ranges, e.g. a measurement for 2 Hz to 1000 Hz could show compliance for both 
+data rates. The 2.0 degree limit shall be met under any combination of operational 
+conditions. 
+4.4.2 Phase Modulation Bias 
+The worst case offset or bias of any of the 8-ary modulation points shall be equal to, or 
+less than 1.0 degrees, under any combination of operational conditions. 
+4.4.3 RMS Phase Error 
+The RMS phase error due to all causes except phase modulation bias, and under any 
+combination of operational conditions, shall be equal to, or less than 2.5 degrees. This 
+shall include the contribution due to carrier phase noise per 4.4.1. 
+4.5 
+DCPRS Transmit Spectrum 
+The DCPRS shall be designed to be received by the NOAA CDA stations. The DAMS-
+NT receiver/demodulator will use a Square Root Raised Cosine filter with a roll-off factor 
+(α) = 1.0. Details are provided in Appendix C of this Certification Standard. 
+
+=====PAGE 14=====
+ 
+Version 2.0 
+June, 2009 
+10
+ 
+When modulated with a random data stream and measured on a spectrum analyzer, the 
+peak response of the undesired part of the emission, relative to the peak response in the 
+necessary bandwidth (NB), shall be equal to, or better than the following limits. (The NB 
+is 300 Hz for 300 bps and 1200 Hz for 1200 bps.) 
+a. At any frequency removed from the channel center frequency by more than 75% of 
+the NB, up to and including 150%, at least 25 dB attenuation. 
+b. At any frequency removed from the channel center frequency by more than 150%, up 
+to and including 300%, at least 35 dB attenuation. 
+c. At any frequency removed from the channel center frequency by more than 300% of 
+the NB, at least 43 + 10 log (P) dB attenuation, where P is the total mean power in 
+watts in the necessary bandwidth. (NOTE: This includes harmonics and any spurious 
+radiation.) 
+Spectral masks are provided for reference in Figures 2 and 3. See Appendix A for 
+measurement requirements and reference notes. 
+ 
+ 
+Figure 2. Emission Mask for 300 bps Operation 
+ 
+-60
+-50
+-40
+-30
+-20
+-10
+0
+-1200 -1000
+-800
+-600
+-400
+-200
+0
+200
+400
+600
+800
+1000
+1200
+OFFSET FROM CARRIER FREQUENCY (Hz)
+ RELATIVE LEVEL (dB)
+MAXIMUM ATTENUATION REQUIRED 
+VARIES WITH OUTPUT POWER: 
+-53 dB APPLIES FOR 10 WATTS 
+900 
+450 
+225 
+-225 
+-450 
+-900 
+
+=====PAGE 15=====
+ 
+Version 2.0 
+June, 2009 
+11
+ 
+Figure 3. Emission Mask for 1200 bps Operation 
+ 
+4.6  
+Fail-safe Operating Requirements 
+An independent or separate fail-safe circuit shall be provided to prevent a DCPRS from 
+operating in an uncontrolled fashion. This independent circuit shall automatically and 
+“permanently” shut off the transmitter if either of the following two conditions is violated. 
+a. Message is too long.   
+ 
+For 1200 bps transmissions the maximum message length shall be 128,000 bits. 
+ 
+For 300 bps transmissions the maximum message length shall be 32,000 bits. 
+ 
+ 
+ 
+These maximum message lengths are near 110 seconds, including the message format 
+requirements. If a message contains more than these numbers of bits, the fail-safe may be 
+tripped. If the total message length exceeds 110 seconds, the fail-safe shall be tripped. 
+ 
+b. Message is sent too soon. 
+ 
+There shall be a minimum of 30 seconds off-time between successive transmissions. If a 
+second message is transmitted before 30 seconds has expired, then the fail-safe shall be 
+tripped. 
+The above term “permanently” requires a manual (i.e. not automated) intervention or reset 
+of the DCPRS in order to restore the unit for operational use in the DCS. The reset 
+command, and its opposite, remote activation of the fail-safe command, shall be provided 
+via a digital interface connection. A switch located in or on the DCPRS may also be 
+provided, but must be of a type and in a location that will preclude accidental operation. 
+ 
+-60
+-50
+-40
+-30
+-20
+-10
+0
+-5000
+-4000
+-3000
+-2000
+-1000
+0
+1000
+2000
+3000
+4000
+5000
+OFFSET FROM CARRIER FREQUENCY (Hz)
+RELATIVE LEVEL (dB)
+MAXIMUM ATTENUATION REQUIRED 
+VARIES WITH OUTPUT POWER: 
+-53 dB APPLIES FOR 10 WATTS 
+3600 
+1800 
+900 
+-900 
+-1800 
+-3600 
+
+=====PAGE 16=====
+ 
+Version 2.0 
+June, 2009 
+12
+The digital interface shall be made accessible by commands received from a distant 
+location (including, but not limited to, the DCP Command system). 
+The fail-safe capability must be demonstrated over the full range of operating conditions. 
+Removal of DC power from the DCPRS shall not affect the operation of this function. 
+Note: The Inhibiting Transmission requirements of subsections 2.1.1 and 4.0 are specifically 
+NOT included in this subsection. 
+ 
+
+=====PAGE 17=====
+ 
+Version 2.0 
+June, 2009 
+13
+APPENDIX A - Recommended Test Equipment and Test Set Up 
+ 
+In general, any requirement in this Certification Standard may be demonstrated using either 
+COTS test equipment from a nationally recognized manufacturer, or the NOAA provided test set 
+for which NOAA approval has been granted. Other items of test equipment are not prohibited, but 
+must be shown to be equal to, or better than the above two options in all factors that contribute to 
+the accuracy of the test result. All test equipment shall be properly calibrated and traceable to 
+NIST standards, at the time the Certification tests are performed. The preliminary test results 
+provided to the Certification Official shall include a complete list of all test equipment that has 
+been and will be used and shall include any showing of equivalence that may be necessary for 
+non-standard equipment. 
+Delivery of all test results related to any Certification shall be as an electronic file using 
+Microsoft Word or in Adobe PDF format. 
+When NOAA has acquired the Certification Test Set the list of tests for which its use has been 
+approved will be inserted here. 
+Spectrum Analyzer (SA) - The SA is needed to perform spectrum tests. The SA must be able to 
+measure to the third harmonic at 1206 MHz and have the Resolution Bandwidth, averaging 
+capability, etc. necessary to demonstrate compliance with the required spectrum. 
+ 
+Counter/Frequency Meter (FM) - The FM is needed to measure transmit frequencies (401.7 to 
+402.1 MHz) and to measure the transmit symbol rate. The FM shall be accurate to 0.001 PPM 
+(parts per million) and shall have a resolution of at least 12 digits per second. 
+ 
+Digital Multi-Meter (DMM) - The DMM may be used for power supply voltage, RMS response 
+to measure phase noise, and other measurements as deemed appropriate. 
+ 
+RF Power Meter (RFPM) - The RFPM is used to measure the RF power amplifier output power. 
+The response needs to be to RMS power. A Bird Wattmeter Model 43 with ±3 per cent accuracy 
+at full range or approved equal is acceptable for these measurements. The element power rating 
+shall be such that the power measurements shall be in the top half of the range. 
+ 
+Signal Generator (SG) - The SG is to be used for mixing the 402 MHz signal to the 5 MHz IF of 
+the test demodulator. The SG phase noise shall be < 0.1 degree RMS. 
+ 
+Environmental Test Chamber (ETC) - The ETC is used to control the ambient test temperature 
+of the DCP unit under test. A -40C to 50C range or greater is required. 
+ 
+General Purpose Oscilloscope - To measure or observe the relationship of “I” and “Q” signals. 
+ 
+Laptop or IBM PC - To interface with the NOAA provided Demodulator Test Set and to record 
+the results of the COTS test equipment. 
+ 
+Low Frequency Signal Controller/Modulator - An HP 33120A or equivalent. Used to generate 
+modulation patterns and IF signals. 
+
+=====PAGE 18=====
+ 
+Version 2.0 
+June, 2009 
+14
+DCPRS Test Capabilities Required 
+ 
+During certification testing manufacturers must be able to disable or enable the DCP fail-safe 
+circuitry as needed. Further a number of test sequences must be available on the unit to test 
+various DCP functions. These include the following: 
+a. Carrier only   
+ 
+ 
+carrier phase noise, frequency  
+ 
+b. Clock pattern “0-1" 
+ 
+ 
+clock pattern check, symbol rate 
+ 
+c. Repeating short message sequence 
+format checks 
+ 
+d. Longer message, repeating pattern 
+modulation, power, and spectrum measurements 
+ 
+The typical test set up is shown in Figure A-1. 
+Figure A-1. Typical test set-up 
+ 
+Some of the capabilities/features of the Test Demodulator are highlighted below: 
+ 
+Environmental Chamber 
+DCP 
+under 
+test 
+Power 
+Supply 
+DCP 
+Control 
+PC 
+O’scope 
+Frequency/ 
+Period 
+Meter 
+Test 
+Demodulator 
+300 or 1200 
+bits/sec 
+I 
+Q 
+Wattmeter 
+With 
+Signal Tap 
+Dumb 
+Terminal 
+Signal 
+Generator 
+Spectrum 
+Analyzer 
+Phase Noise 
+Test Set 
+CONNECT 
+AS NEEDED 
+Vector Signal 
+Analyzer 
+
+=====PAGE 19=====
+ 
+Version 2.0 
+June, 2009 
+15
+Unique Software Functions For the Test Set Demodulator 
+ 
+The demodulator makes signal quality measurements of all the signal variables of power, 
+frequency, and phase. In the test case the measurements are required to be made in different 
+sequences and accuracy. In the test case the noise floor is the base line phase noise of the system 
+since the S/N typical of live signals is not applicable. 
+Power Measurement   
+The total signal power out of the DCPRS shall be measured without external filtering. Power 
+measurements shall be made specifically for unmodulated carrier, clock, and random 8 PSK 
+modulation under standard conditions. Accuracy shall be ±3% of full scale, or better. If the 
+measurements are equal (±0.3 watt) only 8 PSK modulated power need be measured at other 
+conditions. 
+Frequency Measurement 
+Since some of the frequency measurements must be made at short intervals, less than 1 second, 
+and with a resolution of better than 1 Hz, the frequency counter must have a 12 digit per second 
+capability, or better. The calibration must be valid at the time of the test and traceable to NIST. 
+Carrier Phase Noise Measurement 
+The unmodulated carrier shall be measured for phase noise using a phase noise test set and 
+integrating over the specified frequency offsets from the carrier, or by using the NOAA provided 
+test set. Integration over more than the required range is permitted, but the 2.0 degree limit must 
+not be exceeded. 
+RMS Phase Error and Modulation Bias Measurement 
+A random set of symbols (of at least 10,000 symbols) shall be sent by the test transmitter. The 
+phase is measured for each symbol and the average and RMS jitter determined for each of the 45-
+degree nominal modulation nodes. Either a commercial vector signal analyzer or the NOAA 
+provided test set may be used. This same process will provide a measurement of both these 
+requirements. 
+Symbol Rate 
+After carrier is sent clock symbols are sent continuously. There are two points of measurement 
+for symbol rate on the front panel of the demodulator - the symbol strobe pulses and the "I" phase 
+detector output. The time between pulses should indicate 150 or 600 symbol per second rate. 
+Message Format 
+The test transmitter sends a defined message to the test receiver. That same message should be 
+repeated at the demodulator.  
+Carrier Length 
+The carrier length is the time between the detection of power level and first phase transition after 
+phase lock. 
+Clock and MLS bits 
+Phase "1" or "0" sent to the output port. The exact transmission pattern is displayed. 
+Turn-on and Turn-off Times 
+The output signal shall be viewed on a storage oscilloscope set so that the rise and fall times can 
+be seen to be equal to, or less than the requirements. 
+
+=====PAGE 20=====
+ 
+Version 2.0 
+June, 2009 
+16
+Scrambling and Trellis Encoding 
+If the correct encoding is followed, the data sent to the output port will be intelligible. An 
+incorrect pattern will provide a meaningless data string. A test mode is provided to print out the 
+measured symbol phase in terms of phase bin. The phase bins are numbered 0 to 71. This is the 
+raw data prior to any processing.  
+EOT Detection 
+This should be visible in the test mode and from the demodulator recognition mask. 
+ 
+Spectrum Analyzer Measurements 
+ 
+There are three reasons for measuring the power spectral distribution of the transmit output: 
+1. Ensure the emission meets the required NTIA out-of-band requirements 
+2. That these measurements use the correct reference and peak points 
+3. That there are no significant CW-like spurs produced 
+ 
+Therefore, although the spectrum analyzer settings may be varied at the contractor‟s discretion, 
+within the specified ranges, the Certification Official shall require additional measurements with 
+different settings if it seems such settings might produce a more accurate picture of some part of 
+the emission, e.g. if the CO thinks a spur could possibly be shown at a higher level. 
+The required emission masks are provided in Figures 2 and 3. Averaging of multiple sweeps 
+(trace averaging) IS REQUIRED, except the CO may drop this requirement after the first 
+measurement unless needed to accurately locate the peak of the main modulation lobe and the 
+accuracy is necessary to show the emission limits are met. Averaging of the levels at different 
+frequencies (low VBW) IS NOT permitted. 
+Averaging is necessary to determine the true peaks of the signal as shown in A-2 below. 
+
+=====PAGE 21=====
+ 
+Version 2.0 
+June, 2009 
+17
+ 
+Figure A-2.   Spectrum Analysis Reference Levels 
+ 
+Recommended SA Settings 
+ 
+ Use FFT Mode 
+ RBW = 10 Hz to 1 Hz 
+ VBW = 3 * RBW or more (Not applicable to FFT modes.) 
+ Detector type = RMS or Peak/Maximum for Swept modes, Sample or Peak/Maximum for 
+FFT mode. 
+ 
+ADDITIONAL NOTES:  
+ 
+1. The results of these measurements are the differences between the main lobe peak and other peaks in the 
+specified bands. The absolute levels indicated by these measurements are not relevant and shall not be used 
+for any part of these certification requirements. 
+ 
+2. Although it is preferred than the span for the close-in sideband measurements be the same as is shown in 
+Figures 2 and 3, the CO may choose to permit narrower spans if the available test equipment would take too 
+long to all of the desired span on one display. The contractor shall demonstrate to the satisfaction of the CO 
+that accuracy is maintained throughout the full set of measurements on both sides of the main lobe. 
+ 
+3. The SA settings used to measure the harmonic levels relative to the peak of the main lobe shall be adjusted 
+to show either the harmonic or background noise is below the required level. As this is relative to the main 
+modulation peak, any changes in the SA settings (except the center frequency) may require re-measuring the 
+modulation peak power level per hertz. 
+ 
+This is a noise-like signal 
+Use enough averaging to 
+locate the peak of the 
+theoretical curve 
+Each out-of-band 
+emission limit shall be 
+measured from the 
+peak of the theoretical 
+curve to the highest 
+peak in the out-of-band 
+frequency range 
+The modulation 
+sidelobes may be 
+noise-like 
+or may also contain 
+a CW component 
+Reference level is peak of 
+theoretical curve shape 
+
+=====PAGE 22=====
+ 
+Version 2.0 
+June, 2009 
+18
+APPENDIX B - GOES DCS Pseudo-Binary Data and Other Definitions 
+ 
+General 
+ 
+This standard specifies a standard format for Data Collection Platforms (DCPs) transmitting on 
+random reporting channels. The format has been structured so as to also be compatible with many 
+self-timed (in particular) and interrogated DCPs. The standard is based heavily on two 
+assumptions: First, the proper interpretation and utilization of random data requires a data 
+processing element within the data flow. Second, that the format of all transmissions from a 
+complying platform can be decodable through the use of a properly constructed data base which 
+is to be contained within the data processing facility. 
+This standard defines the necessary attributes of both a DCP and a data base to make the data 
+processable and useful. The manner in which a DCP can be described by the data base determines 
+both the format and the operating characteristics of the DCP. 
+DCPRS  Message Format 
+ 
+The DCPRS transmission format is set forth in paragraph 3.1 for the pre-amble (carrier, clock, 
+and FSS), the GOES ID code, and Flag Word (see Figure B-1). The sensor or message data shall 
+consist of a single 8-bit header word, followed by data from one or more sensors. As shown in 
+Figure B-2, the header word is always a number between 0 and 63 and represents the entry 
+number in a DCP information file which describes the format being used for that message. Thus, 
+a DCP is capable of transmitting up to 64 different formats and each format can be determined 
+fully by knowing the header word and accessing a data base for that particular DCP. 
+  
+ 
+PRE-
+AMBLE  
+GOES ID  31-BIT  
+ADDRESS 
+FLAG 
+WORD 
+MESSAGE 1 
+SP 
+MESSAGE 2 
+SP 
+MESSAGE N 
+EOT 
+ 
+Figure B-1. DCPRS Transmit Format 
+ 
+EIGHT BIT HEADER 
+WORD 
+SENSOR 1 DATA 
+SENSOR 2 DATA  SENSOR N 
+DATA 
+ 
+Figure B-2. DCPRS Message or Sensor Data Format 
+ 
+ 
+The sensor data after each header word must adhere to the following requirements: 
+ 
+1. 
+Pseudo Binary Data Format 
+ 
+All header and sensor data will be converted to pseudo binary, regardless of its format from the 
+sensor (analog, BCD, grey-coders, events, etc.). All data will be transmitted in a "modified 
+ASCII" format utilizing 6- bits of an 8-bit character to represent part of each binary number. For 
+data requiring 12-bit precision, two consecutive modified ASCII characters are needed as shown 
+in the example below: 
+
+=====PAGE 23=====
+ 
+Version 2.0 
+June, 2009 
+19
+ 
+P 
+1 
+211 
+210 
+29 
+28 
+27 
+26 
+P 
+1 
+25 
+24 
+23 
+22 
+21 
+20 
+ 
+          
+       1st DATA CHARACTER                                  2nd DATA CHARACTER 
+ 
+Figure B-3. 12-Bit Precision Data 
+ 
+For 18-bit precision, three characters are required: 
+ 
+ 
+P 1 217 
+216 
+215 
+214 
+213 
+212 
+P 1 211 
+210 
+29 
+28 
+27 
+26 
+P 
+1 25 
+24 
+23 
+22 
+21 
+20 
+ 
+  1st DATA CHARACTER                               2nd DATA CHARACTER                       3rd DATA CHARACTER 
+ 
+Figure B-4. 18-Bit Precision Data 
+ 
+Note that bits 7 and 8 of each character are a *"one" and an odd parity bit, respectively*. 
+Thus, data is always expressed by N characters, each character representing N x 6 bits of 
+information. Data within a character is transmitted least significant bit first. 
+ 
+*The 6-bit binary data sequence of all ones may be transmitted as 01111111 (an ASCII 
+"DEL" character) or 10111111 (an ASCII “?” character). 
+ 
+2. 
+Signed Parameters 
+ 
+Many parameters, temperatures in particular, may be expressed with negative values. In 
+addition, the direction of change in a reading is often useful information and similar such 
+parameter-related flags should also be handled efficiently. Therefore, data may be 
+expressed in one of three ways: 
+ 
+a) 
+as a positive fixed point value of precision (N x 6); 
+ 
+b) 
+as a signed value in two's complement form having a precision of (plus or minus) 
+(N x 6 -1); or 
+ 
+c) 
+as a positive fixed point number of precision (N x 6 -1) with the high order bit 
+used as a flag. 
+ 
+As an example of a negative value, a temperature value of 17 degrees below zero could be 
+expressed with six bits as 101111. Whereas, a signed value of *+17 degrees would be 
+expressed as 010001. See "Definitions" for an explanation of two's complement 
+arithmetic. 
+ 
+For parameters not having negative values, but designated as being a parameter with a f 
+lag, the high order bit is the f lag and the remaining bits are data in binary form. The 
+precise interpretation of the flag bit is to be defined in the DCP's associated data base. As 
+an example, the 11-bit precision accumulated precipitation value of 000001111011 (123) 
+could indicate both the value of 1.23 inches (accumulated) and the fact that it is raining at 
+
+=====PAGE 24=====
+ 
+Version 2.0 
+June, 2009 
+20
+the time of the measurement. Conversely, a value of 100001111011 indicates the same 
+reading but signifies that no perceptible change has occurred since the last sensor update. 
+ 
+3. 
+Order of Reporting 
+ 
+The most current data will be reported first within the DCP message. 
+ 
+4. 
+Limitations on Data Content 
+ 
+This standard per se, places no restriction on the number of parameters being sensed, the accuracy 
+of the measurements, or the number of readings within a message. The format of the message 
+must, however, be describable by a data base (located in the receive system's computer) 
+containing, at least, the following elements: 
+a. 
+For each parameter being reported; 
+ 
+1)  
+Precision of the measurement being reported. This will always be a multiple of 6 
+(6, 12, 18, 24, etc.) unless it is a signed parameter or has a high-order flag bit (than 
+it is 5, 11, 17, 23, etc.). 
+ 
+2) 
+A flag indicating whether or not the data signed, or has a flag bit. 
+ 
+3) 
+Calibration coefficients which will be applied to the data (if necessary). 
+ 
+b. 
+For each possible format to be transmitted; 
+ 
+1) 
+The message format number (0-63) which corresponds to the 8-bit header word 
+beginning each message. 
+ 
+2) 
+Parameter cycle time (in seconds or minutes) - an N/A (not appropriate) flag may 
+be used to indicate data is not reported in cycles. 
+ 
+3) 
+Cycle offset (in minutes) -- the time delay from the end of the last complete up-
+date cycle, reported, to the beginning of transmission. If this value is N/A, the data 
+is assumed to be transmitted in real-time, or the time delay between measurement 
+and reporting is to be reported as a parameter within the message. This value will 
+be *N/A for random or interrogated transmissions. 
+ 
+4) 
+A list of parameters contained within the message (or parameter cycle, if the data 
+is reported in cycles): along with the time of the sensor update relative to the 
+beginning of the message. If any given parameter is updated (reported) several 
+times within a cycle, that parameter (with the corresponding time) will be listed for 
+each update. 
+ 
+If time delay is itself a reported parameter, it will be listed in the data base--the 
+*DCP will transmit this value immediately before all parameters associated with it. 
+ 
+
+=====PAGE 25=====
+ 
+Version 2.0 
+June, 2009 
+21
+5) 
+Cycles per message (if appropriate). This value indicates the number of times the 
+listed parameters are repeated. An N/A flag would indicate either no repeats, or an 
+indeterminate number of parameter groups (a time delay value, with one or more 
+data values). 
+ 
+6) 
+Multiple Messages Within A Transmission. A transmission may contain more than 
+one message. Generally, multiple messages will be used when two or more 
+formats (as defined in the data base) are needed to transmit all the desired data. 
+Multiple massages can also be utilized to transmit new data along with previously 
+transmitted data --- where possible, multiple parameter cycles should be utilized in 
+lieu of multiple messages. 
+ 
+Transmissions containing multiple messages will have a single ASCII space 
+character (00100000 - LSB first) between each message. Note: the seventh bit 
+(underlined) is a zero and thus is not a valid data character. 
+ 
+  7) 
+Bad Data. If a sensor fails, or if for some reason the DCP is unable to transmit, 
+proper data, an ASCII (/) character (00101111) may be substituted for each data 
+character. Note, the 7th bit of this character is not a one, and cannot therefore be a 
+valid data character. 
+ 
+ 
+
+=====PAGE 26=====
+ 
+Version 2.0 
+June, 2009 
+22
+Other DCPRS Definitions 
+Transmission The combination of clear radio carrier and all bits of identification, data and any 
+special sequences sent by a DCP. 
+Message 
+Relates to all or a portion of the data segment of a transmission; the message is a 
+segment of data that is fully defined in a DCP management data base; a 
+transmission will contain one or more messages. 
+Header Word An 8-bit character whose low order 6-bits make up a binary number that identified 
+a format retry stored in a DCP management data base for a specific DCP. A header 
+word begins each message. 
+DCP 
+Contains one record per DCP that includes Data Base the Management 
+characteristics of each parameter measured, plus a list of format entries that will 
+identify each potential data message that the DCP can formulate and transmit. 
+Parameter 
+Data element measured by a sensor. Common hydrometeorology parameters 
+include stream stage, precipitation, and temperature.  
+ 
+Parameter 
+Entry of a value (composite or point) for into a parameter DCP message. The  
+Update 
+value may be an instantaneous value or a computed value based on many sensor 
+values measured since the last message update. 
+Cycle 
+A procedure used by a DCP in acquiring and formatting multiple readings 
+obtained over a period of time. Generally a cycle consists of specific 
+measurements taken at prescribed times within a defined interval. A DCP may 
+acquire and report data for several such time intervals by precisely repeating the 
+prescribed cycle for each consecutive interval. 
+Two's  
+A method of expressing negative numbers so that subtraction may be performed  
+Complement by a simple fixed-precision binary accumulator (adder). The negative value of a 
+binary number is computed by complementing each bit and then adding one. 
+(Example: The equation 4-6=-2 is computed as 4+(-6)=-2, which in 6-bit binary is 
+000100 + 111001 = 111101). The magnitude of a negative value is determined by 
+taking its two's-complement. (i.e., -(-2)=+2 or -(11101)=000010). 
+
+=====PAGE 27=====
+ 
+Version 2.0 
+June, 2009 
+23
+APPENDIX C - Filter Definition for the DAMS-NT Receiver/Demodulator 
+ 
+ 
+The filter used is a 427 tap FIR, Square Root Raised Cosine filter, with α = 1.0 and 
+oversampling FS = 53.3333 per symbol 
+ 
+ 
+ 
+The filter equation is:  
+ A = Σi
+n Ci•Si 
+ 
+ 
+Where Ci is the ith coefficient and Si is the ith sample 
+ 
+ 
+Table of Coefficients 
+ 
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+-213 
+-2.346064E-04 
+-180 
+2.328434E-04 
+-147 
+-1.944238E-05 
+-212 
+-2.340988E-04 
+-179 
+2.061592E-04 
+-146 
+3.937713E-05 
+-211 
+-2.302946E-04 
+-178 
+1.759651E-04 
+-145 
+9.928710E-05 
+-210 
+-2.231837E-04 
+-177 
+1.426024E-04 
+-144 
+1.594818E-04 
+-209 
+-2.128013E-04 
+-176 
+1.064640E-04 
+-143 
+2.191290E-04 
+-208 
+-1.992290E-04 
+-175 
+6.798996E-05 
+-142 
+2.773803E-04 
+-207 
+-1.825940E-04 
+-174 
+2.766316E-05 
+-141 
+3.333820E-04 
+-206 
+-1.630683E-04 
+-173 
+-1.399688E-05 
+-140 
+3.862871E-04 
+-205 
+-1.408675E-04 
+-172 
+-5.644001E-05 
+-139 
+4.352663E-04 
+-204 
+-1.162484E-04 
+-171 
+-9.909232E-05 
+-138 
+4.795200E-04 
+-203 
+-8.950653E-05 
+-170 
+-1.413634E-04 
+-137 
+5.182902E-04 
+-202 
+-6.097254E-05 
+-169 
+-1.826542E-04 
+-136 
+5.508713E-04 
+-201 
+-3.100860E-05 
+-168 
+-2.223645E-04 
+-135 
+5.766221E-04 
+-200 
+-3.923689E-09 
+-167 
+-2.599019E-04 
+-134 
+5.949755E-04 
+-199 
+3.162997E-05 
+-166 
+-2.946893E-04 
+-133 
+6.054487E-04 
+-198 
+6.346451E-05 
+-165 
+-3.261736E-04 
+-132 
+6.076524E-04 
+-197 
+9.505962E-05 
+-164 
+-3.538337E-04 
+-131 
+6.012986E-04 
+-196 
+1.259695E-04 
+-163 
+-3.771886E-04 
+-130 
+5.862079E-04 
+-195 
+1.557486E-04 
+-162 
+-3.958045E-04 
+-129 
+5.623148E-04 
+-194 
+1.839580E-04 
+-161 
+-4.093024E-04 
+-128 
+5.296725E-04 
+-193 
+2.101710E-04 
+-160 
+-4.173641E-04 
+-127 
+4.884557E-04 
+-192 
+2.339800E-04 
+-159 
+-4.197386E-04 
+-126 
+4.389623E-04 
+-191 
+2.550019E-04 
+-158 
+-4.162469E-04 
+-125 
+3.816130E-04 
+-190 
+2.728841E-04 
+-157 
+-4.067862E-04 
+-124 
+3.169497E-04 
+-189 
+2.873099E-04 
+-156 
+-3.913335E-04 
+-123 
+2.456323E-04 
+-188 
+2.980038E-04 
+-155 
+-3.699478E-04 
+-122 
+1.684337E-04 
+-187 
+3.047360E-04 
+-154 
+-3.427715E-04 
+-121 
+8.623276E-05 
+-186 
+3.073263E-04 
+-153 
+-3.100303E-04 
+-120 
+6.591797E-09 
+-185 
+3.056483E-04 
+-152 
+-2.720329E-04 
+-119 
+-8.917955E-05 
+-184 
+2.996316E-04 
+-151 
+-2.291686E-04 
+-118 
+-1.801834E-04 
+-183 
+2.892644E-04 
+-150 
+-1.819041E-04 
+-117 
+-2.717984E-04 
+-182 
+2.745948E-04 
+-149 
+-1.307794E-04 
+-116 
+-3.627673E-04 
+-181 
+2.557314E-04 
+-148 
+-7.640235E-05 
+-115 
+-4.517977E-04 
+
+=====PAGE 28=====
+ 
+Version 2.0 
+June, 2009 
+24
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+-114 
+-5.375773E-04 
+-67 
+9.663422E-05 
+-20 
+3.376186E-02 
+-113 
+-6.187913E-04 
+-66 
+-1.992294E-04 
+-19 
+3.585149E-02 
+-112 
+-6.941392E-04 
+-65 
+-5.114425E-04 
+-18 
+3.791409E-02 
+-111 
+-7.623530E-04 
+-64 
+-8.367883E-04 
+-17 
+3.993912E-02 
+-110 
+-8.222148E-04 
+-63 
+-1.171672E-03 
+-16 
+4.191613E-02 
+-109 
+-8.725749E-04 
+-62 
+-1.512139E-03 
+-15 
+4.383472E-02 
+-108 
+-9.123695E-04 
+-61 
+-1.853891E-03 
+-14 
+4.568472E-02 
+-107 
+-9.406379E-04 
+-60 
+-2.192317E-03 
+-13 
+4.745617E-02 
+-106 
+-9.565390E-04 
+-59 
+-2.522518E-03 
+-12 
+4.913946E-02 
+-105 
+-9.593667E-04 
+-58 
+-2.839338E-03 
+-11 
+5.072537E-02 
+-104 
+-9.485647E-04 
+-57 
+-3.137407E-03 
+-10 
+5.220513E-02 
+-103 
+-9.237389E-04 
+-56 
+-3.411171E-03 
+-9 
+5.357051E-02 
+-102 
+-8.846697E-04 
+-55 
+-3.654945E-03 
+-8 
+5.481385E-02 
+-101 
+-8.313210E-04 
+-54 
+-3.862948E-03 
+-7 
+5.592815E-02 
+-100 
+-7.638482E-04 
+-53 
+-4.029361E-03 
+-6 
+5.690710E-02 
+-99 
+-6.826037E-04 
+-52 
+-4.148367E-03 
+-5 
+5.774512E-02 
+-98 
+-5.881406E-04 
+-51 
+-4.214211E-03 
+-4 
+5.843744E-02 
+-97 
+-4.812130E-04 
+-50 
+-4.221247E-03 
+-3 
+5.898007E-02 
+-96 
+-3.627750E-04 
+-49 
+-4.163993E-03 
+-2 
+5.936991E-02 
+-95 
+-2.339767E-04 
+-48 
+-4.037185E-03 
+-1 
+5.960472E-02 
+-94 
+-9.615710E-05 
+-47 
+-3.835830E-03 
+0 
+5.968314E-02 
+-93 
+4.916489E-05 
+-46 
+-3.555258E-03 
+1 
+5.960472E-02 
+-92 
+2.003023E-04 
+-45 
+-3.191174E-03 
+2 
+5.936991E-02 
+-91 
+3.554145E-04 
+-44 
+-2.739708E-03 
+3 
+5.898007E-02 
+-90 
+5.125241E-04 
+-43 
+-2.197460E-03 
+4 
+5.843744E-02 
+-89 
+6.695363E-04 
+-42 
+-1.561548E-03 
+5 
+5.774512E-02 
+-88 
+8.242602E-04 
+-41 
+-8.296454E-04 
+6 
+5.690710E-02 
+-87 
+9.744322E-04 
+-40 
+-2.197265E-08 
+7 
+5.592815E-02 
+-86 
+1.117742E-03 
+-39 
+9.284236E-04 
+8 
+5.481385E-02 
+-85 
+1.251858E-03 
+-38 
+1.956135E-03 
+9 
+5.357051E-02 
+-84 
+1.374459E-03 
+-37 
+3.082872E-03 
+10 
+5.220513E-02 
+-83 
+1.483260E-03 
+-36 
+4.307695E-03 
+11 
+5.072537E-02 
+-82 
+1.576045E-03 
+-35 
+5.628944E-03 
+12 
+4.913946E-02 
+-81 
+1.650698E-03 
+-34 
+7.044240E-03 
+13 
+4.745617E-02 
+-80 
+1.705230E-03 
+-33 
+8.550471E-03 
+14 
+4.568472E-02 
+-79 
+1.737819E-03 
+-32 
+1.014381E-02 
+15 
+4.383472E-02 
+-78 
+1.746831E-03 
+-31 
+1.181970E-02 
+16 
+4.191613E-02 
+-77 
+1.730855E-03 
+-30 
+1.357290E-02 
+17 
+3.993912E-02 
+-76 
+1.688731E-03 
+-29 
+1.539748E-02 
+18 
+3.791409E-02 
+-75 
+1.619577E-03 
+-28 
+1.728687E-02 
+19 
+3.585149E-02 
+-74 
+1.522811E-03 
+-27 
+1.923387E-02 
+20 
+3.376186E-02 
+-73 
+1.398180E-03 
+-26 
+2.123071E-02 
+21 
+3.165565E-02 
+-72 
+1.245777E-03 
+-25 
+2.326907E-02 
+22 
+2.954322E-02 
+-71 
+1.066058E-03 
+-24 
+2.534017E-02 
+23 
+2.743475E-02 
+-70 
+8.598590E-04 
+-23 
+2.743475E-02 
+24 
+2.534017E-02 
+-69 
+6.284056E-04 
+-22 
+2.954322E-02 
+25 
+2.326907E-02 
+-68 
+3.733220E-04 
+-21 
+3.165565E-02 
+26 
+2.123071E-02 
+
+=====PAGE 29=====
+ 
+Version 2.0 
+June, 2009 
+25
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+27 
+1.923387E-02 
+74 
+1.522811E-03 
+121 
+8.623276E-05 
+28 
+1.728687E-02 
+75 
+1.619577E-03 
+122 
+1.684337E-04 
+29 
+1.539748E-02 
+76 
+1.688731E-03 
+123 
+2.456323E-04 
+30 
+1.357290E-02 
+77 
+1.730855E-03 
+124 
+3.169497E-04 
+31 
+1.181970E-02 
+78 
+1.746831E-03 
+125 
+3.816130E-04 
+32 
+1.014381E-02 
+79 
+1.737819E-03 
+126 
+4.389623E-04 
+33 
+8.550471E-03 
+80 
+1.705230E-03 
+127 
+4.884557E-04 
+34 
+7.044240E-03 
+81 
+1.650698E-03 
+128 
+5.296725E-04 
+35 
+5.628944E-03 
+82 
+1.576045E-03 
+129 
+5.623148E-04 
+36 
+4.307695E-03 
+83 
+1.483260E-03 
+130 
+5.862079E-04 
+37 
+3.082872E-03 
+84 
+1.374459E-03 
+131 
+6.012986E-04 
+38 
+1.956135E-03 
+85 
+1.251858E-03 
+132 
+6.076524E-04 
+39 
+9.284236E-04 
+86 
+1.117742E-03 
+133 
+6.054487E-04 
+40 
+-2.197265E-08 
+87 
+9.744322E-04 
+134 
+5.949755E-04 
+41 
+-8.296454E-04 
+88 
+8.242602E-04 
+135 
+5.766221E-04 
+42 
+-1.561548E-03 
+89 
+6.695363E-04 
+136 
+5.508713E-04 
+43 
+-2.197460E-03 
+90 
+5.125241E-04 
+137 
+5.182902E-04 
+44 
+-2.739708E-03 
+91 
+3.554145E-04 
+138 
+4.795200E-04 
+45 
+-3.191174E-03 
+92 
+2.003023E-04 
+139 
+4.352663E-04 
+46 
+-3.555258E-03 
+93 
+4.916489E-05 
+140 
+3.862871E-04 
+47 
+-3.835830E-03 
+94 
+-9.615710E-05 
+141 
+3.333820E-04 
+48 
+-4.037185E-03 
+95 
+-2.339767E-04 
+142 
+2.773803E-04 
+49 
+-4.163993E-03 
+96 
+-3.627750E-04 
+143 
+2.191290E-04 
+50 
+-4.221247E-03 
+97 
+-4.812130E-04 
+144 
+1.594818E-04 
+51 
+-4.214211E-03 
+98 
+-5.881406E-04 
+145 
+9.928710E-05 
+52 
+-4.148367E-03 
+99 
+-6.826037E-04 
+146 
+3.937713E-05 
+53 
+-4.029361E-03 
+100 
+-7.638482E-04 
+147 
+-1.944238E-05 
+54 
+-3.862948E-03 
+101 
+-8.313210E-04 
+148 
+-7.640235E-05 
+55 
+-3.654945E-03 
+102 
+-8.846697E-04 
+149 
+-1.307794E-04 
+56 
+-3.411171E-03 
+103 
+-9.237389E-04 
+150 
+-1.819041E-04 
+57 
+-3.137407E-03 
+104 
+-9.485647E-04 
+151 
+-2.291686E-04 
+58 
+-2.839338E-03 
+105 
+-9.593667E-04 
+152 
+-2.720329E-04 
+59 
+-2.522518E-03 
+106 
+-9.565390E-04 
+153 
+-3.100303E-04 
+60 
+-2.192317E-03 
+107 
+-9.406379E-04 
+154 
+-3.427715E-04 
+61 
+-1.853891E-03 
+108 
+-9.123695E-04 
+155 
+-3.699478E-04 
+62 
+-1.512139E-03 
+109 
+-8.725749E-04 
+156 
+-3.913335E-04 
+63 
+-1.171672E-03 
+110 
+-8.222148E-04 
+157 
+-4.067862E-04 
+64 
+-8.367883E-04 
+111 
+-7.623530E-04 
+158 
+-4.162469E-04 
+65 
+-5.114425E-04 
+112 
+-6.941392E-04 
+159 
+-4.197386E-04 
+66 
+-1.992294E-04 
+113 
+-6.187913E-04 
+160 
+-4.173641E-04 
+67 
+9.663422E-05 
+114 
+-5.375773E-04 
+161 
+-4.093024E-04 
+68 
+3.733220E-04 
+115 
+-4.517977E-04 
+162 
+-3.958045E-04 
+69 
+6.284056E-04 
+116 
+-3.627673E-04 
+163 
+-3.771886E-04 
+70 
+8.598590E-04 
+117 
+-2.717984E-04 
+164 
+-3.538337E-04 
+71 
+1.066058E-03 
+118 
+-1.801834E-04 
+165 
+-3.261736E-04 
+72 
+1.245777E-03 
+119 
+-8.917955E-05 
+166 
+-2.946893E-04 
+73 
+1.398180E-03 
+120 
+6.591797E-09 
+167 
+-2.599019E-04 
+
+=====PAGE 30=====
+ 
+Version 2.0 
+June, 2009 
+26
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+Tap No. 
+Coefficient 
+168 
+-2.223645E-04 
+183 
+2.892644E-04 
+198 
+6.346451E-05 
+169 
+-1.826542E-04 
+184 
+2.996316E-04 
+199 
+3.162997E-05 
+170 
+-1.413634E-04 
+185 
+3.056483E-04 
+200 
+-3.923689E-09 
+171 
+-9.909232E-05 
+186 
+3.073263E-04 
+201 
+-3.100860E-05 
+172 
+-5.644001E-05 
+187 
+3.047360E-04 
+202 
+-6.097254E-05 
+173 
+-1.399688E-05 
+188 
+2.980038E-04 
+203 
+-8.950653E-05 
+174 
+2.766316E-05 
+189 
+2.873099E-04 
+204 
+-1.162484E-04 
+175 
+6.798996E-05 
+190 
+2.728841E-04 
+205 
+-1.408675E-04 
+176 
+1.064640E-04 
+191 
+2.550019E-04 
+206 
+-1.630683E-04 
+177 
+1.426024E-04 
+192 
+2.339800E-04 
+207 
+-1.825940E-04 
+178 
+1.759651E-04 
+193 
+2.101710E-04 
+208 
+-1.992290E-04 
+179 
+2.061592E-04 
+194 
+1.839580E-04 
+209 
+-2.128013E-04 
+180 
+2.328434E-04 
+195 
+1.557486E-04 
+210 
+-2.231837E-04 
+181 
+2.557314E-04 
+196 
+1.259695E-04 
+211 
+-2.302946E-04 
+182 
+2.745948E-04 
+197 
+9.505962E-05 
+212 
+-2.340988E-04 
+ 
+ 
+ 
+ 
+213 
+-2.346064E-04 
+ 
+ 
+ 
+ 
+Impulse response 
+ 
+ 
+
+=====PAGE 31=====
+ 
+Version 2.0 
+June, 2009 
+27
+APPENDIX D - GOES DCPRS Transmit Frequencies 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+1 
+401.701000 
+323 
+401.734750 
+46 
+401.768500 
+301 
+401.701750 
+24 
+401.735500 
+346 
+401.769250 
+2 
+401.702500 
+324 
+401.736250 
+47 
+401.770000 
+302 
+401.703250 
+25 
+401.737000 
+347 
+401.770750 
+3 
+401.704000 
+325 
+401.737750 
+48 
+401.771500 
+303 
+401.704750 
+26 
+401.738500 
+348 
+401.772250 
+4 
+401.705500 
+326 
+401.739250 
+49 
+401.773000 
+304 
+401.706250 
+27 
+401.740000 
+349 
+401.773750 
+5 
+401.707000 
+327 
+401.740750 
+50 
+401.774500 
+305 
+401.707750 
+28 
+401.741500 
+350 
+401.775250 
+6 
+401.708500 
+328 
+401.742250 
+51 
+401.776000 
+306 
+401.709250 
+29 
+401.743000 
+351 
+401.776750 
+7 
+401.710000 
+329 
+401.743750 
+52 
+401.777500 
+307 
+401.710750 
+30 
+401.744500 
+352 
+401.778250 
+8 
+401.711500 
+330 
+401.745250 
+53 
+401.779000 
+308 
+401.712250 
+31 
+401.746000 
+353 
+401.779750 
+9 
+401.713000 
+331 
+401.746750 
+54 
+401.780500 
+309 
+401.713750 
+32 
+401.747500 
+354 
+401.781250 
+10 
+401.714500 
+332 
+401.748250 
+55 
+401.782000 
+310 
+401.715250 
+33 
+401.749000 
+355 
+401.782750 
+11 
+401.716000 
+333 
+401.749750 
+56 
+401.783500 
+311 
+401.716750 
+34 
+401.750500 
+356 
+401.784250 
+12 
+401.717500 
+334 
+401.751250 
+57 
+401.785000 
+312 
+401.718250 
+35 
+401.752000 
+357 
+401.785750 
+13 
+401.719000 
+335 
+401.752750 
+58 
+401.786500 
+313 
+401.719750 
+36 
+401.753500 
+358 
+401.787250 
+14 
+401.720500 
+336 
+401.754250 
+59 
+401.788000 
+314 
+401.721250 
+37 
+401.755000 
+359 
+401.788750 
+15 
+401.722000 
+337 
+401.755750 
+60 
+401.789500 
+315 
+401.722750 
+38 
+401.756500 
+360 
+401.790250 
+16 
+401.723500 
+338 
+401.757250 
+61 
+401.791000 
+316 
+401.724250 
+39 
+401.758000 
+361 
+401.791750 
+17 
+401.725000 
+339 
+401.758750 
+62 
+401.792500 
+317 
+401.725750 
+40 
+401.759500 
+362 
+401.793250 
+18 
+401.726500 
+340 
+401.760250 
+63 
+401.794000 
+318 
+401.727250 
+41 
+401.761000 
+363 
+401.794750 
+19 
+401.728000 
+341 
+401.761750 
+64 
+401.795500 
+319 
+401.728750 
+42 
+401.762500 
+364 
+401.796250 
+20 
+401.729500 
+342 
+401.763250 
+65 
+401.797000 
+320 
+401.730250 
+43 
+401.764000 
+365 
+401.797750 
+21 
+401.731000 
+343 
+401.764750 
+66 
+401.798500 
+321 
+401.731750 
+44 
+401.765500 
+366 
+401.799250 
+22 
+401.732500 
+344 
+401.766250 
+67 
+401.800000 
+322 
+401.733250 
+45 
+401.767000 
+367 
+401.800750 
+23 
+401.734000 
+345 
+401.767750 
+68 
+401.801500 
+NOTE BOLD TYPE Face identifies potential 1200 bps Channel assignments. 
+
+=====PAGE 32=====
+ 
+Version 2.0 
+June, 2009 
+28
+GOES DCPRS TRANSMIT FREQUENCIES (Continued) 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+368 
+401.802250 
+91 
+401.836000 
+413 
+401.869750 
+69 
+401.803000 
+391 
+401.836750 
+114 
+401.870500 
+369 
+401.803750 
+92 
+401.837500 
+414 
+401.871250 
+70 
+401.804500 
+392 
+401.838250 
+115 
+401.872000 
+370 
+401.805250 
+93 
+401.839000 
+415 
+401.872750 
+71 
+401.806000 
+393 
+401.839750 
+116 
+401.873500 
+371 
+401.806750 
+94 
+401.840500 
+416 
+401.874250 
+72 
+401.807500 
+394 
+401.841250 
+117 
+401.875000 
+372 
+401.808250 
+95 
+401.842000 
+417 
+401.875750 
+73 
+401.809000 
+395 
+401.842750 
+118 
+401.876500 
+373 
+401.809750 
+96 
+401.843500 
+418 
+401.877250 
+74 
+401.810500 
+396 
+401.844250 
+119 
+401.878000 
+374 
+401.811250 
+97 
+401.845000 
+419 
+401.878750 
+75 
+401.812000 
+397 
+401.845750 
+120 
+401.879500 
+375 
+401.812750 
+98 
+401.846500 
+420 
+401.880250 
+76 
+401.813500 
+398 
+401.847250 
+121 
+401.881000 
+376 
+401.814250 
+99 
+401.848000 
+421 
+401.881750 
+77 
+401.815000 
+399 
+401.848750 
+122 
+401.882500 
+377 
+401.815750 
+100 
+401.849500 
+422 
+401.883250 
+78 
+401.816500 
+400 
+401.850250 
+123 
+401.884000 
+378 
+401.817250 
+101 
+401.851000 
+423 
+401.884750 
+79 
+401.818000 
+401 
+401.851750 
+124 
+401.885500 
+379 
+401.818750 
+102 
+401.852500 
+424 
+401.886250 
+80 
+401.819500 
+402 
+401.853250 
+125 
+401.887000 
+380 
+401.820250 
+103 
+401.854000 
+425 
+401.887750 
+81 
+401.821000 
+403 
+401.854750 
+126 
+401.888500 
+381 
+401.821750 
+104 
+401.855500 
+426 
+401.889250 
+82 
+401.822500 
+404 
+401.856250 
+127 
+401.890000 
+382 
+401.823250 
+105 
+401.857000 
+427 
+401.890750 
+83 
+401.824000 
+405 
+401.857750 
+128 
+401.891500 
+383 
+401.824750 
+106 
+401.858500 
+428 
+401.892250 
+84 
+401.825500 
+406 
+401.859250 
+129 
+401.893000 
+384 
+401.826250 
+107 
+401.860000 
+429 
+401.893750 
+85 
+401.827000 
+407 
+401.860750 
+130 
+401.894500 
+385 
+401.827750 
+108 
+401.861500 
+430 
+401.895250 
+86 
+401.828500 
+408 
+401.862250 
+131 
+401.896000 
+386 
+401.829250 
+109 
+401.863000 
+431 
+401.896750 
+87 
+401.830000 
+409 
+401.863750 
+132 
+401.897500 
+387 
+401.830750 
+110 
+401.864500 
+432 
+401.898250 
+88 
+401.831500 
+410 
+401.865250 
+133 
+401.899000 
+388 
+401.832250 
+111 
+401.866000 
+433 
+401.899750 
+89 
+401.833000 
+411 
+401.866750 
+134 
+401.900500 
+389 
+401.833750 
+112 
+401.867500 
+434 
+401.901250 
+90 
+401.834500 
+412 
+401.868250 
+135 
+401.902000 
+390 
+401.835250 
+113 
+401.869000 
+435 
+401.902750 
+NOTE BOLD TYPE Face identifies potential 1200 bps Channel assignments. 
+
+=====PAGE 33=====
+ 
+Version 2.0 
+June, 2009 
+29
+GOES DCPRS TRANSMIT FREQUENCIES (Continued) 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+136 
+401.903500 
+458 
+401.937250 
+181 
+401.971000 
+436 
+401.904250 
+159 
+401.938000 
+481 
+401.971750 
+137 
+401.905000 
+459 
+401.938750 
+182 
+401.972500 
+437 
+401.905750 
+160 
+401.939500 
+482 
+401.973250 
+138 
+401.906500 
+460 
+401.940250 
+183 
+401.974000 
+438 
+401.907250 
+161 
+401.941000 
+483 
+401.974750 
+139 
+401.908000 
+461 
+401.941750 
+184 
+401.975500 
+439 
+401.908750 
+162 
+401.942500 
+484 
+401.976250 
+140 
+401.909500 
+462 
+401.943250 
+185 
+401.977000 
+440 
+401.910250 
+163 
+401.944000 
+485 
+401.977750 
+141 
+401.911000 
+463 
+401.944750 
+186 
+401.978500 
+441 
+401.911750 
+164 
+401.945500 
+486 
+401.979250 
+142 
+401.912500 
+464 
+401.946250 
+187 
+401.980000 
+442 
+401.913250 
+165 
+401.947000 
+487 
+401.980750 
+143 
+401.914000 
+465 
+401.947750 
+188 
+401.981500 
+443 
+401.914750 
+166 
+401.948500 
+488 
+401.982250 
+144 
+401.915500 
+466 
+401.949250 
+189 
+401.983000 
+444 
+401.916250 
+167 
+401.950000 
+489 
+401.983750 
+145 
+401.917000 
+467 
+401.950750 
+190 
+401.984500 
+445 
+401.917750 
+168 
+401.951500 
+490 
+401.985250 
+146 
+401.918500 
+468 
+401.952250 
+191 
+401.986000 
+446 
+401.919250 
+169 
+401.953000 
+491 
+401.986750 
+147 
+401.920000 
+469 
+401.953750 
+192 
+401.987500 
+447 
+401.920750 
+170 
+401.954500 
+492 
+401.988250 
+148 
+401.921500 
+470 
+401.955250 
+193 
+401.989000 
+448 
+401.922250 
+171 
+401.956000 
+493 
+401.989750 
+149 
+401.923000 
+471 
+401.956750 
+194 
+401.990500 
+449 
+401.923750 
+172 
+401.957500 
+494 
+401.991250 
+150 
+401.924500 
+472 
+401.958250 
+195 
+401.992000 
+450 
+401.925250 
+173 
+401.959000 
+495 
+401.992750 
+151 
+401.926000 
+473 
+401.959750 
+196 
+401.993500 
+451 
+401.926750 
+174 
+401.960500 
+496 
+401.994250 
+152 
+401.927500 
+474 
+401.961250 
+197 
+401.995000 
+452 
+401.928250 
+175 
+401.962000 
+497 
+401.995750 
+153 
+401.929000 
+475 
+401.962750 
+198 
+401.996500 
+453 
+401.929750 
+176 
+401.963500 
+498 
+401.997250 
+154 
+401.930500 
+476 
+401.964250 
+199 
+401.998000 
+454 
+401.931250 
+177 
+401.965000 
+499 
+401.998750 
+155 
+401.932000 
+477 
+401.965750 
+200 
+401.999500 
+455 
+401.932750 
+178 
+401.966500 
+500 
+402.000250 
+156 
+401.933500 
+478 
+401.967250 
+201 
+402.001000 
+456 
+401.934250 
+179 
+401.968000 
+501 
+402.001750 
+157 
+401.935000 
+479 
+401.968750 
+202 
+402.002500 
+457 
+401.935750 
+180 
+401.969500 
+502 
+402.003250 
+158 
+401.936500 
+480 
+401.970250 
+203 
+402.004000 
+NOTE BOLD TYPE Face identifies potential 1200 bps Channel assignments. 
+
+=====PAGE 34=====
+ 
+Version 2.0 
+June, 2009 
+30
+GOES DCPRS TRANSMIT FREQUENCIES (Continued) 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+CHANNEL 
+NUMBER 
+CENTER 
+FREQUENCY 
+503 
+402.004750 
+226 
+402.038500 
+548 
+402.072250 
+204 
+402.005500 
+526 
+402.039250 
+249 
+402.073000 
+504 
+402.006250 
+227 
+402.040000 
+549 
+402.073750 
+205 
+402.007000 
+527 
+402.040750 
+250 
+402.074500 
+505 
+402.007750 
+228 
+402.041500 
+550 
+402.075250 
+206 
+402.008500 
+528 
+402.042250 
+251 
+402.076000 
+506 
+402.009250 
+229 
+402.043000 
+551 
+402.076750 
+207 
+402.010000 
+529 
+402.043750 
+252 
+402.077500 
+507 
+402.010750 
+230 
+402.044500 
+552 
+402.078250 
+208 
+402.011500 
+530 
+402.045250 
+253 
+402.079000 
+508 
+402.012250 
+231 
+402.046000 
+553 
+402.079750 
+209 
+402.013000 
+531 
+402.046750 
+254 
+402.080500 
+509 
+402.013750 
+232 
+402.047500 
+554 
+402.081250 
+210 
+402.014500 
+532 
+402.048250 
+255 
+402.082000 
+510 
+402.015250 
+233 
+402.049000 
+555 
+402.082750 
+211 
+402.016000 
+533 
+402.049750 
+256 
+402.083500 
+511 
+402.016750 
+234 
+402.050500 
+556 
+402.084250 
+212 
+402.017500 
+534 
+402.051250 
+257 
+402.085000 
+512 
+402.018250 
+235 
+402.052000 
+557 
+402.085750 
+213 
+402.019000 
+535 
+402.052750 
+258 
+402.086500 
+513 
+402.019750 
+236 
+402.053500 
+558 
+402.087250 
+214 
+402.020500 
+536 
+402.054250 
+259 
+402.088000 
+514 
+402.021250 
+237 
+402.055000 
+559 
+402.088750 
+215 
+402.022000 
+537 
+402.055750 
+260 
+402.089500 
+515 
+402.022750 
+238 
+402.056500 
+560 
+402.090250 
+216 
+402.023500 
+538 
+402.057250 
+261 
+402.091000 
+516 
+402.024250 
+239 
+402.058000 
+561 
+402.091750 
+217 
+402.025000 
+539 
+402.058750 
+262 
+402.092500 
+517 
+402.025750 
+240 
+402.059500 
+562 
+402.093250 
+218 
+402.026500 
+540 
+402.060250 
+263 
+402.094000 
+518 
+402.027250 
+241 
+402.061000 
+563 
+402.094750 
+219 
+402.028000 
+541 
+402.061750 
+264 
+402.095500 
+519 
+402.028750 
+242 
+402.062500 
+564 
+402.096250 
+220 
+402.029500 
+542 
+402.063250 
+265 
+402.097000 
+520 
+402.030250 
+243 
+402.064000 
+565 
+402.097750 
+221 
+402.031000 
+543 
+402.064750 
+266 
+402.098500 
+521 
+402.031750 
+244 
+402.065500 
+566 
+402.099250 
+222 
+402.032500 
+544 
+402.066250 
+ 
+ 
+522 
+402.033250 
+245 
+402.067000 
+ 
+ 
+223 
+402.034000 
+545 
+402.067750 
+ 
+ 
+523 
+402.034750 
+246 
+402.068500 
+ 
+ 
+224 
+402.035500 
+546 
+402.069250 
+ 
+ 
+524 
+402.036250 
+247 
+402.070000 
+ 
+ 
+225 
+402.037000 
+547 
+402.070750 
+ 
+ 
+525 
+402.037750 
+248 
+402.071500 
+ 
+ 
+NOTE BOLD TYPE Face identifies potential 1200 bps Channel assignments. 
+
+=====PAGE 35=====
+ 
+Version 2.0 
+June, 2009 
+31
+ 
+APPENDIX E - GOES DCPRS Phase Noise Budget 
+ 
+A phase noise budget has been established for the entire DCS so that each part of the system can 
+be individually tested, independent of the other parts, and still be assured that all components that 
+meet their assigned requirement will provide acceptable system function. 
+ 
+The proposed budget for the DCPRS is derived as follows: 
+ 
+1. 
+The demodulators are expected to normally operate with a bit error rate near 1 in 107, and 
+it is desired that errors due to phase noise should be about two orders of magnitude better, 
+i.e., about 1 in 109. 
+2. 
+Phase noise is a normal or Gaussian distributed variable, with standard deviation, .  
+Therefore the dual-tail, Normal Error Integral gives a probability of 1 in 109 that it 
+exceeds 6.1 from its mean value. 
+3. 
+The total phase error required to cause bit errors in an 8PSK demodulator is 22.5 degrees, 
+half of the 45 degree phase shift between each of the nominal phase states. 
+4. 
+This document proposes a DCPRS phase offset/bias 1.0 degrees. 
+5. 
+22.5 - 1.0 = 21.5 and 21.5 / 6.1 = 3.52 
+6. 
+Therefore, the total system phase noise must be 3.5 degrees or less. 
+7. 
+The phase noise in the GOES-N primary and redundant DCPR transponders has been 
+measured at 0.5 degrees, worst case. Therefore an allocation of 1.0 degrees is proposed for 
+all of the GOES-N and GOES-R series of satellites. 
+8. 
+The DCPRS phase noise required by the current Certification Standards is 2.5 degrees. 
+9. 
+The phase noise allocation proposed for the dual down conversion receive path at 
+WCDAS is 2.0 degrees. 
+10. 
+The phase noise allocation proposed for the additional down conversion at the input to the 
+demodulators at WCDAS is 1.0 degrees. 
+11. 
+The RSS for all these components of the system phase noise is 3.5 degrees. 
+ 
+The integration limits for calculating phase noise are 2 Hz and 150 Hz for the 300 bps channels 
+and 6 Hz and 600 Hz for the 1200 bps channels. These are the values that will apply to the 
+demodulators at WCDAS and have been set as the standard to be used for the satellite and 
+DCPRS requirements. It is recommended that these values also be used in the design of future 
+demodulators for WCDAS and/or DRGS, at these data rates. 
+ 
+ 

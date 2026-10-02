@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//SoftQuad Software//DTD HoTMetaL PRO 5.0::19981217::extensions to HTML 4.0//EN" "hmpro5.dtd"> 
+ 
+<HTML>
+ 
+<HEAD>
+<META NAME="viewport" CONTENT="width=device-width, initial-scale=1.0"> 
+<TITLE>12 Bit CRC Zoo</TITLE>
+</HEAD>
+
+<BODY>
+<H1 ALIGN="CENTER">CRC Polynomial Zoo</H1>
+<P ALIGN="CENTER"><B>Philip Koopman, Carnegie Mellon University</B></P>
+<H3><A HREF="index.html">Best CRCs</A> | <A HREF="details.html">CRC
+Selection</A> | CRC Zoo | <A HREF="http://checksumcrc.blogspot.com/">Checksum
+and CRC Blog</A><BR>
+<BR>
+Select # Bits in CRC below (see also
+<A HREF="http://users.ece.cmu.edu/~koopman/crc/notes.html">NOTES PAGE</A>):<BR>
+<A HREF="crc3.html">3</A>,&nbsp; <A HREF="crc4.html">4</A>,&nbsp;
+<A HREF="crc5.html">5</A>,&nbsp; <A HREF="crc6.html">6</A>,&nbsp;
+<A HREF="crc7.html">7</A>,&nbsp; <A HREF="crc8.html">8</A>,&nbsp;
+<A HREF="crc9.html">9</A>,&nbsp; <A HREF="crc10.html"> 10</A>,&nbsp;
+<A HREF="crc11.html">11</A>,&nbsp; <A HREF="crc12.html">12</A>,&nbsp;
+<A HREF="crc13.html">13</A>,&nbsp; <A HREF="crc14.html">14</A>,&nbsp;
+<A HREF="crc15.html">15</A>, <BR>
+<A HREF="crc16.html">16</A>,&nbsp; <A HREF="crc17.html">17</A>,&nbsp;
+<A HREF="crc18.html">18</A>,&nbsp; <A HREF="crc19.html">19</A>,&nbsp;
+<A HREF="crc20.html">20</A>,&nbsp; <A HREF="crc21.html">21</A>,&nbsp;
+<A HREF="crc22.html">22</A>,&nbsp; <A HREF="crc23.html">23</A>,&nbsp;
+<A HREF="crc24.html">24</A>,&nbsp; <A HREF="crc25.html">25</A>,&nbsp;
+<A HREF="crc26.html">26</A>,&nbsp; <A HREF="crc27.html">27</A>,&nbsp;
+<A HREF="crc28.html">28</A>,&nbsp; <A HREF="crc29.html">29</A>,&nbsp;
+<A HREF="crc30.html">30</A>,&nbsp; <A HREF="crc31.html">31</A>,<BR>
+<A HREF="crc32.html">32</A>,&nbsp; <A HREF="crc36.html">33-36</A>,&nbsp;
+<A HREF="crc40.html">37-40</A>,&nbsp; <A HREF="crc44.html">41-44</A>,&nbsp;
+<A HREF="crc48.html">45-48</A>,&nbsp; <A HREF="crc52.html">49-52</A>,&nbsp;
+<A HREF="crc56.html">53-56</A>,&nbsp; <A HREF="crc60.html">57-60</A>,&nbsp;
+<A HREF="crc63.html">61-63</A>,&nbsp; <A HREF="crc64.html">64</A></H3>
+<HR>
+<H2><A NAME="crc12"> 12 Bit CRCs:</A></H2>
+<UL>
+<LI><TT>(<A HREF="c12/0x987.txt">0x987</A>; 0x130f) &lt;=&gt; (0xf0c; 0x1e19)
+<A HREF="c12/0x987_len.txt">{<B>4083</B>,159,17,8,1}</A> |
+<A HREF="c12/0x987.gold">gold</A> | CRC-12F/3 (&quot;11417p&quot;)(*p) </TT> 
+</LI>
+<LI><TT>(<A HREF="c12/0xa33.txt">0xa33</A>; 0x1467) &lt;=&gt; (0xe62; 0x1cc5)
+<A HREF="c12/0xa33_len.txt">{<B>4083</B>,149,10,6,6}</A> |
+<A HREF="c12/0xa33.gold">gold</A> | (*p) CRC-12K/7</TT></LI>
+<LI><TT>(<A HREF="c12/0x829.txt">0x829</A>; 0x1053) &lt;=&gt; (0xca0; 0x1941)
+<A HREF="c12/0x829_len.txt">{<B>4083</B>,95,16}</A> | <A
+HREF="c12/0x829.gold">gold</A> | (*p) FP-12 </TT></LI>
+<LI><TT>(<A HREF="c12/0xddf.txt">0xddf</A>; 0x1bbf) &lt;=&gt; (0xfdd; 0x1fbb)
+<A HREF="c12/0xddf_len.txt">{<B>4083</B>,71,10,8,1,1,1,1,1}</A> |
+<A HREF="c12/0xddf.gold">gold</A> | (*p) CRC-12F/9 (&quot;15677p&quot;)</TT> 
+</LI>
+<LI><TT>(<A HREF="c12/0xbdf.txt">0xbdf</A>; 0x17bf) &lt;=&gt; (0xfde; 0x1fbd)
+<A HREF="c12/0xbdf_len.txt">{<B>4083</B>,59,33,6,1,1,1,1,1}</A> |
+<A HREF="c12/0xbdf.gold">gold</A> | (*p) CRC-12K/5.2</TT> </LI>
+<LI><TT>(<A HREF="c12/0x83e.txt">0x83e</A>; 0x107d) &lt;=&gt; (0xbe0; 0x17c1)
+<A HREF="c12/0x83e_len.txt">{<B>4083</B>,22,15,15,1}</A> |
+<A HREF="c12/0x83e.gold">gold</A> | (*p) CRC-12F/6.1 (&quot;10175p&quot;)</TT> 
+</LI>
+</UL>
+<UL>
+<LI><TT>(<A HREF="c12/0xb75.txt">0xb75</A>; 0x16eb) &lt;=&gt; (0xd76; 0x1aed)
+<A HREF="c12/0xb75_len.txt">{2655,52,24,2,2,2,2}</A> | <A
+HREF="c12/0xb75.gold">gold</A> | CRC-12K/3</TT></LI>
+</UL>
+<UL>
+<LI><TT>(<A HREF="c12/0x8f3.txt">0x8f3</A>; 0x11e7) &lt;=&gt; (0xe78; 0x1cf1)
+<A HREF="c12/0x8f3_len.txt">{2035,<B>2035</B>,25,<B>25</B>,1,1}</A> |
+<A HREF="c12/0x8f3.gold">gold</A> | (*op) CRC-12F/4.2; CRC-12/6sub8
+(&quot;10747&quot;)</TT> </LI>
+<LI><TT>(<A HREF="c12/0xf89.txt">0xf89</A>; 0x1f13) &lt;=&gt; (0xc8f; 0x191f)
+<A HREF="c12/0xf89_len.txt">{2035,<B>2035</B>,16,16,1,1}</A> |
+<A HREF="c12/0xf89.gold">gold</A> | (*op) CRC-12-CMDA2000</TT></LI>
+<LI><TT>(<A HREF="c12/0x817.txt">0x817</A>; 0x102f) &lt;=&gt; (0xf40; 0x1e81)
+<A HREF="c12/0x817_len.txt">{2035,<B>2035</B>,14,14}</A> |
+<A HREF="c12/0x817.gold">gold</A> | (*op) FOP-12</TT></LI>
+<LI><TT>(<A HREF="c12/0xc07.txt">0xc07</A>; 0x180f) &lt;=&gt; (0xf01; 0x1e03)
+<A HREF="c12/0xc07_len.txt">{2035,<B>2035</B>,1,1}</A> |
+<A HREF="c12/0xc07.gold">gold</A> | (*op) CRC-12</TT></LI>
+<LI><TT>(<A HREF="c12/0xbff.txt">0xbff</A>; 0x17ff) &lt;=&gt; (0xffe; 0x1ffd)
+<A HREF="c12/0xbff_len.txt">{2035,<B>2035</B>,1,1,1,1,1,1,1,1}</A> |
+<A HREF="c12/0xbff.gold">gold</A> | (*op) CRC-12F/10.2 (&quot;13777&quot;) 
+</TT></LI>
+</UL>
+<UL>
+<LI><TT>(<A HREF="c12/0xb41.txt">0xb41</A>; 0x1683) &lt;=&gt; (0xc16; 0x182d)
+<A HREF="c12/0xb41_len.txt">{1773,1773,27,<B>27</B>}</A> |
+<A HREF="c12/0xb41.gold">gold</A> | (*o) CRC-12F/6.2 (&quot;13203&quot;)</TT> 
+</LI>
+<LI><TT>(<A HREF="c12/0xb91.txt">0xb91</A>; 0x1723) &lt;=&gt; (0xc4e; 0x189d)
+<A HREF="c12/0xb91_len.txt">{1073,1073,27,7,4}</A> | <A
+HREF="c12/0xb91.gold">gold</A> | CRC-12F/4.1 (&quot;13443&quot;)</TT></LI>
+<LI><TT>(<A HREF="c12/0xe98.txt">0xe98</A>; 0x1d31) &lt;=&gt; (0x8cb; 0x1197)
+<A HREF="c12/0xe98_len.txt">{1073,1073,13,5,4}</A> | <A
+HREF="c12/0xe98.gold">gold</A> | CRC-12-GSM</TT></LI>
+<LI><TT>(<A HREF="c12/0xc05.txt">0xc05</A>; 0x180b) &lt;=&gt; (0xd01; 0x1a03)
+<A HREF="c12/0xc05_len.txt">{498,160,24}</A> | <A
+HREF="c12/0xc05.gold">gold</A> | </TT></LI>
+<LI><TT>(<A HREF="c12/0x993.txt">0x993</A>; 0x1327) &lt;=&gt; (0xe4c; 0x1c99)
+<A HREF="c12/0x993_len.txt">{498,74,24,8,8}</A> | <A
+HREF="c12/0x993.gold">gold</A> | CRC-12F/7 (&quot;11447&quot;)</TT> </LI>
+<LI><TT>(<A HREF="c12/0xa6f.txt">0xa6f</A>; 0x14df) &lt;=&gt; (0xfb2; 0x1f65)
+<A HREF="c12/0xa6f_len.txt">{443,183,12,12,5,4,1}</A> |
+<A HREF="c12/0xa6f.gold">gold</A> | CRC-12F/8.1 (&quot;12337&quot;)</TT></LI>
+<LI><TT>(<A HREF="c12/0xc06.txt">0xc06</A>; 0x180d) &lt;=&gt; (0xb01; 0x1603)
+<A HREF="c12/0xc06_len.txt">{79,27,24}</A> | <A HREF="c12/0xc06.gold">gold</A>
+| </TT></LI>
+<LI><TT>(<A HREF="c12/0xbae.txt">0xbae</A>; 0x175d) &lt;=&gt; (0xbae; 0x175d)
+<A HREF="c12/0xbae_len.txt">{53,53,<B>53</B>,10,2,2,2}</A> |
+<A HREF="c12/0xbae.gold">gold</A> | CRC-12F/5 (&quot;13535s&quot;)</TT></LI>
+<LI><TT>(<A HREF="c12/0x8f8.txt">0x8f8</A>; 0x11f1) &lt;=&gt; (0x8f8; 0x11f1)
+<A HREF="c12/0x8f8_len.txt">{53,53,<B>53</B>,10,1}</A> |
+<A HREF="c12/0x8f8.gold">gold</A> | CRC-12K/5.1</TT></LI>
+<LI><TT>(<A HREF="c12/0xa4f.txt">0xa4f</A>; 0x149f) &lt;=&gt; (0xf92; 0x1f25)
+<A HREF="c12/0xa4f_len.txt">{11,11,11,11,<B>11</B>,<B>11</B>}</A> |
+<A HREF="c12/0xa4f.gold">gold</A> | (*o) CRC-12F/8.2 (&quot;12237&quot;)</TT> 
+</LI>
+</UL>
+<P><A HREF="c12/c12_hd.out">HD profile for all unique 12-bit CRCs</A></P>
+<HR>
+<P>See the <A HREF="http://users.ece.cmu.edu/~koopman/crc/notes.html">NOTES
+PAGE</A> for interpreting this data. Last update 3/5/2024.</P>
+<P><A REL="license"
+HREF="http://creativecommons.org/licenses/by/4.0/"><IMG SRC="../gif/ccby4.gif"
+ALT="{CC BY 4.0}" WIDTH="157" HEIGHT="40" BORDER="0"></A><BR>
+This work is copyright 2015-2024 by Philip Koopman. Licensed under a
+<A REL="license" HREF="http://creativecommons.org/licenses/by/4.0/">Creative
+Commons Attribution 4.0 International License</A>.</P>
+<HR>
+</BODY>
+</HTML>
+

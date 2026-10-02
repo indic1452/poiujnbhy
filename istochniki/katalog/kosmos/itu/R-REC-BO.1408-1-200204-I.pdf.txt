@@ -1,0 +1,1353 @@
+
+=====PAGE 1=====
+ 
+Rec.  ITU-R  BO.1408-1 
+1 
+RECOMMENDATION  ITU-R  BO.1408-1 
+Transmission system for advanced multimedia services provided 
+by integrated services digital broadcasting in 
+a broadcasting-satellite channel 
+(Question ITU-R 3/6) 
+(1999-2002) 
+The ITU Radiocommunication Assembly, 
+considering 
+a) 
+that various kinds of information such as video, including high-definition television 
+(HDTV) as well as limited-definition television (LDTV), audio, text, graphics, and data are 
+provided to the public via the broadcasting channels; 
+b) 
+that information and services can be integrated efficiently and flexibly by using digital 
+techniques; 
+c) 
+that integrated services digital broadcasting (ISDB) techniques can be used to implement 
+services exploiting the full advantages of digital broadcasting; 
+d) 
+that the MPEG transport stream (MPEG-TS) is widely applied as a container of digitally 
+coded information; 
+e) 
+that a great benefit is obtained if the integration of data/services can be achieved on a TS 
+basis, which requires the transmission system to deal with multiple MPEG-TSs; 
+f) 
+that the recent progress in digital technology allows a highly bandwidth efficient 
+modulation scheme such as 8-PSK in addition to the convolutionally-encoded QPSK and BPSK; 
+g) 
+that the required service quality and service availability differ according to applications; 
+h) 
+that rain attenuation, which differs by climatic zones, needs to be taken into account in 
+satellite broadcasting systems; 
+j) 
+that a common ISDB transmission system that provides a high flexibility of use as well as 
+high spectrum efficiency while covering all the requirements for application, quality and rain 
+attenuation is desirable, rather than introducing multiple systems specifically developed for 
+particular applications; 
+k) 
+that Recommendation ITU-R BO.1516 recommends common functional requirements for 
+the integrated receiver-decoder (IRD) of digital multi-programme broadcasting by satellite, 
+noting 
+a) 
+that advanced multimedia systems for ISDB type services are characterised by highest 
+flexibility with respect to: 
+– 
+handling several MPEG-TSs; 
+– 
+allowing time multiplex of appropriate modulation schemes suitable for applications of 
+various transmission robustness, e.g. 8-PSK, QPSK and BPSK; 
+– 
+informing the demodulator about the transmission and multiplexing configuration by means 
+of specially robust control signals; 
+
+=====PAGE 2=====
+2 
+Rec.  ITU-R  BO.1408-1 
+– 
+that the integrated circuits for satellite (ISDB-S) receivers could potentially be used for the 
+system defined in Recommendation ITU-R BO.1516, because each of the components used 
+in ISDB-S is also used in the systems defined in this Recommendation, 
+recommends 
+1 
+that the transmission system described in Annex 1 should be used for ISDB-S system 
+applications. 
+ 
+ANNEX  1 
+General specifications for a generic satellite ISDB-S transmission system 
+Introduction 
+ISDB is a new type of broadcasting for multimedia services. It integrates, systematically, various 
+kinds of digital content, each of which may include multi-programme video from LDTV to HDTV, 
+multi-programme audio, graphics, texts, etc. Most digital content are nowadays encoded into the 
+form of MPEG-TS and delivered worldwide. It is highly desired to integrate the digital content on 
+an MPEG-TS basis. 
+Since the ISDB contains a variety of services, the system has to cover a wide range of requirements 
+that may differ from one service to another. For example, a large transmission capacity is required 
+for HDTV services, while a high service availability (or transmission reliability) is required for data 
+services such as delivery of conditional access keys, downloading of software, etc. To integrate 
+these signals of different service requirements, it is desired for the transmission systems to provide a 
+series of modulation and/or error protection schemes which can be selected and combined flexibly 
+in order to meet each requirement of the services integrated. This is especially true of the ISDB-S 
+systems operating in the 11-12 GHz broadcasting-satellite service (BSS) band in countries that 
+belong to the climate zones with high rain attenuation. 
+ISDB-S transmission systems are characterised by: 
+– 
+MPEG interfacing: the input signals to the encoder and the output signals from the decoder 
+conform to the MPEG-TS specifications; 
+– 
+capability of signal integration on MPEG-TS basis: digital contents can be multiplexed 
+without decoding/re-encoding of the input streams; 
+– 
+flexible use of modulation schemes: digital content can be simultaneously transmitted with 
+the appropriate modulation schemes for each integrated content in the ISDB stream; 
+– 
+provision of a control signal that informs the receiver of the multiplexing and modulation 
+configuration. 
+The generic system for ISDB-S is described below. 
+
+=====PAGE 3=====
+ 
+Rec.  ITU-R  BO.1408-1 
+3 
+1 
+Block definition 
+A general configuration of the system is shown in Fig. 1. The system shall handle three kinds of 
+signals in order to transmit multiple MPEG-TSs with various kinds of modulation schemes and in 
+order to achieve stable and easy reception. The three signals shall be: 
+– 
+main signal which consists of multiple MPEG-TSs and carries the programme content; 
+– 
+transmission and multiplexing configuration control (TMCC) signal which informs the 
+receiver of the modulation schemes applied, the identification of MPEG-TSs, etc.; and 
+– 
+burst signal which ensures stable carrier recovery at the receiver under any reception 
+condition (especially under low carrier-to-noise (C/N) ratio conditions). 
+1408-01
+RS (204,188)
+Outer
+coder
+Frame
+construction
+Energy
+dispersal
+Interleaver
+TMCC data
+encoder
+Outer
+coder
+Energy
+dispersal
+Interleaver
+Energy
+dispersal
+TDM
+Inner
+coder
+Burst
+insertion
+Modulation
+MPEG-TS No. A
+MPEG-TS No. B
+Control data No. A
+Control data No. B
+TMCC signal
+Main signal
+Burst signal
+FIGURE 1
+General configuration of system
+convolutional
+code
+ 
+To handle multiple MPEG-TSs and to allow several modulation schemes to be used simultaneously, 
+a frame structure is introduced to the main signal. The input MPEG-TSs shall be combined into a 
+single stream, to which ordinary signal processes for satellite systems are applied (i.e., energy 
+dispersal, interleaving and inner coding). The control data which designates the modulation 
+schemes, etc. for each TS packet shall be encoded into the TMCC signal, to which a series of 
+channel coding is applied. In most cases, some parts of the channel coding can be shared with the 
+main signal. The burst signal shall be energy-dispersed to avoid line spectra in the transmission 
+signal. This is done by modulating the burst with a random sequence. Therefore, the burst signal 
+can carry information by modulating it with information data instead of modulating it with a 
+random sequence. In this case, an additional channel coding may be necessary. These three signals 
+shall be time-division multiplexed (time division multiplex (TDM)) and modulated by the 
+designated modulation schemes. 
+2 
+Outer code for main signal 
+Reed-Solomon (RS) (204,188) shortened code, from the original RS (255,239) code, shall be 
+applied to each input MPEG-TS packet (188 bytes) to generate the error protected packet 
+(204 bytes). The RS coding shall also be applied to the first byte of the packet (MPEG sync word). 
+
+=====PAGE 4=====
+4 
+Rec.  ITU-R  BO.1408-1 
+– 
+Code generator polynomial: 
+g(x)  =  (x  +  λ0) (x  +  λ1) (x  +  λ2) (x  +  λ15), 
+ 
+where λ  =  02h 
+– 
+Field generator polynomial: 
+p(x)  =  x8  +  x4  +  x3  +  x2  +  1. 
+The shortened RS code may be implemented by adding 51 bytes, all set to zero, before the 
+information bytes at the input of an RS (255,239) encoder. After the RS coding procedure, these 
+null bytes shall be discarded. 
+3 
+Transport combiner 
+3.1 
+Framing structure  
+To combine the TSs, the error-protected 204-byte packets shall be assigned to the “slots” in a “data 
+frame”, as shown in Fig. 2. The slot indicates the absolute position in the data frame and is used as 
+the unit that designates the modulation scheme and MPEG-TS identification. The size of slot (the 
+number of bytes in a slot) shall be 204 bytes to keep one-to-one correspondence between slots and 
+error-protected packets. The data frame shall be composed of N slots. 
+ 
+1408-02
+FIGURE 2
+Frame structure
+16 bytes
+188 bytes
+MPEG-TS No. A
+with parity
+Slot No. 1
+Slot No. 2
+Slot No. 3
+Slot No. 4
+Slot No. P
+Slot No. P + 1
+Slot No. N – 1
+Slot No. N
+Data frame
+204 bytes
+204 bytes
+MPEG-TS No. B
+with parity
+MPEG-TS No. X
+with parity
+ 
+ 
+A super-frame is introduced to perform interleaving easily. Figure 3 shows the super-frame 
+structure. The super-frame shall be composed of M frames, where M corresponds to the depth of 
+interleaving. 
+
+=====PAGE 5=====
+ 
+Rec.  ITU-R  BO.1408-1 
+5 
+1408-03
+Super-frame
+188 bytes
+16 bytes
+Slot No. 1
+Slot No. 3
+Slot No. 4
+Slot No. N
+Interleave
+direction
+Frame No. M
+Frame No. 3
+Frame No. 2
+Frame No. 1
+Slot No. 2
+Slot No. 5
+P
+A
+R
+I
+T
+Y
+A
+T
+D
+A
+FIGURE 3
+Super-frame structure
+ 
+3.2 
+Slot assignment 
+As the spectrum efficiency or the transmissible bits per symbol varies with the combination of 
+modulation and inner code rate, the number of packets being transmitted depends on the 
+combination. Since the number of symbols to be modulated by a particular modulation scheme must 
+be an integer value, the relationship between the number of packets transmitted and the number of 
+symbols for the modulation is given by equation (1). 
+ 
+ 
+k
+k
+k
+E
+P
+B
+I
+8
+=
+ 
+(1) 
+where: 
+ 
+Ik, Pk : 
+integers 
+ 
+Ik : 
+number of symbols transmitted with the k-th combination of the modulation 
+scheme and inner code rate 
+ 
+Pk : 
+number of packets transmitted with the k-th combination of the modulation 
+scheme and inner code rate 
+ 
+Ek : 
+spectrum efficiency of the k-th combination of the modulation scheme and 
+inner code rate 
+ 
+B : 
+number of bytes per packet (= 204). 
+The number of symbols per data frame, ID, is expressed by equation (2). 
+ 
+ 
+∑
+=
+k
+k
+D
+I
+I
+ 
+(2) 
+The number of packets transmitted during a frame duration becomes maximum when all the packets 
+are modulated by the modulation-code combination having the highest spectrum efficiency among 
+the possible combinations in the system. Therefore, the number of slots provided by the system is 
+given by substituting the ID and Emax for equation (1). 
+ 
+ 
+B
+E
+I
+N
+max
+D
+8
+=
+ 
+(3) 
+
+=====PAGE 6=====
+6 
+Rec.  ITU-R  BO.1408-1 
+where N denotes the number of slots that the system provides, and Emax denotes the highest 
+spectrum efficiency of the modulation-coded combinations that the system provides. 
+When modulation-code combinations that do not have the highest spectrum efficiency are used, the 
+number of packets being transmitted becomes lower than the number of the slots provided by the 
+system. In this case, some of the slots shall be filled by dummy data to keep the frame size (the 
+number of slots in a frame) constant. These slots are called “dummy slots”. The number of dummy 
+slots Sd in a frame is obtained by the following equation (4). 
+ 
+ 
+∑
+−
+=
+k
+k
+d
+P
+N
+S
+ 
+(4) 
+In the case where multiple modulation schemes are used simultaneously, that is, part of the slots in 
+a frame are modulated by a particular modulation-code combination while the rest of slots are 
+modulated by the other combinations, the data shall be modulated from the highest spectrum 
+efficient scheme to the lowest spectrum efficient scheme among the combinations being actually 
+used. In other words, the packets transmitted with higher efficient combinations are assigned to the 
+lower numbered slots in a frame. This modulation order gives the minimum value in the bit error 
+ratio (BER) after decoding the convolutional code in a low C/N reception. 
+Figure 4 shows some examples of slot assignment when QPSK (r = 1/2, r denotes code rate), BPSK 
+(r = 1/2), and QPSK (r = 3/4) are used, respectively with trellis coded (TC) 8-PSK (r = 2/3). In the 
+examples, TC 8-PSK (r = 2/3) is assumed as the highest spectrum efficient combination of the 
+system. Since the spectrum efficiency of QPSK (r = 1/2) is half that of the TC 8-PSK, one dummy 
+slot is inserted (Fig. 4a)); since the spectrum efficiency of BPSK (r = 1/2) is a quarter that of the 
+TC 8-PSK, three dummy slots are inserted (Fig. 4b)); and since the spectrum efficiency of 
+QPSK (r = 3/4) is 3/4 that of the TC 8-PSK, one dummy slot is inserted for three active slots 
+(Fig. 4c)). 
+1408-04
+Dummy slot
+Dummy slot
+Dummy slot
+Dummy slot
+Dummy slot
+TC 8-PSK
+TC 8-PSK
+a) TC 8-PSK + QPSK (r = 1/2)
+TC 8-PSK
+c) TC 8-PSK + QPSK (r = 3/4)
+QPSK (r = 1/2)
+BPSK (r = 1/2)
+b) TC 8-PSK + BPSK (r = 1/2)
+QPSK (r = 3/4)
+QPSK (r = 3/4)
+FIGURE 4
+Example of slot assignment
+QPSK (r = 3/4)
+TC 8-PSK
+TC 8-PSK
+TC 8-PSK
+TC 8-PSK
+TC 8-PSK
+TC 8-PSK
+No. 1
+No. N – 3
+No. N – 2
+No. N – 1
+No. N
+No. 1
+No. N – 3
+No. N – 2
+No. N – 1
+No. N
+Slot No. 1
+Slot No. N – 1
+Slot No. N
+ 
+
+=====PAGE 7=====
+ 
+Rec.  ITU-R  BO.1408-1 
+7 
+4 
+Randomization for energy dispersal for main signal 
+In order to comply with ITU Radio Regulations and to ensure adequate binary transitions, the data 
+of the frame shall be randomized in accordance with the configuration depicted in Fig. 5. 
+1408-05
+1
+0
+0
+1
+0
+1
+0
+1
+0
+0
+0
+0
+0
+0
+0
+X1
+X2
+X3
+X4
+X5
+X6
+X7
+X8
+X9
+X10
+X11
+X12
+X13
+X14
+X15
+1 super-frame
+Error-protected packets
+Randomizing
+gate
+on
+on
+FIGURE 5
+Randomizer schematic diagram
+Initialization
+PRBS
+data
+off
+off
+Slot No. 1 in
+frame No. 1
+Slot No. 2 in
+frame No. 1
+Slot No. 3 in
+frame No. 1
+Slot No. 4 in
+frame No. 1
+Slot No. N in
+frame No. M
+204 bytes
+1 byte
+EX-OR
+ 
+The polynomial for the pseudo random binary sequence (PRBS) generator shall be: 
+ 
+ 
+1  +  x14  +  x15 
+Loading of the sequence “100101010000000” into the PRBS registers, as indicated in Fig. 5, shall 
+be initiated at the second byte of every super-frame. The first bit of the output of the PRBS 
+generator shall be applied to the first bit (i.e., most significant bit (MSB)) of the second byte of slot 
+No. 1 in frame No. 1. The PRBS shall be added to the data except to the first byte (MPEG sync 
+byte) of every slot. 
+5 
+Interleaving for main signal 
+Inter-frame block interleaving with a depth of M shall be applied to the randomized data, as shown 
+in Fig. 6. Slot assignment for every frame shall be identical throughout a super-frame, resulting in 
+the data being interleaved only between those transmitted with the same modulation-code 
+combination. Interleaving shall be applied except to the first byte (MPEG sync byte) of every slot. 
+Figure 6 illustrates an example of interleaving when the depth of interleaving is 8 (i.e., super-frame 
+consists of 8 frames) and two kinds of modulation-code combinations are being used. The data in 
+the original frame is read out in the inter-frame direction, i.e., in the order of A1,1; A2,1; A3,1; ..., 
+where Ai,j represents the byte data at j-th slot in i-th frame, to form the interleaved frame. The data 
+in the interleaved frame is read out in the byte direction (horizontally) and fed to the TDM 
+multiplexer. 
+
+=====PAGE 8=====
+8 
+Rec.  ITU-R  BO.1408-1 
+It is not necessary to transmit the first byte of each packet (the MPEG sync word of 47h) because 
+the timing references (frame sync words) are sent by the TMCC signal. The omitted MPEG sync 
+words have to be recovered at the receiver to perform outer decoding properly. Note that in this 
+case, B in the equations (1) and (3) should take the value 203 in order for the equation to hold true. 
+1408-06
+M
+P
+A8,1 A8,2 A8,3
+A8,203
+M
+P
+E
+G
+A7,1 A7,2 A7,3
+A7,203
+M
+P
+E
+A3,1 A3,2 A3,3
+A3,203
+Modulation A
+M
+P
+E
+A2,1 A2,2 A2,3
+A2,203
+Modulation A
+M
+P
+E
+G
+S
+Y
+N
+C
+A1,1 A1,2 A1,3
+A1,203
+B1,1 B1,2 B1,3
+B1,203
+Modulation A
+Modulation B
+M
+P
+A6,178 A7,178 A8,178
+A8,203
+M
+P
+E
+G
+A3,153 A4,153 A5,153
+A5,178
+M
+P
+E
+A7,51 A8,51 A1,52
+A1,77
+Modulation A
+M
+P
+E
+A4,26 A5,26 A6,26
+A6,51
+Modulation A
+M
+P
+E
+G
+S
+Y
+N
+C
+A1,1 A2,1 A3,1
+A3,26
+B1,1 B2,1 B3,1
+B3,26
+Modulation A
+Modulation B
+To
+TDM
+Interleave direction
+Interleave
+matrix
+1 byte
+203 bytes
+1 byte
+203 bytes
+Original frame
+Interleaved frame
+FIGURE 6
+Conceptual scheme of interleaving
+B6,51
+B1,77
+B5,178
+B8,203
+B8,203
+B7,203
+B1,203
+B1,203
+ 
+6 
+TMCC signal 
+The TMCC signal shall carry the following information: 
+– 
+modulation-code combination for each slot; 
+– 
+MPEG-TS identification for each slot; and 
+– 
+others (e.g., order of change, flag bit for emergency alert broadcasting). 
+TMCC information shall be transmitted in advance to the main signal because the main signal 
+cannot be demodulated without the TMCC information. The minimum interval for TMCC 
+information renewal shall be a duration of one super-frame. The receivers shall principally decode 
+the TMCC information at every super-frame. The TMCC signal shall convey timing references in 
+addition to the information above. 
+6.1 
+TMCC information encoding 
+The information carried by the TMCC signal shall be formatted as shown in Fig. 7. Details for each 
+item are described below. 
+
+=====PAGE 9=====
+ 
+Rec.  ITU-R  BO.1408-1 
+9 
+1408-07
+FIGURE 7
+TMCC information format
+Order of change
+Modulation code
+combination
+for each slot
+Relative TS
+ID
+for each slot
+Corresponding table
+between relative TS ID
+and MPEG-TS_ID
+Other information
+ 
+6.1.1 
+Order of change 
+The order of change is a 5-bit number that indicates renewal of the TMCC information. It shall be 
+incremented each time the TMCC is renewed. The receiver may detect just the bits and may decode 
+the TMCC information only when the bits change. The use of order of change is optionally defined 
+by the system. 
+6.1.2 
+Modulation-code combination information 
+This represents combinations of the modulation scheme and the convolutional code rate for each 
+slot. To reduce the transmission bits for this information, the information shall be encoded into the 
+format shown in Fig. 8. The maximum number of modulation-code combinations, CM, that are used 
+simultaneously shall be defined by the system taking into account the service requirements. The 
+word assignment for the modulation-code combination shall be those defined in Table 1. When the 
+number of modulation-code combinations being used is less than the maximum number specified 
+by the system, the word “1111” shall be applied to the rest of the combinations and the number of 
+slots assigned shall be set to zero. 
+1408-08
+FIGURE 8
+Encoding format for modulation-code combination information
+Combination No. 1
+Combination No. 2
+Combination No. CM
+Number of slots assigned
+to the combination
+Word assignment
+for modulation-code
+combination
+Note 1 - The order of the combinations shall be those defined in § 3.2 (slot assignment), i.e., from the highest efficient combination
+to the lowest efficient combination.
+ 
+6.1.3 
+TS identification 
+Instead of transmitting MPEG-TS_ID (16 bits) for each slot, a combination of relative TS IDs that 
+identify only the TSs being transmitted and the corresponding table between these two kinds of IDs 
+are employed. This results in reduced transmission bits. The relative TS IDs for each slot shall be 
+transmitted sequentially from slot No. 1. The maximum number of TSs transmitted simultaneously, 
+TM, shall be defined by the system. 
+
+=====PAGE 10=====
+10 
+Rec.  ITU-R  BO.1408-1 
+TABLE  1 
+Word assignment for modulation-code combination 
+ 
+1408-09
+FIGURE 9
+Data arrangement of relative TS ID information
+Relative
+TS ID for
+slot No. 1
+Relative
+TS ID for
+slot No. 2
+Relative
+TS ID for
+slot No. M
+Relative
+TS ID for
+slot No.3
+ 
+The correspondence table shall be composed of an array of numbers that are 16-bit numbers to 
+represent each MPEG-TS_ID. The numbers shall be arranged from the relative TS ID number 0 
+to TM. 
+1408-10
+FIGURE 10
+Data arrangement of correspondence table
+MPEG-TS_ID
+corresponding to
+relative TS No. 1
+MPEG-TS_ID
+corresponding to
+relative TS No. 2
+MPEG-TS_ID
+corresponding to
+relative TS No. TM
+16 bits
+16 bits
+16 bits
+ 
+6.1.4 
+Other information 
+The encoding format for the other information shall be defined appropriately by the system. 
+6.2 
+Outer coding for TMCC information 
+Since TMCC information is indispensable for the demodulation at receivers, the TMCC signal 
+should be protected with a forward error correction (FEC) level higher than the FEC used for the 
+main signal. For the same reason, it shall be transmitted with the modulation-code combination 
+having the most robustness against transmission noise. 
+Word 
+Modulation-code combination 
+0000 
+Reserved 
+0001 
+BPSK (r = 1/2) 
+0010 
+QPSK (r = 1/2) 
+0011 
+QPSK (r = 2/3) 
+0100 
+QPSK (r = 3/4) 
+0101 
+QPSK (r = 5/6) 
+0110 
+QPSK (r = 7/8) 
+0111 
+TC 8-PSK (r = 2/3) 
+1000-1110 
+Reserved 
+1111 
+Dummy 
+
+=====PAGE 11=====
+ 
+Rec.  ITU-R  BO.1408-1 
+11 
+6.3 
+Timing references 
+Two kinds of timing references are used, i.e., the frame sync word that indicates the start of each 
+frame and the frame identification words that identify the first frame (frame No. 1). These words 
+shall be transmitted by each frame. 
+After dividing the outer coded TMCC data into M blocks (where M is the number of frames in a 
+super-frame), the sync words shall be inserted in each block, as shown in Fig. 11. The sync 
+word W1 shall be inserted at the beginning of each block. The word W2 shall be inserted at the end 
+of the block that is transmitted in the first frame, while the word W3 shall be inserted at the end of 
+the remaining blocks. The words W1, W2, and W3 shall consist of 2 bytes. W1 shall be 1B95h, W2 
+shall be A340h, and W3 shall be 5CBFh (W3 is obtained by inverting the bits of W2). 
+Note that the first 6 bits of the words will be changed by the payload information (contents of the 
+main signal and/or TMCC signal) due to convolutional coding (constraint length of 7), which is 
+applied to the TMCC signal at the succeeding process stage. In other words, the first 6 bits of the 
+word are used as the termination bits of the convolutional code. Consequently, the unique bit 
+pattern in the synchronizing word is 10 bits out of 16 bits of the original word. 
+6.4 
+Channel coding for TMCC 
+The TMCC signal shall be randomized for energy dispersal. The polynomial for the PRBS 
+generator shall be the same as that for the main signal. The pseudo-random sequence shall be 
+initiated at the third byte (just after the sync word) of the first block. The first bit of the output of the 
+generator shall be applied to the first bit (i.e., MSB) of the third byte of the first block. The pseudo-
+random sequence shall be added to the data, except the timing reference words. 
+Interleaving processes may not be needed for TMCC signals consisting of a small amount of bits 
+because the effect of interleaving is limited. An appropriate interleaving process should be 
+specified, if necessary. 
+1408-11
+W1
+W2 W1
+W3 W1
+W3 W1
+W3
+FIGURE 11
+Generation of TMCC signal
+No. 1
+TMCC data
+encoding
+Outer coding
+Dividing
+into blocks
+Inserting
+sync words
+Randomization
+gate
+Initialization
+Blocks transmitted
+in frame No. 1
+Blocks transmitted
+in frame No. M
+No. 2
+No. M
+ 
+
+=====PAGE 12=====
+12 
+Rec.  ITU-R  BO.1408-1 
+7 
+Burst signal 
+To keep a constant interval between the successive bursts throughout a frame (see Fig. 12), a burst 
+signal shall be inserted in every 204 symbols of the convolutional coded main signal. Note that the 
+burst shall be inserted in every 203 symbols when the MPEG sync words are not transmitted 
+(see § 5). The duration of the burst shall be 4 symbols. The data for burst before modulation shall be 
+randomized with an appropriate random sequence for energy dispersal. The modulation scheme for 
+burst signal shall be the same as that applied to the TMCC signal (the most robust scheme against 
+transmission noise). 
+When carrier recovery in the receiver is carried out only from burst signals, the recovered carrier 
+does not always lock to the right frequency. This problem (false lock of phase-locked loop (PLL)) 
+can be solved by using the transmission signal during the TMCC duration in addition to the burst 
+signal (when the PLL locks falsely, the number of cycles of the recovered carrier in a TMCC 
+duration will be a different incorrect number, therefore, the PLL can be controlled by the difference 
+in the number of cycles). 
+8 
+TDM 
+The main signal and the TMCC signal shall be time-division multiplexed at every frame. According 
+to the modulation-code combinations designated for each slot, the time base of the multiplexed 
+signal partially (slot basis) expands/compresses due to the convolutional coding process. By this 
+operation, the dummy slots, if included in the main signal, shall be excluded from the transmission 
+signal. Figure 12 illustrates conceptual integration processes of the main, TMCC, and burst signals 
+for forming the transmission signal. 
+1408-12
+FIGURE 12
+Integration of main, TMCC and burst signals
+Sync word
+Sync word
+Slot No. N
+1 frame
+TMCC data
+TMCC signal
+Slot No. 3
+Slot No. p
+Slot No. 3
+Slot No. p
+Slot No. N
+Slot No. 2 Slot No. 3
+Slot No. p
+Main signal
+Slot No. 1 Slot No. 2
+Slot No. 1Slot No. 2
+Slot No. 1
+TMCC
+signal
+TMCC
+signal
+TMCC
+signal
+TMCC
+Main signal
+Dummy slot
+Burst signal
+Main signal
+TDM signal
+Convolutional
+coded signal
+Burst inserted
+signal
+ 
+
+=====PAGE 13=====
+ 
+Rec.  ITU-R  BO.1408-1 
+13 
+9 
+Inner coding, symbol mapping and modulation 
+The system shall allow for a variety of modulation schemes as well as a range of punctured 
+convolutional codes based on a rate 1/2 convolutional code with a constraint length of 7. The 
+generator polynomial shall be 171 octal and 133 octal (see Fig. 13). It may allow for the use of 
+TC 8-PSK (TC 8-PSK), QPSK, and BPSK. When allowing these modulation schemes, the system 
+shall allow for a code rate of 2/3 for TC 8-PSK, code rates of 1/2, 2/3, 3/4, 5/6, and 7/8 for QPSK 
+and 1/2 for BPSK. 
+Figure 13 shows the convolutional encoder while Fig. 14 shows the code puncturing and symbol 
+mapping circuitry. The punctured codes shall be those defined in Table 2. The symbol mapping 
+shall be that specified in Fig. 15. With regard to BPSK, the two encoded bits (P0 and P1) shall be 
+transmitted in the order of P1 and P0. The input bit B1 shall be used only in the case of TC 8-PSK, 
+where B1 and B0 are two successive bits of a byte data (B1 represents the higher order bit). 
+For modulations and convolutional codes other than those described above, the appropriate 
+specifications should be applied. 
+1408-13
+X
+Y
+B0
+D
+D
+D
+D
+D
+D
+D
+FIGURE 13
+Convolutional encoder
+133 octal
+171 octal
+1 bit delay
+Modulo-two adder
+ 
+1408-14
+P1
+P0
+I
+Q
+B1
+B0
+X ( 171 octal)
+Y ( 133 octal)
+FIGURE 14
+Inner coding and symbol mapping circuitry
+Convolutional
+encoding
+Code puncturing
+Symbol
+map-
+ping
+ 
+
+=====PAGE 14=====
+14 
+Rec.  ITU-R  BO.1408-1 
+TABLE  2 
+Punctured code definition 
+ 
+1408-15
+10
+00
+11
+Q
+I
+01 = (P1, P0)
+(P1/P0) = 0 
+(P1/P0) = 1 
+Q
+I
+010
+001
+101
+110
+100
+000
+111 = (W, Y, X)
+Q
+I
+011
+FIGURE 15
+Symbol mapping
+b) QPSK
+a) 8-PSK
+c) BPSK
+ 
+Prior to modulation, the I and Q signals shall be square-root raised cosine filtered for spectrum 
+shaping. The roll-off factor shall be 0.35. The baseband square-root raised cosine filter shall have a 
+theoretical function defined by the following expression: 
+ 
+)
+1(
+for
+0
+)
+(
+H
+)
+1(
+)
+1(
+for
+2
+sin
+2
+1
+2
+1
+)
+(
+H
+)
+1(
+for
+1
+)
+(
+H
+2
+/
+1
+α
++
+>
+=
+α
++
+≤
+≤
+α
+−
+
+
+
+
+
+
+
+
+
+
+
+
+α
+−
+π
++
+=
+α
+−
+<
+=
+N
+N
+N
+N
+N
+N
+f
+f
+f
+f
+f
+f
+f
+f
+f
+f
+f
+f
+f
+ 
+BPSK 
+QPSK 
+TC 8-PSK 
+1/2 
+1/2 
+2/3 
+3/4 
+5/6 
+7/8 
+2/3 
+P 
+dfree 
+P 
+dfree 
+P 
+dfree 
+P 
+dfree 
+P 
+dfree 
+P 
+dfree 
+P 
+dfree
+X = 1 
+ 
+X = 1 
+ 
+X = 10 
+ 
+X = 101 
+ 
+X = 10101 
+ 
+X = 1000101 
+ 
+X = 1 
+ 
+Y = 1 
+10 
+Y = 1 
+10 
+Y = 11 
+6 
+Y = 110 
+5 
+Y = 11010 
+4 
+Y = 1111010 
+3 
+Y = 1 
+10 
+P1 = X1 
+ 
+P1 = X1 
+ 
+P1 = X1 Y2 Y3 
+ 
+P1 = X1 Y2
+ 
+P1 = X1 Y2 Y4
+ 
+P1 = X1 Y2 Y4 Y6 
+ 
+P1 = X1 
+ 
+P0 = Y1 
+ 
+P0 = Y1 
+ 
+P0 = Y1 X3 Y4 
+ 
+P0 = Y1 X3
+ 
+P0 = Y1 X3 X5
+ 
+P0 = Y1 Y3 X5 X7 
+ 
+P0 = Y1
+ 
+1: 
+bit transmitted bit 
+0: 
+non transmitted bit 
+P: 
+puncture 
+dlibre: convolutional code free distance 
+NOTE 1 – The punctured code is initialized at the start of the successive slots that are assigned to the corresponding code. 
+
+=====PAGE 15=====
+ 
+Rec.  ITU-R  BO.1408-1 
+15 
+where: 
+ 
+fN :  
+Nyquist frequency 
+ 
+α : 
+roll-off factor = 0.35. 
+ 
+APPENDIX  1 
+ 
+TO  ANNEX  1 
+Parameters for system using TC 8-PSK modulation 
+TABLE  3 
+System parameters 
+ 
+Item 
+Parameter 
+Notation 
+Value 
+Remarks 
+1 
+Number of slots per frame 
+N 
+48 
+ 
+2 
+Number of frames per super-frame 
+M 
+8 
+ 
+3 
+Number of bytes per slots during 
+transmission 
+B 
+203 
+MPEG sync words not transmitted 
+4 
+Number of symbols per data frame 
+ID 
+38 976 
+For main signal only 
+5 
+Number of symbols per frame 
+ 
+39 936 
+Including TMCC and burst 
+6 
+Number of modulation-code 
+combinations 
+ 
+7 
+TC 8-PSK 
+(r = 2/3) 
+QPSK  
+(r = 1/2) 
+QPSK  
+(r = 2/3) 
+QPSK  
+(r = 3/4) 
+QPSK  
+(r = 5/6) 
+QPSK  
+(r = 7/8) 
+BPSK  
+(r = 1/2) 
+7 
+Highest spectrum efficient 
+modulation-code combination 
+Emax 
+2 
+(Bits/symbol) 
+8 
+Maximum number of modulation-
+code combinations used 
+simultaneously 
+CM 
+4 
+ 
+9 
+Maximum number of TSs 
+transmitted simultaneously 
+TM 
+8 
+ 
+10 
+Outer coding for TMCC 
+ 
+ 
+RS (64,48) 
+11 
+Interleaving for TMCC 
+ 
+ 
+Not applied 
+12 
+Other information by TMCC 
+ 
+ 
+Order of change 
+5 bits 
+Flag for emergency alert 
+1 bit 
+Uplink information 
+4 bits 
+Reserved 
+62 bits 
+13 
+Total bits of TMCC information 
+ 
+384 
+ 
+
+=====PAGE 16=====
+16 
+Rec.  ITU-R  BO.1408-1 
+TABLE  4 
+Payload bit rates for various RF bandwidth 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+MPEG-TS bit rates (Mbit/s)(2) 
+Band-
+width(1) 
+(MHz) 
+Symbol 
+rate 
+(MBd) 
+ 
+ 
+QPSK 
+ 
+ 
+ 
+ 
+BPSK 
+(r = 1/2) 
+(r = 1/2) 
+(r = 2/3) 
+(r = 3/4) 
+(r = 5/6) 
+(r = 7/8) 
+TC 8-PSK 
+(r = 2/3) 
+36 
+30.1 
+13.6 
+27.2 
+36.3 
+40.8 
+45.4 
+47.6 
+54.4 
+34.5 
+28.9 
+13.0 
+26.1 
+34.8 
+39.1 
+43.5 
+45.6 
+52.2 
+33 
+27.6 
+12.5 
+25.0 
+33.3 
+37.4 
+41.6 
+43.7 
+49.9 
+30 
+25.1 
+11.6 
+23.1 
+30.1 
+34.7 
+38.5 
+40.5 
+46.3 
+27 
+22.6 
+10.2 
+20.4 
+27.2 
+30.6 
+34.0 
+35.7 
+40.8 
+24 
+20.1 
+9.1 
+18.1 
+24.2 
+27.2 
+30.2 
+31.8 
+36.3 
+(1) The values express the occupied bandwidth (99% energy) when assuming typical non-linear 
+characteristics of TWT and when assuming an RF filter bandwidth (–3 dB) that is 1.3 times the symbol 
+rate. 
+(2) The values express the payload bit rates when the designated modulation-code combination is applied to 
+all slots. 

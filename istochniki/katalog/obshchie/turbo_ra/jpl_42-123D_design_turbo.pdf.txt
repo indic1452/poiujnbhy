@@ -1,0 +1,1591 @@
+
+=====PAGE 1=====
+TDA Progress Report 42-123
+November 15, 1995
+On the Design of Turbo Codes
+D. Divsalar and F. Pollara
+Communications Systems and Research Section
+In this article, we design new turbo codes that can achieve near-Shannon-limit
+performance. The design criterion for random interleavers is based on maximizing
+the eﬀective free distance of the turbo code, i.e., the minimum output weight of
+codewords due to weight-2 input sequences. An upper bound on the eﬀective free
+distance of a turbo code is derived. This upper bound can be achieved if the feedback
+connection of convolutional codes uses primitive polynomials. We review multiple
+turbo codes (parallel concatenation of q convolutional codes), which increase the
+so-called “interleaving gain” as q and the interleaver size increase, and a suitable
+decoder structure derived from an approximation to the maximum a posteriori
+probability decision rule. We develop new rate 1/3, 2/3, 3/4, and 4/5 constituent
+codes to be used in the turbo encoder structure. These codes, for from 2 to 32
+states, are designed by using primitive polynomials. The resulting turbo codes have
+rates b/n, b=1, 2, 3, 4, and n=2, 3, 4, 5, 6 and include random interleavers for better
+asymptotic performance. These codes are suitable for deep-space communications
+with low throughput and for near-Earth communications where high throughput is
+desirable. The performance of these codes is within 1 dB of the Shannon limit at a
+bit-error rate of 10−6 for throughputs from 1/15 up to 4 bits/s/Hz.
+I. Introduction
+Coding theorists have traditionally attacked the problem of designing good codes by developing codes
+with a lot of structure, which lends itself to feasible decoders, although coding theory suggests that
+codes chosen “at random” should perform well if their block sizes are large enough.
+The challenge
+to ﬁnd practical decoders for “almost” random, large codes has not been seriously considered until
+recently. Perhaps the most exciting and potentially important development in coding theory in recent
+years has been the dramatic announcement of “turbo codes” by Berrou et al. in 1993 [7]. The announced
+performance of these codes was so good that the initial reaction of the coding establishment was deep
+skepticism, but recently researchers around the world have been able to reproduce those results [15,19,8].
+The introduction of turbo codes has opened a whole new way of looking at the problem of constructing
+good codes [5] and decoding them with low complexity [7,2].
+Turbo codes achieve near-Shannon-limit error correction performance with relatively simple component
+codes and large interleavers. A required Eb/N0 of 0.7 dB was reported for a bit-error rate (BER) of 10−5
+for a rate 1/2 turbo code [7]. Multiple turbo codes (parallel concatenation of q > 2 convolutional codes)
+and a suitable decoder structure derived from an approximation to the maximum a posteriori (MAP)
+probability decision rule were reported in [9]. In [9], we explained for the ﬁrst time the turbo decoding
+99
+
+=====PAGE 2=====
+scheme for multiple codes and its relation to the optimum bit decision rule, and we found rate 1/4 turbo
+codes whose performance is within 0.8 dB of Shannon’s limit at BER=10−5.
+In this article, we (1) design the best component codes for turbo codes of various rates by maximizing
+the “eﬀective free distance of the turbo code,” i.e., the minimum output weight of codewords due to
+weight-2 input sequences; (2) describe a suitable trellis termination rule for b/n codes; (3) design low
+throughput turbo codes for power-limited channels (deep-space communications); and (4) design high-
+throughput turbo trellis-coded modulation for bandwidth-limited channels (near-Earth communications).
+II. Parallel Concatenation of Convolutional Codes
+The codes considered in this article consist of the parallel concatenation of multiple (q ≥2) con-
+volutional codes with random interleavers (permutations) at the input of each encoder. This extends
+the original results on turbo codes reported in [7], which considered turbo codes formed from just two
+constituent codes and an overall rate of 1/2.
+Figure 1 provides an example of parallel concatenation of three convolutional codes. The encoder
+contains three recursive binary convolutional encoders with m1, m2, and m3 memory cells, respectively.
+In general, the three component encoders may be diﬀerent and may even have diﬀerent rates. The ﬁrst
+component encoder operates directly (or through π1) on the information bit sequence u = (u1, · · · , uN)
+of length N, producing the two output sequences x0 and x1. The second component encoder operates
+on a reordered sequence of information bits, u2, produced by a permuter (interleaver), π2, of length N,
+and outputs the sequence x2. Similarly, subsequent component encoders operate on a reordered sequence
+of information bits. The interleaver is a pseudorandom block scrambler deﬁned by a permutation of N
+elements without repetitions: A complete block is read into the the interleaver and read out in a speciﬁed
+(ﬁxed) random order. The same interleaver is used repeatedly for all subsequent blocks.
+Figure 1 shows an example where a rate r = 1/n = 1/4 code is generated by three component codes
+with memory m1 = m2 = m3 = m = 2, producing the outputs x0 = u, x1 = u · g1/g0, x2 = u2 · g1/g0,
+and x3 = u3 · g1/g0 (here π1 is assumed to be an identity, i.e., no permutation), where the generator
+polynomials g0 and g1 have octal representation (7)octal and (5)octal, respectively. Note that various code
+rates can be obtained by proper puncturing of x1, x2, x3, and even x0 (for an example, see Section V).
+We use the encoder in Fig. 1 to generate an (n(N + m), N) block code, where the m tail bits of code 2
+and code 3 are not transmitted. Since the component encoders are recursive, it is not suﬃcient to set
+the last m information bits to zero in order to drive the encoder to the all-zero state, i.e., to terminate
+the trellis. The termination (tail) sequence depends on the state of each component encoder after N
+bits, which makes it impossible to terminate all component encoders with m predetermined tail bits.
+This issue, which had not been resolved in the original turbo code implementation, can be dealt with
+by applying a simple method described in [8] that is valid for any number of component codes. A more
+complicated method is described in [18].
+A design for constituent convolutional codes, which are not necessarily optimum convolutional codes,
+was originally reported in [5] for rate 1/n codes. In this article, we extend those results to rate b/n
+codes. It was suggested (without proof) in [2] that good random codes are obtained if ga is a primitive
+polynomial. This suggestion, used in [5] to obtain “good” rate 1/2 constituent codes, will be used in this
+article to obtain “good” rate 1/3, 2/3, 3/4, and 4/5 constituent codes. By “good” codes we mean codes
+with a maximum eﬀective free distance def, those codes that maximize the minimum output weight for
+weight-2 input sequences, as discussed in [9], [13], and [5] (because this weight tends to dominate the
+performance characteristics over the region of interest).
+100
+
+=====PAGE 3=====
+u
+x0
+x1
+x2
+x3
+π2
+D
+D
+ENCODER 1
+D
+D
+ENCODER 2
+D
+D
+ENCODER 3
+u3
+u2
+π3
+π1
+u1
+Fig. 1.  Example of encoder with three codes.
+III. Design of Constituent Encoders
+As discussed in the previous section, maximizing the weight of output codewords corresponding to
+weight-2 data sequences gives the best BER performance for a moderate bit signal-to-noise ratio (SNR)
+as the random interleaver size N gets large. In this region, the dominant term in the expression for bit
+error probability of a turbo code with q constituent encoders is
+Pb ≈
+β
+N q−1 Q
+
+
+
+v
+u
+u
+u
+t2r Eb
+N0
+
+
+q
+X
+j=1
+dp
+j,2 + 2
+
+
+
+
+
+where dp
+j,2 is the minimum parity-weight (weight due to parity checks only) of the codewords at the
+output of the jth constituent code due to weight-2 data sequences, and β is a constant independent of
+N. Deﬁne dj,2 = dp
+j,2 + 2 as the minimum output weight including parity and information bits, if the jth
+constituent code transmits the information (systematic) bits. Usually one constituent code transmits the
+information bits (j = 1), and the information bits of others are punctured. Deﬁne def = Pq
+j=1 dp
+j,2 + 2 as
+the eﬀective free distance of the turbo code and 1/N q−1 as the “interleaver’s gain.” We have the following
+bound on dp
+2 for any constituent code.
+Theorem 1. For any r = b/(b + 1) recursive systematic convolutional encoder with generator matrix
+G =
+
+
+h1(D)
+h0(D)
+h2(D)
+h0(D)
+Ib×b
+·
+·
+hb(D)
+h0(D)
+
+
+101
+
+=====PAGE 4=====
+where Ib×b is a b × b identity matrix, deg[hi(D)] ≤m, hi(D)̸ = h0(D), i = 1, 2, · · · , b, and h0(D) is a
+primitive polynomial of degree m, the following upper bound holds:
+dp
+2 ≤⌊2m−1
+b
+⌋+ 2
+Proof. In the state diagram of any recursive systematic convolutional encoder with generator matrix
+G, there exist at least two nonoverlapping loops corresponding to all-zero input sequences. If h0(D) is a
+primitive polynomial, there are two loops: one corresponding to zero-input, zero-output sequences with
+branch length one, and the other corresponding to zero-input but nonzero-output sequences with branch
+length 2m −1, which is the period of maximal length (ML) linear feedback shift registers (LFSRs) [14]
+with degree m. The parity codeword weight of this loop is 2m−1, due to the balance property [14] of ML
+sequences. This weight depends only on the degree of the primitive polynomial and is independent of
+hi(D), due to the invariance to initial conditions of ML LFSR sequences. In general, the output of the
+encoder is a linear function of its input and current state. So, for any output we may consider, provided
+it depends on at least one component of the state and it is not h0(D), the weight of a zero-input loop is
+2m−1, by the shift-and-add property of ML LFSRs.
++
++
+A
+u2
+u1
+A
+B
+B
+h 20
+h 21
+h 22
+h 23
+x2
+h 10
+h 11
+h 12
+h 13
+x1
+h 00
+h 01
+h 02
+h 03
+x0
+a 10
+a 20
+a 11
+a 21
+a 12
+a 22
+D
++
++
++
+D
+D
++
++
++
++
++
+Fig. 2.  Canonical representation of a rate (b + 1)/b encoder (b = 2, m = 3).
+Consider the canonical representation of a rate (b + 1)/b encoder [20] as shown in Fig. 2 when the
+switch is in position A. Let Sk(D) be the state of the encoder at time k with coeﬃcients Sk
+0 , Sk
+1 , · · · , Sk
+m−1,
+where the output of the encoder at time k is
+X = Sk−1
+m−1 +
+b
+X
+i=1
+uk
+i hi,m
+(1)
+The state transition for input uk
+1, · · · , uk
+b at time k is given by
+Sk(D) =
+" b
+X
+i=1
+uk
+i hi(D) + DSk−1(D)
+#
+mod h0(D)
+(2)
+From the all-zero state, we can enter the zero-input loop with nonzero input symbols u1, · · · , ub at state
+102
+
+=====PAGE 5=====
+S1(D) =
+b
+X
+i=1
+uihi(D) mod h0(D)
+(3)
+From the same nonzero input symbol, we leave exactly at state S2m−1(D) back to the all-zero state,
+where S2m−1(D) satisﬁes
+S1(D) = DS2m−1(D) mod h0(D)
+(4)
+i.e., S2m−1(D) is the “predecessor” to state S1(D) in the zero-input loop. If the most signiﬁcant bit of
+the predecessor state is zero, i.e., S2m−1
+m−1 = 0, then the branch output for the transition from S2m−1(D)
+to S1(D) is zero for a zero-input symbol. Now consider any weight-1 input symbol, i.e., uj = 1 for j = i
+and uj = 0 for j̸ = i, j = 1, 2, · · · , b. The question is: What are the conditions on the coeﬃcients hi(D)
+such that, if we enter with a weight-1 input symbol into the zero-input loop at state S1(D), the most
+signiﬁcant bit of the “predecessor” state S2m−1(D) is zero. Using Eqs. (3) and (4), we can establish that
+hi0 + hi,m = 0
+(5)
+Obviously, when we enter the zero-input loop from the all-zero state and when we leave this loop to go
+back to the all-zero state, we would like the parity output to be equal to 1. From Eqs. (1) and (5), we
+require
+hi0 = 1
+hi,m = 1
+
+
+
+
+
+(6)
+With this condition, we can enter the zero-input loop with a weight-1 symbol at state S1(D) and then
+leave this loop from state S2m−1(D) back to the all-zero state, for the same weight-1 input. The parity
+weight of the codeword corresponding to weight-2 data sequences is then 2m−1 + 2, where the ﬁrst term
+is the weight of the zero-input loop and the second term is due to the parity bit appearing when entering
+and leaving the loop. If b = 1, the proof is complete, and the condition to achieve the upper bound is
+given by Eq. (6). For b = 2, we may enter the zero-input loop with u = 10 at state S1(D) and leave the
+loop to the zero state with u = 01 at some state Sj(D). If we can choose Sj(D) such that the output
+weight of the zero-input loop from S1(D) to Sj(D) is exactly 2m−1/2, then the output weight of the
+zero-input loop from Sj+1(D) to S2m−1(D) is exactly 2m−1/2, and the minimum weight of codewords
+corresponding to some weight-2 data sequences is
+2m−1
+2
++ 2
+In general, for any b, if we extend the procedure for b = 2, the minimum weight of the codewords
+corresponding to weight-2 data sequences is
+⌊2m−1
+b
+⌋+ 2
+(7)
+where ⌊x⌋is the largest integer less than or equal to x. Clearly, this is the best achievable weight for the
+minimum-weight codeword corresponding to weight-2 data sequences. This upper bound can be achieved
+103
+
+=====PAGE 6=====
+if the maximum run length of 1’s (m) in the zero-input loop does not exceed ⌊2m−1/b⌋. If m > ⌊2m−1/b⌋,
+then the minimum weight of the codewords corresponding to weight-2 data sequences will be strictly less
+than ⌊2m−1/b⌋+ 2.
+The run property of ML LFSRs [14] can help us in designing codes achieving this upper bound.
+Consider only runs of 1’s with length l for 0 < l < m −1; then there are 2m−2−l runs of length l, no runs
+of length m −1, and only one run of length m.
+Ë
+Corollary 1. For any r = b/n recursive systematic convolutional code with b inputs, b systematic
+outputs, and n −b parity output bits using a primitive feedback generator, we have
+dp
+2 ≤⌊(n −b)2m−1
+b
+⌋+ 2(n −b)
+(8)
+Proof. The total output weight of a zero-input loop due to parity bits is (n −b)2M−1. In this zero-
+input loop, the largest minimum weight (due to parity bits) for entering and leaving the loop with any
+weight-1 input symbol is [(n −b)2M−1]/b. The output weight due to parity bits for entering and leaving
+the zero-input loop (both into and from the all-zero state) is 2(n −b).
+Ë
+There is an advantage to using b > 1, since the bound in Eq. (8) for rate b/bn codes is larger than the
+bound for rate 1/n codes. Examples of codes are found that meet the upper bound for b/bn codes.
+A. Best Rate b/b + 1 Constituent Codes
+We obtained the best rate 2/3 codes as shown in Table 1, where d2 = dp
+2 + 2. The minimum-weight
+codewords corresponding to weight-3 data sequences are denoted by d3, dmin is the minimum distance
+of the code, and k = m + 1 in all the tables. By “best” we mean only codes with a large d2 for a given
+m that result in a maximum eﬀective free distance. We obtained the best rate 3/4 codes as shown in
+Table 2 and the best rate 4/5 codes as shown in Table 3.
+Table 1. Best rate 2/3 constituent codes.
+k
+Code generator
+d2
+d3
+dmin
+3
+h0 = 7
+h1 = 3
+h2 = 5
+4
+3
+3
+4
+h0 = 13
+h1 = 15
+h2 = 17
+5
+4
+4
+5
+h0 = 23
+h1 = 35
+h2 = 27
+8
+5
+5
+h0 = 23
+h1 = 35
+h2 = 33
+8
+5
+5
+6
+h0 = 45
+h1 = 43
+h2 = 61
+12
+6
+6
+Table 2. Best rate 3/4 constituent codes.
+k
+Code generator
+d2
+d3
+dmin
+3
+h0 = 7
+h1 = 5
+h2 = 3
+h3 = 1
+3
+3
+3
+h0 = 7
+h1 = 5
+h2 = 3
+h3 = 4
+3
+3
+3
+h0 = 7
+h1 = 5
+h2 = 3
+h3 = 2
+3
+3
+3
+4
+h0 = 13
+h1 = 15
+h2 = 17
+h3 = 11
+4
+4
+4
+5
+h0 = 23
+h1 = 35
+h2 = 33
+h3 = 25
+5
+4
+4
+h0 = 23
+h1 = 35
+h2 = 27
+h3 = 31
+5
+4
+4
+h0 = 23
+h1 = 35
+h2 = 37
+h3 = 21
+5
+4
+4
+h0 = 23
+h1 = 27
+h2 = 37
+h3 = 21
+5
+4
+4
+104
+
+=====PAGE 7=====
+Table 3. Best rate 4/5 constituent codes.
+k
+Code generator
+d2
+d3
+dmin
+4
+h0 = 13
+h1 = 15
+h2 = 17
+h3 = 11
+h4 = 7
+4
+3
+3
+h0 = 13
+h1 = 15
+h2 = 17
+h3 = 11
+h4 = 5
+4
+3
+3
+5
+h0 = 23
+h1 = 35
+h2 = 33
+h3 = 37
+h4 = 31
+5
+4
+4
+h0 = 23
+h1 = 35
+h2 = 27
+h3 = 37
+h4 = 31
+5
+4
+4
+h0 = 23
+h1 = 35
+h2 = 21
+h3 = 37
+h4 = 31
+5
+4
+4
+A
+u
+B
+g 20
+g 21
+g 22
+g 23
+x2
+g 10
+g 11
+g 12
+g 13
+x1
+g 00
+g 01
+g 02
+g 03
+x0
++
+D
+D
+D
++
++
++
++
++
++
++
++
+Fig. 3.  Rate 1/n code.
+B. Trellis Termination for b/n Codes
+Trellis termination is performed (for b = 2, as an example) by setting the switch shown in Fig. 2
+in position B. The tap coeﬃcients ai0, · · · , ai,m−1 for i = 1, 2, · · · , b can be obtained by repeated use of
+Eq. (2) and by solving the resulting equations. The trellis can be terminated in state zero with at least
+m/b and at most m clock cycles. When Fig. 3 is extended to multiple input bits (b parallel feedback shift
+registers), a switch should be used for each input bit.
+C. Best Punctured Rate 1/2 Constituent Codes
+A rate 2/3 constituent code can be derived by puncturing the parity bit of a rate 1/2 recursive
+systematic convolutional code using, for example, a pattern P = [10]. A puncturing pattern P has zeros
+where parity bits are removed.
+Consider a rate 1/2 recursive systematic convolutional code (1, g1(D)/(g0(D)). For an input u(D),
+the parity output can be obtained as
+x(D) = u(D)g1(D)
+g0(D)
+(9)
+We would like to puncture the output x(D) using, for example, the puncturing pattern P[10] (decimation
+by 2) and obtain the generator polynomials h0(D), h1(D), and h2(D) for the equivalent rate 2/3 code:
+G =
+
+
+1
+0
+h1(D)
+h0(D)
+0
+1
+h2(D)
+h0(D)
+
+
+105
+
+=====PAGE 8=====
+We note that any polynomial f(D) = P aiDi, ai ∈GF(2), can be written as
+f(D) = f1(D2) + Df2(D2)
+(10)
+where f1(D2) corresponds to the even power terms of f(D), and Df2(D2) corresponds to the odd power
+terms of f(D). Now, if we use this approach and apply it to the u(D), g1(D), and g0(D), then we can
+rewrite Eq. (9) as
+x1
+¡
+D2¢
++ Dx2
+¡
+D2¢
+=
+¡
+u1
+¡
+D2¢
++ Du2
+¡
+D2¢¢ ¡
+g11
+¡
+D2¢
++ Dg12
+¡
+D2¢¢
+g01 (D2) + Dg02 (D2)
+(11)
+where x1(D) and x2(D) correspond to the punctured output x(D) using puncturing patterns P[10] and
+P[01], respectively. If we multiply both sides of Eq. (11) by (g01(D2) + Dg02(D2)) and equate the even
+and the odd power terms, we obtain two equations in two unknowns, namely x1(D) and x2(D). For
+example, solving for x1(D), we obtain
+x1(D) = u1(D)h1(D)
+h0(D) + u2(D)h2(D)
+h0(D)
+(12)
+where h0(D) = g0(D) and
+h1(D) = g11(D)g01(D) + Dg12(D)g02(D)
+h2(D) = Dg12(D)g01(D) + Dg11(D)g02(D)
+
+
+
+
+
+(13)
+From the second equation in Eq. (13), it is clear that h2,0 = 0. A similar method can be used to show
+that for P[01] we get h1,m = 0. These imply that the condition of Eq. (6) will be violated. Thus, we have
+the following theorem.
+Theorem 2. If the parity puncturing pattern is P = [10] or P = [01], then it is impossible to achieve
+the upper bound on d2 = dp
+2 + 2 for rate 2/3 codes derived by puncturing rate 1/2 codes.
+The best rate 1/2 constituent codes with puncturing pattern P = [10] that achieve the largest d2 are
+given in Table 4.
+Table 4. Best rate 1/2 punctured
+constituent codes.
+k
+Code generator
+d2
+d3
+dmin
+3
+g0 = 7
+g1 = 5
+4
+3
+3
+4
+g0 = 13
+g1 = 15
+5
+4
+4
+5
+g0 = 23
+g1 = 37
+7
+4
+4
+g0 = 23
+g1 = 31
+7
+4
+4
+g0 = 23
+g1 = 33
+6
+5
+5
+g0 = 23
+g1 = 35
+6
+4
+4
+g0 = 23
+g1 = 27
+6
+4
+4
+106
+
+=====PAGE 9=====
+D. Best Rate 1/n Constituent Codes
+For rate 1/n codes, the upper bound in Eq. (7) for b = 1 reduces to
+dp
+2 ≤(n −1)(2m−1 + 2)
+This upper bound was originally derived in [5], where the best rate 1/2 constituent codes meeting the
+bound were obtained. Here we present a simple proof based on our previous general result on rate b/n
+codes. Then we obtain the best rate 1/3 and 1/4 codes.
+Theorem 3. For rate 1/n recursive systematic convolutional codes with primitive feedback, we have
+dp
+2 ≤(n −1)(2m−1 + 2)
+Proof. Consider a rate 1/n code, shown in Fig. 3. In this ﬁgure, g0(D) is assumed to be a primitive
+polynomial. As discussed above, the output weight of the zero-input loop for parity bits is 2m−1 inde-
+pendent of the choice of gi(D), i = 1, 2, · · · , n −1, provided that gi(D)̸ = 0 and that gi(D)̸ = g0(D), by
+the shift-and-add and balance properties of ML LFSRs. If S(D) represents the state polynomial, then
+we can enter the zero-input loop only at state S1(D) = 1 and leave the loop to the all-zero state at state
+S2m−1(D) = Dm−1. The ith parity output on the transition S2m−1(D) →S1(D) with a zero input bit is
+xi = gi0 + gi,m
+If gi0 = 1 and gi,m = 1 for i = 1, · · · , n −1, the output weight of the encoder for that transition is zero.
+The output weight due to the parity bits when entering and leaving the zero-input loop is (n −1) for
+each case. In addition, the output weight of the zero-input loop will be (n −1)2m−1 for (n −1) parity
+bits. Thus, we established the upper bound on dp
+2 for rate 1/n codes.
+Ë
+We obtained the best rate 1/3 and 1/4 codes without parity repetition, as shown in Tables 5 and 6,
+where d2 = dp
+2 + 2 represents the minimum output weight given by weight-2 data sequences. The best
+rate 1/2 constituent codes are given by g0 and g1 in Table 5, as was also reported in [5].
+Table 5. Best rate 1/3 constituent codes.
+k
+Code generator
+d2
+d3
+dmin
+2
+g0 = 3
+g1 = 2
+g2 = 1
+4
+∞
+4
+3
+g0 = 7
+g1 = 5
+g2 = 3
+8
+7
+7
+4
+g0 = 13
+g1 = 17
+g2 = 15
+14
+10
+10
+5
+g0 = 23
+g1 = 33
+g2 = 37
+22
+12
+10
+g0 = 23
+g1 = 25
+g2 = 37
+22
+11
+11
+107
+
+=====PAGE 10=====
+Table 6. Best rate 1/4 constituent codes.
+k
+Code generator
+d2
+d3
+dmin
+4
+g0 = 13
+g1 = 17
+g2 = 15
+g3 = 11
+20
+12
+12
+5
+g0 = 23
+g1 = 35
+g2 = 27
+g3 = 37
+32
+16
+14
+g0 = 23
+g1 = 33
+g2 = 27
+g3 = 37
+32
+16
+14
+g0 = 23
+g1 = 35
+g2 = 33
+g3 = 37
+32
+16
+14
+g0 = 23
+g1 = 33
+g2 = 37
+g3 = 25
+32
+15
+15
+E. Recursive Systematic Convolutional Codes With a Nonprimitive Feedback Polynomial
+So far, we assumed that the feedback polynomial for recursive systematic convolutional code is a
+primitive polynomial. We could ask whether it is possible to exceed the upper bound given in Theorem 1
+and Corollary 1 by using a nonprimitive polynomial. The answer is negative, thanks to a new theorem
+by Solomon W. Golomb (Appendix).
+Theorem 4.1 For any rate 1/n linear recursive systematic convolutional code generated by a non-
+primitive feedback polynomial, the upper bound in Theorem 3 cannot be achieved, i.e.,
+dp
+2 < (n −1)(2m−1 + 2)
+Proof. Using the results of Golomb (see the Appendix) for a nonprimitive feedback polynomial, there
+are more than two cycles (zero-input loops) in LFSR. The “zero cycle” has weight zero, and the weights
+of other cycles are nonzero. Thus, the weight of each cycle due to the results of the Appendix is strictly
+less than (n −1)2m−1. If we enter from the all-zero state with input weight-1 to one of the cycles of the
+shift register, then we have to leave the same cycle to the all-zero state with input weight-1, as discussed
+in Theorem 1. Thus, dp
+2 < (n −1)(2m−1 + 2).
+Ë
+Theorem 5.
+For any rate b/b + 1 linear recursive systematic convolutional code generated by a
+nonprimitive feedback polynomial, the upper bound in Theorem 1 cannot be exceeded, i.e.,
+dp
+2 ≤⌊2m−1
+b
+⌋+ 2
+Proof. Again using the results of the Appendix, there is a “zero cycle” with weight zero and at least
+two cycles with nonzero weights, say q cycles with weights w1, w2, · · · , wq. The sum of the weights of all
+cycles is exactly 2m−1, i.e., P wi = 2m−1. For a b/b + 1 code, we have b weight-1 symbols. Suppose that
+with bi of these weight-1 symbols we enter from the all-zero state to the ith cycle with weight wi; then we
+have to leave the same cycle to the all-zero state with the same bi symbols for i = 1, 2, · · · , q, such that
+P bi = b. Based on the discussion in the proof of Theorem 1, the largest achievable minimum output
+weight of codewords corresponding to weight-2 sequences is min(w1/b1, w2/b2, · · · , wq/bq) + 2. But it is
+easy to show that min(w1/b1, w2/b2, · · · , wq/bq) ≤(P wi/P bi) = 2m−1/b.
+Ë
+1 The proofs of Theorems 4 and 5 are based on a result by S. W. Golomb (see the Appendix), University of Southern
+California, Los Angeles, California, 1995.
+Theorem 4 and Corollary 2 were proved for more general cases when the
+code is generated by multiple LFSRs by R. J. McEliece, Communications Systems and Research Section, Jet Propulsion
+Laboratory, Pasadena, California, and California Institute of Technology, Pasadena, California, 1995, using a state-space
+approach.
+108
+
+=====PAGE 11=====
+Corollary 2. For any rate b/n linear recursive systematic convolutional code generated by a non-
+primitive feedback polynomial, the upper bound in Corollary 1 cannot be exceeded.
+Proof. The proof is similar to the Proof of Theorem 5, but now P wi = (n −b)2m−1.
+Ë
+IV. Turbo Decoding for Multiple Codes
+In [9] we described a new turbo decoding scheme for q codes based on approximating the optimum
+bit decision rule. The scheme is based on solving a set of nonlinear equations given by (q = 3 is used to
+illustrate the concept)
+˜L0k = 2ρy0k
+˜L1k = log
+P
+u:uk=1 P(y1|u) Q
+j̸=k euj(˜L0j+˜L2j+˜L3j)
+P
+u:uk=0 P(y1|u) Q
+j̸=k euj(˜L0j+˜L2j+˜L3j)
+˜L2k = log
+P
+u:uk=1 P(y2|u) Q
+j̸=k euj(˜L0j+˜L1j+˜L3j)
+P
+u:uk=0 P(y2|u) Q
+j̸=k euj(˜L0j+˜L1j+˜L3j)
+˜L3k = log
+P
+u:uk=1 P(y3|u) Q
+j̸=k euj(˜L0j+˜L1j+˜L2j)
+P
+u:uk=0 P(y3|u) Q
+j̸=k euj(˜L0j+˜L1j+˜L2j)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(14)
+for k = 1, 2, · · · , N. In Eq. (14), ˜Lik represents extrinsic information and yi, i = 0, 1, 2, 3 are the received
+observation vectors corresponding to xi, i = 0, 1, 2, 3 (see Fig. 1), where ρ =
+p
+2rEb/N0, if we assume
+the channel noise samples have unit variance per dimension. The ﬁnal decision is then based on
+Lk = ˜L0k + ˜L1k + ˜L2k + ˜L3k
+(15)
+which is passed through a hard limiter with a zero threshold.
+The above set of nonlinear equations is derived from the optimum bit decision rule, i.e.,
+Lk = log
+P
+u:uk=1 P(y0|u)P(y1|u)P(y2|u)P(y3|u)
+P
+u:uk=0 P(y0|u)P(y1|u)P(y2|u)P(y3|u)
+(16)
+using the following approximation:
+P(u|yi) ≈
+N
+Y
+k=1
+euk ˜Lik
+1 + e˜Lik
+(17)
+Note that, in general, P(u|yi) is not separable. The smaller the Kullback cross entropy [3,17] between
+right and left distributions in Eq. (17), the better is the approximation and, consequently, the closer is
+turbo decoding to the optimum bit decision.
+109
+
+=====PAGE 12=====
+We attempted to solve the nonlinear equations in Eq. (14) for ˜L1, ˜L2, and ˜L3 by using the iterative
+procedure
+˜L(m+1)
+1k
+= α(m)
+1
+log
+P
+u:uk=1 P(y1|u) Q
+j̸=k euj(˜L0j+˜L(m)
+2j
++˜L(m)
+3j
+)
+P
+u:uk=0 P(y1|u) Q
+j̸=k euj(˜L0j+˜L(m)
+2j
++˜L(m)
+3j
+)
+(18)
+for k = 1, 2, · · · , N, iterating on m. Similar recursions hold for ˜L(m)
+2k
+and ˜L(m)
+3k . The gain α(m)
+1
+should
+be equal to one, but we noticed experimentally that better convergence can be obtained by optimizing
+this gain for each iteration, starting from a value less than 1 and increasing toward 1 with the iterations,
+as is often done in simulated annealing methods.
+We start the recursion with the initial condition2
+˜L(0)
+1
+= ˜L(0)
+2
+= ˜L(0)
+3
+= ˜L0. For the computation of Eq. (18), we use a modiﬁed MAP algorithm3 with
+permuters (direct and inverse) where needed, as shown in Fig. 4. The MAP algorithm [1] always starts
+and ends at the all-zero state since we always terminate the trellis as described in [8]. We assumed π1 = I
+(identity); however, any π1 can be used. The overall decoder is composed of block decoders connected
+as in Fig. 4, which can be implemented as a pipeline or by feedback. In [10] and [11], we proposed an
+alternative version of the above decoder that is more appropriate for use in turbo trellis-coded modulation,
+i.e., set ˜L0 = 0 and consider y0 as part of y1. If the systematic bits are distributed among encoders, we
+use the same distribution for y0 among the MAP decoders.
+Σ
+DELAY
+L0
+L3(m)
+L2(m)
+L1k
+L1(m + 1)
+y1
+π1
++
+MAP 1
+OR
+SOVA 1
+π1–1
+DELAY
+L1(m)
+L3(m)
+L2k
+L2(m + 1)
+y2
+π2
++
+MAP 2
+OR
+SOVA 2
+π2–1
++
++
+–
+–
+DELAY
+L2(m)
+L1(m)
+L3k
+L3(m + 1)
+y3
+π3
++
+MAP 3
+OR
+SOVA 3
+π3–1
++
+–
+DECODED BITS
+Lk
+Fig. 4.  Multiple turbo decoder structure.
+~
+~
+~
+~
+~
+~
+~
+~
+~
+~
+2 Note that the components of the ˜Li’s corresponding to the tail bits, i.e., ˜Lik for k = N + 1, · · · , N + Mi, are set to zero
+for all iterations.
+3 The modiﬁed MAP algorithm is described in S. Benedetto, D. Divsalar, G. Montorsi, and F. Pollara, “Soft-Output
+Decoding Algorithms in Iterative Decoding of Parallel Concatenated Convolutional Codes,” submitted to ICC ’96.
+110
+
+=====PAGE 13=====
+At this point, further approximation for turbo decoding is possible if one term corresponding to a
+sequence u dominates other terms in the summation in the numerator and denominator of Eq. (18).
+Then the summations in Eq. (18) can be replaced by “maximum” operations with the same indices, i.e.,
+replacing P
+u:uk=i with
+max
+u:uk=i for i = 0, 1. A similar approximation can be used for ˜L2k and ˜L3k in
+Eq. (14). This suboptimum decoder then corresponds to a turbo decoder that uses soft output Viterbi
+(SOVA)-type decoders rather than MAP decoders. Further approximations, i.e., replacing P with max,
+can also be used in the MAP algorithm.4
+A. Decoding Multiple Input Convolutional Codes
+If the rate b/n constituent code is not equivalent to a punctured rate 1/n′ code or if turbo trellis-coded
+modulation is used, we can ﬁrst use the symbol MAP algorithm5 to compute the log-likelihood ratio of
+a symbol u = u1, u2, · · · , ub given the observation y as
+λ(u) = log P(u|y)
+P(0|y)
+where 0 corresponds to the all-zero symbol. Then we obtain the log-likelihood ratios of the jth bit within
+the symbol by
+L(uj) = log
+P
+u:uj=1 eλ(u)
+P
+u:uj=0 eλ(u)
+In this way, the turbo decoder operates on bits, and bit, rather than symbol, interleaving is used.
+V. Performance and Simulation Results
+The BER performance of these codes was evaluated by using transfer function bounds [4,6,12]. In [12],
+it was shown that transfer function bounds are very useful for SNRs above the cutoﬀrate threshold and
+that they cannot accurately predict performance in the region between cutoﬀrate and capacity. In this
+region, the performance was computed by simulation.
+Figure 5 shows the performance of turbo codes with m iterations and an interleaver size of N = 16, 384.
+The following codes are used as examples:
+(1) Rate 1/2 Turbo Codes.
+Code A: Two 16-state, rate 2/3 constituent codes are used to construct a rate 1/2 turbo
+code as shown in Fig. 6. The (worst-case) minimum codeword weights, di, corresponding
+to a weight-i input sequence for this code are def=14, d3=7, d4=8, d5=5=dmin, and
+d6=6.
+4 Ibid.
+5 Ibid.
+111
+
+=====PAGE 14=====
+Code B: A rate 1/2 turbo code also was constructed by using a diﬀerential encoder and a
+32-state, rate 1/2 code, as shown in Fig. 7. This is an example where the systematic bits
+for both encoders are not transmitted. The (worst-case) minimum codeword weights, di,
+corresponding to a weight-i input sequence for this code are def=19, d4=6=dmin, d6=9,
+d8=8, and d10=11. The output weights for odd i are large.
+(2) Rate 1/3 Turbo Code.
+Code C: Two 16-state, rate 1/2 constituent codes are used to construct a rate 1/3 turbo
+code as shown in Fig. 8. The (worst-case) minimum codeword weights, di, corresponding
+to a weight-i input sequence for this code are def=22, d3 = 11, d4=12, d5 = 9 = dmin,
+d6=14, and d7=15.
+(3) Rate 1/4 Turbo Code.
+Code D: Two 16-state, rate 1/2 and rate 1/3 constituent codes are used to construct
+a rate 1/4 turbo code, as shown in Fig. 9, with def = 32, d3 = 15 = dmin, d4 = 16,
+d5 = 17, d6 = 16, and d7 = 19.
+(4) Rate 1/15 Turbo Code.
+Code E: Two 16-state, rate 1/8 constituent codes are used to construct a rate 1/15
+turbo code, (1, g1/g0, g2/g0, g3/g0, g4/g0, g5/g0, g6/g0, g7/g0) and (g1/g0, g2/g0, g3/g0, g4/
+g0, g5/g0, g6/g0, g7/g0), with g0 = (23)octal, g1 = (21)octal, g2 = (25)octal, g3 = (27)octal,
+g4 = (31)octal, g5 = (33)octal, g6 = (35)octal, and g7 = (37)octal.
+The (worst-case)
+minimum codeword weights, di, corresponding to a weight i input sequence for this code
+are def=142, d3=39=dmin, d4=48, d5=45, d6=50, and d7=63.
+The simulation performance of other codes reported in this article is still in progress.
+10–6
+–0.8
+–1.0
+–0.6
+–0.4
+–0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+10–5
+10–4
+10–3
+10–2
+10–1
+100
+CODE F
+RATE = 1/15
+m = 12
+CODE C
+RATE = 1/3
+m = 11
+CODE B
+RATE = 1/2
+m = 18
+CODE A
+RATE = 1/2
+m = 12
+BER
+Eb /N 0, dB
+Fig. 5.  Performance of turbo codes.
+CODE D
+RATE = 1/4
+m = 13
+112
+
+=====PAGE 15=====
++
++
++
++
++
++
++
+D
+D
+D
+D
+π2
+π1
++
+u2
+u1
+A
+B
+A
+B
+A
+A
+B
+B
++
+D
+D
++
+D
++
+D
++
++
++
+Fig. 6.  Rate 1/2 turbo code constructed from two codes (h 0 = 23, h 1 = 35, h 2 = 33).
+INPUT DATA
+DIFFERENTIAL ENCODER
+D
+D
+D
+D
+D
+D
+16,384-bit
+INTERLEAVER
+Fig. 7.  Rate 1/2 turbo code constructed from a differential encoder and code
+(g 0 = 67, g 1 = 73).
+VI. Turbo Trellis-Coded Modulation
+A pragmatic approach for turbo codes with multilevel modulation was proposed in [16].
+Here we
+propose a diﬀerent approach that outperforms the results in [16] when M-ary quadrature amplitude
+modulation (M-QAM) or M-ary phase shift keying (MPSK) modulation is used.
+A straightforward
+method for the use of turbo codes for multilevel modulation is ﬁrst to select a rate b/(b + 1) constituent
+code, where the outputs are mapped to a 2b+1-level modulation based on Ungerboeck’s set partitioning
+method [21] (i.e., we can use Ungerboeck’s codes with feedback). If MPSK modulation is used, for every b
+bits at the input of the turbo encoder, we transmit two consecutive 2b+1 phase-shift keying (PSK) signals,
+one per each encoder output. This results in a throughput of b/2 bits/s/Hz. If M-QAM modulation is
+113
+
+=====PAGE 16=====
+INPUT DATA
+D
+D
+D
+D
+D
+D
+D
+D
+16,384-bit
+INTERLEAVER
+Fig. 8.  Rate 1/3 turbo code constructed from two identical codes
+(g 0 = 23, g 1 = 33).
+16,384-bit
+INTERLEAVER
+INPUT DATA
+D
+D
+D
+D
+D
+D
+D
+Fig. 9.  Rate 1/4 turbo code constructed from two codes
+(g 0 = 23, g 1 = 33) and (g 0 = 23, g 1 = 37, g 2 = 25).
+D
+used, we map the b + 1 outputs of the ﬁrst component code to the 2b+1 in-phase levels (I-channel) of a
+22b+2-QAM signal set and the b + 1 outputs of the second component code to the 2b+1 quadrature levels
+(Q-channel). The throughput of this system is b bits/s/Hz.
+First, we note that these methods require more levels of modulation than conventional trellis-coded
+modulation (TCM), which is not desirable in practice. Second, the input information sequences are used
+twice in the output modulation symbols, which also is not desirable. An obvious remedy is to puncture
+the output symbols of each trellis code and select the puncturing pattern such that the output symbols
+of the turbo code contain the input information only once. If the output symbols of the ﬁrst encoder are
+114
+
+=====PAGE 17=====
+punctured, for example as 101010 · · ·, the puncturing pattern of the second encoder must be nonuniform
+to guarantee that all information symbols are used, and it depends on the particular choice of interleaver.
+Now, for example, for 2b+1 PSK, a throughput b can be achieved. This method has two drawbacks: It
+complicates the encoder and decoder, and the reliability of punctured symbols may not be fully estimated
+at the decoder. A better remedy, for rate b/(b + 1) (b even) codes, is discussed in the next section.
+A. A New Method to Construct Turbo TCM
+For a q = 2 turbo code with rate b/(b + 1) constituent encoders, select the b/2 systematic outputs and
+puncture the rest of the systematic outputs, but keep the parity bit of the b/(b + 1) code (note that the
+rate b/(b + 1) code may have been obtained already by puncturing a rate 1/2 code). Then do the same
+to the second constituent code, but select only those systematic bits that were punctured in the ﬁrst
+encoder. This method requires at least two interleavers: The ﬁrst interleaver permutes the bits selected
+by the ﬁrst encoder and the second interleaver those punctured by the ﬁrst encoder. For MPSK (or
+M-QAM), we can use 21+b/2 PSK symbols (or 21+b/2 QAM symbols) per encoder and achieve throughput
+b/2. For M-QAM, we can also use 21+b/2 levels in the I-channel and 21+b/2 levels in the Q-channel and
+achieve a throughput of b bits/s/Hz. These methods are equivalent to a multidimensional trellis-coded
+modulation scheme (in this case, two multilevel symbols per branch) that uses 2b/2 × 21+b/2 symbols per
+branch, where the ﬁrst symbol in the branch (which depends only on uncoded information) is punctured.
+Now, with these methods, the reliability of the punctured symbols can be fully estimated at the decoder.
+Obviously, the constituent codes for a given modulation should be redesigned based on the Euclidean
+distance. In this article, we give an example for b = 2 with 16-QAM modulation where, for simplicity,
+we can use the 2/3 codes in Table 1 with Gray code mapping. Note that this may result in suboptimum
+constituent codes for multilevel modulation. The turbo encoder with 16 QAM and two clock-cycle trellis
+termination is shown in Fig. 10. The BER performance of this code with the turbo decoding structure
+for two codes discussed in Section IV is given in Fig. 11. For permutations π1 and π2, we used S-random
+permutations [9] with S = 40 and S = 32, with a block size of 16,384 bits. For 8 PSK, we used two
+16-state, rate 4/5 codes given in Section V to achieve throughput 2. The parallel concatenated trellis
+codes with 8 PSK and two clock-cycle trellis termination is shown in Fig. 12. The BER performance of
+this code is given in Fig. 13. For 64 QAM, we used two 16-state, rate 4/5 codes given in Section V to
+achieve throughput 4. The parallel concatenated trellis codes with 64 QAM and two clock-cycle trellis
+termination is shown in Fig. 14. The BER performance of this code is given in Fig. 15. For permutations
+π1, π2, π3, and π4 in Figs. 10, 12, and 14, we used random permutations, each with a block size of 4096
+bits. As was discussed above, there is no need to use four permutations; two permutations suﬃce, and
+they may even result in a better performance. Extension of the described method for construction of
+turbo TCM based on Euclidean distance is straightforward.6
+VII. Conclusions
+In this article, we have shown that powerful turbo codes can be obtained if multiple constituent codes
+are used.
+We reviewed an iterative decoding method for multiple turbo codes by approximating the
+optimum bit decision rule. We obtained an upper bound on the eﬀective free Euclidean distance of b/n
+codes. We found the best rate 2/3, 3/4, 4/5, and 1/3 constituent codes that can be used in the design
+of multiple turbo codes. We proposed new schemes that can be used for power- and bandwidth-eﬃcient
+turbo trellis-coded modulation.
+6 This is discussed in S. Benedetto, D. Divsalar, G. Montorsi, and F. Pollara, “Parallel Concatenated Trellis Coded Modu-
+lation,” submitted to ICC ’96.
+115
+
+=====PAGE 18=====
++
+D
+D
+D
+D
+π2
+π1
+u2
+u1
+A
+B
+A
+B
+A
+A
+B
+B
+D
+D
+D
+D
++
++
++
++
++
++
++
++
++
++
++
++
++
+16
+QAM
+Fig. 10.  Turbo trellis-coded modulation, 16 QAM, 2 bits/s/Hz.
+2.5
+2.6
+2.7
+2.8
+2.9
+3.0
+3.1
+3.2
+10–5
+10–4
+10–3
+10–2
+10–1
+Eb / N0, dB
+BER
+Fig. 11.  BER performance of turbo trellis-coded modulation,
+16 QAM, 2 bits/s/Hz.
+m = 4
+m = 5
+m = 6
+m = 9
+116
+
+=====PAGE 19=====
+D
+π3 π2 π1
++
+u2
+u1
+A
+u3
+u4
+π4
+D
+D
+D
+D
+D
+D
+D
++
++
++
++
++
++
++
++
++
++
++
++
++
+8 PSK
+×
+8 PSK
+A
+A
+A
+A
+A
+A
+A
+B
+B
+B
+B
+B
+B
+B
+B
+Fig. 12.  Parallel concatenated trellis-coded modulation, 8 PSK, 2 bits/s/Hz.
+0
+0
+0
+0
+10–2
+10–3
+10–4
+10–5
+10–6
+m = 8
+m = 5
+3.8
+3.7
+3.6
+3.5
+3.4
+3.3
+BER
+BIT SNR, dB
+Fig. 13.  BER performance of parallel con-
+catenated trellis-coded modulation, 8 PSK,
+2 bits/s/Hx.
+117
+
+=====PAGE 20=====
+D
+π3 π2 π1
++
+u2
+u1
+A
+u3
+u4
+π4
+D
+D
+D
+D
+D
+D
+D
++
++
++
++
++
++
++
++
++
++
++
++
++
+64
+QAM
+A
+A
+A
+A
+A
+A
+A
+B
+B
+B
+B
+B
+B
+B
+B
+Fig. 14.  Parallel concatenated trellis-coded modulation, 64 QAM, 4 bits/s/Hz.
+0
+0
+0
+0
+10–1
+10–2
+10–3
+10–4
+10–5
+10–6
+7.0
+7.1
+7.2
+7.3
+7.4
+7.5
+7.6
+BER
+Eb / N0, dB
+Fig. 15.  BER performance of parallel concatenated trellis-
+coded modulation, 64 QAM, 4 bits/s/Hz.
+m = 5
+m = 6
+m = 10
+118
+
+=====PAGE 21=====
+Acknowledgments
+The authors are grateful to S. Dolinar and R. J. McEliece for their helpful com-
+ments throughout this article, to S. Benedetto and G. Montorsi for their helpful
+comments on the turbo trellis-coded modulation section, and special thanks to
+S. W. Golomb for his contribution, as reported in the Appendix.
+References
+[1] L. R. Bahl, J. Cocke, F. Jelinek, and J. Raviv, “Optimal Decoding of Linear
+Codes for Minimizing Symbol Error Rate,” IEEE Trans. Inform. Theory, vol.
+IT-20, pp. 284–287, 1974.
+[2] G. Battail, C. Berrou, and A. Glavieux, “Pseudo-Random Recursive Convolu-
+tional Coding for Near-Capacity Performance,” Comm. Theory Mini-Conference,
+GLOBECOM ’93, Houston, Texas, December 1993.
+[3] G. Battail and R. Sfez, “Suboptimum Decoding Using the Kullback Principle,”
+Lecture Notes in Computer Science, vol. 313, pp. 93–101, 1988.
+[4] S. Benedetto, “Unveiling Turbo Codes,” IEEE Communication Theory Work-
+shop, Santa Cruz, California, April 23–26, 1995.
+[5] S. Benedetto and G. Montorsi, “Design of Parallel Concatenated Convolutional
+Codes,” to be published in IEEE Transactions on Communications, 1996.
+[6] S. Benedetto and G. Montorsi, “Performance Evaluation of Turbo-Codes,” Elec-
+tronics Letters, vol. 31, no. 3, pp. 163–165, February 2, 1995.
+[7] C. Berrou, A. Glavieux, and P. Thitimajshima, “Near Shannon Limit Error-
+Correcting Coding: Turbo Codes,”Proc. 1993 IEEE International Conference
+on Communications, Geneva, Switzerland, pp. 1064–1070, May 1993.
+[8] D. Divsalar and F. Pollara, “Turbo Codes for Deep-Space Communications,”
+The Telecommunications and Data Acquisition Progress Report 42-120, October–
+December 1994, Jet Propulsion Laboratory, Pasadena, California, pp. 29–39,
+February 15, 1995.
+http://tda.jpl.nasa.gov/tda/progress report/42-120/120D.pdf
+[9] D. Divsalar and F. Pollara, “Multiple Turbo Codes for Deep-Space Communica-
+tions,” The Telecommunications and Data Acquisition Progress Report 42-121,
+January–March 1995, Jet Propulsion Laboratory, Pasadena, California, pp. 66–
+77, May 15, 1995.
+http://tda.jpl.nasa.gov/tda/progress report/42-121/121T.pdf
+[10] D. Divsalar and F. Pollara, “Turbo Codes for PCS Applications,” Proceedings of
+IEEE ICC’95, Seattle, Washington, pp. 54–59, June 1995.
+[11] D. Divsalar and F. Pollara, “Turbo Codes for Deep-Space Communications,”
+IEEE Communication Theory Workshop, Santa Cruz, California, April 23–26,
+1995.
+[12] D. Divsalar, S. Dolinar, R. J. McEliece,and F. Pollara, “Transfer Function
+Bounds on the Performance of Turbo Codes,” MILCOM 95, San Diego, Cali-
+fornia, November 5–8, 1995.
+119
+
+=====PAGE 22=====
+[13] S. Dolinar and D. Divsalar, “Weight Distributions for Turbo Codes Using Ran-
+dom and Nonrandom Permutations,” The Telecommunications and Data Ac-
+quisition Progress Report 42-122, April–June 1995, Jet Propulsion Laboratory,
+Pasadena, California, pp. 56–65, August 15, 1995.
+http://tda.jpl.nasa.gov/tda/progress report/42-122/122B.pdf
+[14] S. W. Golomb, Shift Register Sequences, Revised Edition, Laguna Beach, Cali-
+fornia: Aegean Park Press, 1982.
+[15] J. Hagenauer and P. Robertson, “Iterative (Turbo) Decoding of Systematic Con-
+volutional Codes With the MAP and SOVA Algorithms,” Proc. of the ITG Con-
+ference on Source and Channel Coding, Frankfurt, Germany, pp. 1–9, October
+1994.
+[16] S. LeGoﬀ, A. Glavieux, and C. Berrou, “Turbo Codes and High Spectral Ef-
+ﬁciency Modulation,” Proceedings of IEEE ICC’94, New Orleans, Louisiana,
+pp. 645–651, May 1–5, 1994.
+[17] M. Moher, “Decoding Via Cross-Entropy Minimization,” Proceedings GLOBE-
+COM ’93, Houston, Texas, pp. 809–813, December 1993.
+[18] A. S. Barbulescu and S. S. Pietrobon, “Terminating the Trellis of Turbo-Codes
+in the Same State,” Electronics Letters, vol. 31, no. 1, pp. 22–23, January 1995.
+[19] P. Robertson, “Illuminating the Structure of Code and Decoder of Parallel Con-
+catenated Recursive Systematic (Turbo) Codes,” Proceedings GLOBECOM ’94,
+San Francisco, California, pp. 1298–1303, December 1994.
+[20] G. D. Forney, Jr., “Convolutional Codes I: Algebraic Structure,” IEEE Trans-
+actions on Information Theory, vol. IT-16, pp. 720–738, November 1970.
+[21] G. Ungerboeck, “Channel Coding With Multi-Level Phase Signals,” IEEE Trans-
+actions on Information Theory, vol. IT-28, pp. 55–67, January 1982.
+120
+
+=====PAGE 23=====
+Appendix
+A Bound on the Weights of Shift Register Cycles1
+I. Introduction
+A maximum-length linear shift register sequence—a pseudonoise (PN)-sequence or a maximal length
+(m)-sequence—of degree m has period p = 2m −1, with 2m−1 ones and 2m−1 −1 zeroes in each period.
+Thus, the weight of a PN cycle is 2m−1. From a linear shift register whose characteristic polynomial is
+reducible, or irreducible but not primitive, in addition to the “zero-cycle” of period 1, there are several
+other possible cycles, depending on the initial state of the register, and each of these cycles has a period
+less than 2m −1.
+The question is whether it is possible for any cycle, from any linear shift register of degree m, to have
+a weight greater than 2m−1. We shall show that the answer is “no” and that this result does not depend
+on the shift register being linear.
+II. The Main Result
+Let S be any feedback shift register of length m, linear or not. We need not even specify that the
+shift register produce “pure” cycles, without branches. We will use only the fact that each state of the
+shift register has a unique successor state. For any given initial state, we deﬁne the length L of the string
+starting from that state to be the number of states, counting from the initial state, prior to the second
+appearance of any state in the string. (In the case of branchless cycles, this is the length of the cycle with
+the given initial state.)
+The string itself is this succession of states of length L. The corresponding string sequence is the
+sequence of 0’s and 1’s appearing in the right-most position of the register (or any other speciﬁc position
+of the register that has been agreed upon) as the string goes through its succession of L states.
+Theorem 1. From a feedback shift register S of length m, the maximum number of 1’s that can
+appear in any string sequence is 2m−1.
+Proof. There are 2m possible states of the shift register S altogether. In any ﬁxed position of the shift
+register, 2m−1 of these states have a 0 and 2m−1 states have a 1. In a string of length L, all L of the states
+are distinct, and in any given position of the register, neither 0 nor 1 can occur more than 2m−1 times.
+In particular, the weight of a string sequence from a register of length m cannot exceed 2m−1.
+Ë
+Corollary 1. No cycle from a feedback shift register of length m can have weight exceeding 2m−1.
+1 S. W. Golomb, personal communication, University of Southern California, Los Angeles, California, 1995.
+121

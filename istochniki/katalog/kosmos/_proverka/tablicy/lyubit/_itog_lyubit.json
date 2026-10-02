@@ -1,0 +1,11 @@
+{
+ "fx25": "11 меток (0x01–0x0B) и размеры (k, проверочные) из PDF == direwolf fx25_init.c; РС GF(256) 0x11D fcr=1; мин. расстояние между 16 метками = 32 бит",
+ "g3ruh": "1+X^12+X^17 (G3RUH, статья 109 amsat.org) == дескремблер direwolf: y ⊕ y[n−17] ⊕ y[n−12]",
+ "il2p_skrembler": "дескремблер direwolf (Галуа) эквивалентен x[n]=y[n]⊕y[n−4]⊕y[n−9] — самосинхронизирующийся, многочлен 1+x^4+x^9 — совпадает со спецификацией (x^9+x^4+1)",
+ "il2p_sinhro": "синхрослово 0xF15E48 — спецификация == direwolf il2p.h; РС GF(256) 0x11D fcr=0 (direwolf il2p_init.c: 2,4,6,8,16 проверочных)",
+ "ao40_sinhro": "синхровектор 65 бит (SYNC_POLY 0x48, sr=0x7F, encode_ref.c) == gr-satellites ao40_fec_deframer._syncword",
+ "ngham_metki": "7 меток размера по 24 бита ngham.c == gr-satellites ngham_packet_crop.py; мин. расстояние 13 (допуск NGH_SIZE_TAG_MAX_ERROR=6)",
+ "usp": "PLS (64,7): 7 строк G из USP v1.04 — минимальный вес 32 (перебор 127 слов); скремблирующая последовательность == DVB-S2 EN 302 307-1 п. 5.5.2 (стр. 33); синхро 5072F64B2D90B1F5 == gr-satellites usp_deframer",
+ "grsat_formaty": "58 форматов кадра, 680 передатчиков (satyaml gr-satellites) → tablicy/lyubit/grsat_format_sputniki.json",
+ "ti_cc11xx_fec": "ТЕСТОВЫЙ ВЕКТОР DN504 стр. 9: CRC-16 (0x8005, init FFFF) 03 01 02 03 → 303A; свёрточный кодер по fecEncodeTable (K=4, r=1/2; таблица = чётности (i&0b1101, i&0b1111), i = 4 бита «вход+3 прежних») и перемежитель 4×4 дают ровно напечатанные 16+16 байт; декодер Витерби gr-satellites (OpenLST) восстанавливает вход 03 01 02 03 30"
+}

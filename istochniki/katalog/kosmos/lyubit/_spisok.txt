@@ -1,0 +1,19 @@
+lyubit/FX-25_01_06.pdf 102 ASCII text, with no line  http://www.stensat.org/docs/FX-25_01_06.pdf
+lyubit/AX25_plus_FEC_equals_FX25_WB2OSZ.pdf 317 HTML document, ASCII text https://cloud.dvbr.net/direwolf/direwolf_git_v1.7/doc/AX25_plus_FEC_equals_FX25.pdf
+lyubit/il2p-specification_draft_v0-6.pdf 286232 PDF document, version 1.4 https://tarpn.net/t/il2p/il2p-specification_draft_v0-6.pdf
+lyubit/ka9q_ao40tlm.html 99 ASCII text, with no line  http://www.ka9q.net/papers/ao40tlm.html
+lyubit/ka9q_ao40_index.html 99 ASCII text, with no line  http://www.ka9q.net/ao40/
+lyubit/amsat_g3ruh_125_oscar40_fec.html 17287 HTML document, ASCII text https://amsat.org/articles/g3ruh/125.html
+lyubit/ka9q_ao40tlm.html 24250 HTML document, ASCII text https://www.ka9q.net/papers/ao40tlm.html
+lyubit/ka9q_ao40_index.html 3579 HTML document, ASCII text https://www.ka9q.net/ao40/
+lyubit/AX25.2.2.pdf 548 HTML document, ASCII text https://www.tapr.org/pdf/AX25.2.2.pdf
+lyubit/g3ruh_9600_modem_109.html 23554 HTML document, ASCII text https://www.amsat.org/amsat/articles/g3ruh/109.html
+lyubit/AX25_plus_FEC_equals_FX25_WB2OSZ.pdf из github.com/wb2osz/direwolf doc/ (GPL-2)
+lyubit/ka9q_ao40_encode_ref.c 6863 ASCII text https://www.ka9q.net/ao40/encode_ref.c
+lyubit/ka9q_ao40_2002paper.html 27257 HTML document, ASCII text https://www.ka9q.net/ao40/2002paper/
+lyubit/ka9q_101x0b6.pdf 621475 PDF document, version 1.6 https://public.ccsds.org/Pubs/101x0b6s.pdf
+lyubit/AX25.2.2_ax25net.pdf 2842014 PDF document, version 1.4 https://www.ax25.net/AX25.2.2-Jul%2098-2.pdf
+lyubit/USP_protocol_description_v1.04.pdf 194328 PDF document, version 1.5 https://sputnix.ru/tpl/docs/amateurs/USP%20protocol%20description%20v1.04.pdf
+lyubit/TI_DN504_FEC_swra113a.pdf 113488 PDF document, version 1.3 https://www.ti.com/lit/an/swra113a/swra113a.pdf
+lyubit/TI_CC1101_datasheet_swrs061i.pdf 2758709 PDF document, version 1.4 https://www.ti.com/lit/ds/symlink/cc1101.pdf
+lyubit/TI_DN509_PN9_swra322.pdf 188269 PDF document, version 1.3 https://www.ti.com/lit/an/swra322/swra322.pdf
