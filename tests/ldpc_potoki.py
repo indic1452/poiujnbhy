@@ -1,0 +1,383 @@
+"""Реалистичные потоки с LDPC — свой кодер по матрицам проекта и сборка потоков с известным ответом.
+
+Кодер независим от декодера и опознавателя проекта: систематическое кодирование через H —
+прямой подстановкой, если правая часть H нижнетреугольная с единичной диагональю (DVB-S2/T2,
+ATSC 3.0 тип B: накопитель), иначе своим исключением Гаусса на упакованных строках с опорными
+столбцами справа налево (проверочные — в конце слова, данные — в начале). Каждое слово
+проверяется независимо: синдром H·c = 0 по строкам H (``синдром_нулевой``).
+
+Сборка потоков — как у передатчиков:
+
+- **DVB-S2** (EN 302 307-1): BBHEADER (CRC-8) + поле данных → скремблер BB → БЧХ → LDPC →
+  перемежение бит 8PSK/16APSK (запись по столбцам, чтение по строкам) → PLFRAME: PLHEADER
+  (SOF + PLS, 90 бит π/2-BPSK — бит на символ), слоты данных по 90 символов (бит на символ
+  — по созвездию), пилоты — 36 символов после каждых 16 слотов; скремблер PL — поворот
+  символа на j^R (последовательность Голда, n = 0) — на уровне бит по разметке созвездия;
+- **5G NR** (38.212, 5.4.2): первые 2Z позиций не передаются, согласование скорости — E бит
+  кругового буфера с k0 = 0 (выкалывание конца чётности или повтор), перемежение Qm строк;
+- **CCSDS** (131.0-B-5): ASM 1ACFFC1D + кодовый блок, рандомизатор h(x) = x⁸+x⁷+x⁵+x³+1
+  поверх блока (без ASM);
+- **кадры модема**: синхрослово + слова подряд.
+
+Условия: ошибки (BER), сдвиг начала, инверсия, порядок бит в байте, 8PSK с неверной разметкой.
+"""
+
+from __future__ import annotations
+
+from functools import lru_cache
+
+import numpy as np
+
+import _bootstrap  # noqa: F401
+from reportgen.potok import dvbs2, dvbs2_pl, ldpc, ldpc_std
+
+# -- свой кодер ----------------------------------------------------------------------------------
+
+
+def _плотная(м) -> np.ndarray:
+    H = np.zeros((м.m, м.n), dtype=np.uint8)
+    for i, с in enumerate(м.строки):
+        H[i, с] = 1
+    return H
+
+
+def синдром_нулевой(м, слова: np.ndarray) -> np.ndarray:
+    """Независимая проверка: для каждого слова — все ли проверки H выполнены (по строкам H)."""
+    слова = np.atleast_2d(np.asarray(слова, dtype=np.uint8))
+    итог = np.ones(len(слова), dtype=bool)
+    for с in м.строки:
+        итог &= (слова[:, с].sum(axis=1) % 2) == 0
+    return итог
+
+
+def _треугольная(м) -> bool:
+    k = м.n - м.m
+    if k <= 0:
+        return False
+    for i, с in enumerate(м.строки):
+        п = с[с >= k] - k
+        if not len(п) or п.max() != i:
+            return False
+    return True
+
+
+class Кодер:
+    """Систематический кодер по H: данные — на позициях ``данные``, проверочные — по H."""
+
+    def __init__(self, м):
+        self.м = м
+        self.n = м.n
+        if _треугольная(м):
+            self.вид = "накопитель"
+            k = м.n - м.m
+            self.данные = np.arange(k)
+            self.проверочные = np.arange(k, м.n)
+            return
+        self.вид = "Гаусс"
+        H = _плотная(м)[:, ::-1]                       # справа налево: опорные — в конце слова
+        m, n = H.shape
+        слов = (n + 63) // 64
+        дополнено = np.zeros((m, слов * 64), dtype=np.uint8)
+        дополнено[:, :n] = H
+        a = np.packbits(дополнено.reshape(m, слов, 8, 8)[:, :, :, ::-1], axis=-1).reshape(m, слов * 8)
+        a = a.view(np.uint64).reshape(m, слов).copy()
+        опорные, r = [], 0
+        for j in range(n):
+            if r >= m:
+                break
+            w, b = divmod(j, 64)
+            маска = np.uint64(1) << np.uint64(b)
+            есть = np.flatnonzero((a[r:, w] & маска) != 0)
+            if not len(есть):
+                continue
+            p = r + int(есть[0])
+            if p != r:
+                a[[r, p]] = a[[p, r]]
+            с_единицей = (a[:, w] & маска) != 0
+            с_единицей[r] = False
+            a[с_единицей] ^= a[r]
+            опорные.append(j)
+            r += 1
+        a = a[:r]
+        биты = np.unpackbits(a.view(np.uint8).reshape(r, слов, 8, 1), axis=-1)[:, :, :, ::-1]
+        R = биты.reshape(r, слов * 64)[:, :n][:, ::-1]     # обратно в порядок слова
+        self.проверочные = np.array([n - 1 - j for j in опорные], dtype=np.int64)
+        занято = np.zeros(n, dtype=bool)
+        занято[self.проверочные] = True
+        self.данные = np.flatnonzero(~занято)
+        # Строка i: c[проверочные[i]] = Σ R[i, данные] · c[данные].
+        self.R = R[:, self.данные].astype(np.float32)
+
+    def закодировать(self, u: np.ndarray) -> np.ndarray:
+        u = np.atleast_2d(np.asarray(u, dtype=np.uint8))
+        M = len(u)
+        c = np.zeros((M, self.n), dtype=np.uint8)
+        c[:, self.данные] = u
+        if self.вид == "накопитель":
+            k = self.n - self.м.m
+            for i, с in enumerate(self.м.строки):
+                инф = с[с < k]
+                пр = с[(с >= k) & (с < k + i)]
+                s = np.bitwise_xor.reduce(c[:, инф], axis=1) if len(инф) else 0
+                if len(пр):
+                    s = s ^ np.bitwise_xor.reduce(c[:, пр], axis=1)
+                c[:, k + i] = s
+            return c
+        c[:, self.проверочные] = ((u.astype(np.float32) @ self.R.T) % 2).astype(np.uint8)
+        return c
+
+
+@lru_cache(maxsize=16)
+def кодер(имя: str) -> Кодер:
+    return Кодер(ldpc_std.матрица(имя))
+
+
+def кодовые(имя_или_матрица, слов: int, сид: int = 1, нули=()) -> np.ndarray:
+    """Случайные кодовые слова (M × n); ``нули`` — позиции, которые должны быть нулями (укорочение)."""
+    к = кодер(имя_или_матрица) if isinstance(имя_или_матрица, str) else Кодер(имя_или_матрица)
+    u = np.random.default_rng(сид).integers(0, 2, (слов, len(к.данные))).astype(np.uint8)
+    if len(нули):
+        место = {int(p): i for i, p in enumerate(к.данные)}
+        u[:, [место[int(p)] for p in нули]] = 0
+    c = к.закодировать(u)
+    assert синдром_нулевой(к.м, c).all(), "свой кодер дал не кодовое слово"
+    return c
+
+
+# -- условия канала --------------------------------------------------------------------------------
+
+def ошибки(биты: np.ndarray, ber: float, сид: int = 7) -> np.ndarray:
+    if ber <= 0:
+        return np.asarray(биты, dtype=np.uint8)
+    rng = np.random.default_rng(сид)
+    return (np.asarray(биты, dtype=np.uint8) ^ (rng.random(len(биты)) < ber)).astype(np.uint8)
+
+
+def сдвинуть(биты: np.ndarray, сдвиг: int, сид: int = 8) -> np.ndarray:
+    return np.concatenate([np.random.default_rng(сид).integers(0, 2, сдвиг).astype(np.uint8), биты])
+
+
+def в_файл(биты: np.ndarray, *, младший: bool = False, инверсия: bool = False) -> bytes:
+    """Биты → байты файла (старший бит первым или младший первым), при желании инверсно."""
+    б = np.asarray(биты, dtype=np.uint8)
+    б = б[:len(б) // 8 * 8]
+    if инверсия:
+        б = 1 - б
+    if младший:
+        б = б.reshape(-1, 8)[:, ::-1].reshape(-1)
+    return np.packbits(б).tobytes()
+
+
+# -- DVB-S2 -------------------------------------------------------------------------------------
+
+#: Разметка 8PSK DVB-S2 (gr-dtv): номер точки k (угол k·π/4) для бит b0b1b2.
+РАЗМЕТКА_8PSK = (1, 0, 4, 5, 2, 7, 3, 6)
+
+
+def _код_бчх(nbch: int, короткий: bool):
+    for к in dvbs2.КОДЫ:
+        if к.nbch == nbch and к.короткий == короткий and "S2X" not in к.имя:
+            return к
+    return None
+
+
+def bbframe(kbch: int, номер: int, rng) -> np.ndarray:
+    """BBFRAME: BBHEADER (GS непрерывный, DFL — всё поле) с CRC-8 и случайное поле данных."""
+    dfl = kbch - 80
+    з = bytes([0b0111_0000, 0, 0, 0]) + dfl.to_bytes(2, "big") + bytes([0x47]) + (0).to_bytes(2, "big")
+    з += bytes([dvbs2.crc8(з)])
+    заголовок = np.unpackbits(np.frombuffer(з, dtype=np.uint8))
+    return np.concatenate([заголовок, rng.integers(0, 2, dfl).astype(np.uint8)])
+
+
+def fecframes(имя: str, кадров: int, *, бчх: bool = True, сид: int = 1) -> tuple[np.ndarray, np.ndarray]:
+    """Слова LDPC DVB-S2 (кадров × n) и их данные (kldpc бит; с БЧХ — слова БЧХ после скремблера BB)."""
+    к = кодер(имя)
+    k = len(к.данные)
+    rng = np.random.default_rng(сид)
+    код = _код_бчх(k, к.n == 16200) if бчх else None
+    if код is not None:
+        u = np.array([dvbs2.закодировать(dvbs2.скремблер(bbframe(код.kbch, i, rng)), код)
+                      for i in range(кадров)], dtype=np.uint8)
+    else:
+        u = rng.integers(0, 2, (кадров, k)).astype(np.uint8)
+    c = к.закодировать(u)
+    assert синдром_нулевой(к.м, c).all()
+    return c, u
+
+
+def перемежить(слово: np.ndarray, столбцы: str) -> np.ndarray:
+    """Перемежение DVB-S2: запись по столбцам (n/c бит в столбце), чтение по строкам в порядке
+    ``столбцы`` — независимо от ``ldpc.перемежитель``."""
+    c = len(столбцы)
+    строк = len(слово) // c
+    таблица = np.asarray(слово).reshape(c, строк)          # столбец j — подряд
+    return np.stack([таблица[int(j)] for j in столбцы], axis=1).reshape(-1)
+
+
+@lru_cache(maxsize=1)
+def _голд(сколько: int = 70000) -> np.ndarray:
+    """R_n скремблера PL (EN 302 307-1, 5.5.4), код Голда n = 0: R = 2·z(n + 131072) + z(n)."""
+    N = 1 << 18
+    x = np.zeros(N + 200000, dtype=np.uint8)
+    y = np.zeros(N + 200000, dtype=np.uint8)
+    x[0], y[:18] = 1, 1
+    for i in range(len(x) - 18):
+        x[i + 18] = x[i + 7] ^ x[i]
+        y[i + 18] = y[i + 10] ^ y[i + 7] ^ y[i + 5] ^ y[i]
+    z = x ^ y
+    return (2 * z[131072:131072 + сколько] + z[:сколько]).astype(np.int64)
+
+
+def повернуть_8psk(биты: np.ndarray, повороты: np.ndarray, разметка=РАЗМЕТКА_8PSK) -> np.ndarray:
+    """Символы 8PSK (по 3 бита) повернуть на повороты·π/2 и снова разметить."""
+    тройки = np.asarray(биты, dtype=np.uint8).reshape(-1, 3)
+    номер = тройки[:, 0] * 4 + тройки[:, 1] * 2 + тройки[:, 2]
+    точка = (np.array(разметка)[номер] + 2 * повороты[:len(номер)]) % 8
+    обратно = np.argsort(np.array(разметка))[точка]
+    return np.stack([(обратно >> 2) & 1, (обратно >> 1) & 1, обратно & 1], axis=1).reshape(-1).astype(np.uint8)
+
+
+def повернуть_qpsk(биты: np.ndarray, повороты: np.ndarray) -> np.ndarray:
+    """QPSK DVB-S2 (b0 — знак I, b1 — знак Q): поворот на j: (I, Q) → (−Q, I)."""
+    пары = np.asarray(биты, dtype=np.uint8).reshape(-1, 2).copy()
+    r = повороты[:len(пары)] % 4
+    b0, b1 = пары[:, 0].copy(), пары[:, 1].copy()
+    # j: I' = −Q, Q' = I → b0' = 1 − b1, b1' = b0
+    итог = np.empty_like(пары)
+    for шаг in range(4):
+        где = r == шаг
+        x0, x1 = b0[где], b1[где]
+        for _ in range(шаг):
+            x0, x1 = 1 - x1, x0
+        итог[где, 0], итог[где, 1] = x0, x1
+    return итог.reshape(-1)
+
+
+def поток_dvbs2(имя: str, кадров: int, *, бчх: bool = True, вид: str = "", pl: bool = False,
+          пилоты: bool = False, скремблер_pl: bool = False, modcod: int | None = None,
+          сид: int = 1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Поток DVB-S2: (биты, слова LDPC кадров × n, данные кадров × kldpc).
+
+    ``вид`` — перемежение перед модуляцией (8PSK, 16APSK); ``pl`` — PLFRAME (PLHEADER, пилоты);
+    ``скремблер_pl`` — поворот символов последовательностью Голда (QPSK или 8PSK)."""
+    c, u = fecframes(имя, кадров, бчх=бчх, сид=сид)
+    бит_на_символ = {"": 2, "8PSK": 3, "16APSK": 4, "32APSK": 5}[вид]
+    if вид:
+        столбцы = ldpc_std.столбцы_перемежения(имя, вид)
+        переданы = np.array([перемежить(слово, столбцы) for слово in c])
+    else:
+        переданы = c.copy()
+    if скремблер_pl:
+        R = _голд()
+        if бит_на_символ == 3:
+            переданы = np.array([повернуть_8psk(с, R) for с in переданы])
+        elif бит_на_символ == 2:
+            переданы = np.array([повернуть_qpsk(с, R) for с in переданы])
+        else:
+            raise ValueError("скремблер PL в генераторе — для QPSK и 8PSK")
+    if not pl:
+        return переданы.reshape(-1), c, u
+    короткий = c.shape[1] == 16200
+    if modcod is None:
+        modcod = _modcod(имя, бит_на_символ)
+    pls = dvbs2_pl.слово(dvbs2_pl.код_s2(modcod, короткий, пилоты))
+    заголовок = np.concatenate([dvbs2_pl.SOF_БИТЫ, pls])
+    пилот = np.tile({2: [0, 0], 3: [0, 0, 0], 4: [0, 0, 0, 0], 5: [0, 0, 0, 0, 0]}[бит_на_символ], 36)
+    части = []
+    for слово in переданы:
+        части.append(заголовок)
+        if not пилоты:
+            части.append(слово)
+            continue
+        слот = 90 * бит_на_символ
+        for i, место in enumerate(range(0, len(слово), 16 * слот)):
+            if i:
+                части.append(пилот.astype(np.uint8))
+            части.append(слово[место:место + 16 * слот])
+    return np.concatenate(части).astype(np.uint8), c, u
+
+
+def _modcod(имя: str, бит_на_символ: int) -> int:
+    """MODCOD DVB-S2 по коду: номинальная скорость — по коду БЧХ той же длины (у короткого кадра
+    «1/2» — k = 7200)."""
+    from fractions import Fraction
+    м = ldpc_std.матрица(имя)
+    код = _код_бчх(м.n - м.m, м.n == 16200)
+    скорость = Fraction(код.имя.split()[-1])
+    созвездие = {2: "QPSK", 3: "8PSK", 4: "16APSK", 5: "32APSK"}[бит_на_символ]
+    for mc, (с, _, ск) in dvbs2_pl.MODCOD.items():
+        if с == созвездие and Fraction(ск) == скорость:
+            return mc
+    raise ValueError(f"нет MODCOD для {имя} {созвездие}")
+
+
+# -- 5G NR ---------------------------------------------------------------------------------------
+
+def nr(bg: int, Z: int, слов: int, *, E: int | None = None, Qm: int = 1, сид: int = 1
+       ) -> tuple[np.ndarray, np.ndarray]:
+    """Слова 5G NR после согласования скорости: (биты, полные слова). E — бит на слово."""
+    имя = f"nr-bg{bg}-z{Z}"
+    c = кодовые(имя, слов, сид)
+    N = c.shape[1] - 2 * Z
+    E = E or N
+    буфер = c[:, 2 * Z:]
+    индексы = np.arange(E) % N
+    e = буфер[:, индексы]
+    if Qm > 1:
+        e = e.reshape(слов, Qm, E // Qm).transpose(0, 2, 1).reshape(слов, E)
+    return e.reshape(-1), c
+
+
+# -- CCSDS ---------------------------------------------------------------------------------------
+
+ASM = np.unpackbits(np.frombuffer(bytes.fromhex("1ACFFC1D"), dtype=np.uint8))
+
+
+@lru_cache(maxsize=4)
+def псп_ccsds(сколько: int) -> np.ndarray:
+    """Рандомизатор CCSDS 131.0-B (h(x) = x⁸+x⁷+x⁵+x³+1, все единицы в начале)."""
+    р = [1] * 8
+    итог = np.empty(сколько, dtype=np.uint8)
+    for i in range(сколько):
+        итог[i] = р[0]
+        новый = р[0] ^ р[3] ^ р[5] ^ р[7]
+        р = р[1:] + [новый]
+    return итог
+
+
+def ccsds(имя: str, слов: int, *, asm: bool = True, рандомизатор: bool = True, сид: int = 1
+          ) -> tuple[np.ndarray, np.ndarray]:
+    """Блоки CCSDS: [ASM] + переданная часть слова (по схеме стандарта) [⊕ ПСП]."""
+    схема = ldpc_std.схема(имя)
+    нули = схема.укорочены
+    c = кодовые(имя, слов, сид, нули=нули)
+    блоки = c[:, схема.переданы]
+    if рандомизатор:
+        блоки = блоки ^ псп_ccsds(блоки.shape[1])
+    if asm:
+        блоки = np.concatenate([np.tile(ASM, (слов, 1)), блоки], axis=1)
+    return блоки.reshape(-1).astype(np.uint8), c
+
+
+# -- кадры модема, неизвестная QC ---------------------------------------------------------------
+
+def в_кадрах(слова: np.ndarray, синхро: np.ndarray, слов_в_кадре: int = 1) -> np.ndarray:
+    части = []
+    for i in range(0, len(слова) - слов_в_кадре + 1, слов_в_кадре):
+        части += [синхро, слова[i:i + слов_в_кадре].reshape(-1)]
+    return np.concatenate(части).astype(np.uint8)
+
+
+def случайная_qc(mb: int = 6, nb: int = 24, Z: int = 64, сид: int = 11):
+    """Неизвестная QC-LDPC (не из встроенных): база mb × nb, проверочная часть — двухдиагональная."""
+    rng = np.random.default_rng(сид)
+    P = np.full((mb, nb), -1)
+    kb = nb - mb
+    for i in range(mb):
+        for j in rng.choice(kb, size=max(3, kb // 3), replace=False):
+            P[i, j] = rng.integers(0, Z)
+        P[i, kb + i] = 0
+        if i:
+            P[i, kb + i - 1] = 0
+    return ldpc.из_прототипа("\n".join(" ".join(map(str, р)) for р in P), Z)
