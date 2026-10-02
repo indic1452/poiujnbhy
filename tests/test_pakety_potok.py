@@ -231,6 +231,75 @@ class ЧтениеПотокомTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.все(путь)
 
+    def test_разметка_sig_края(self):
+        """Края подбора разметки .sig: число пакетов, пакет ровно до конца пробы, порча, выбор по числу пакетов."""
+        # Два целых пакета — мало (нужно три), хотя проба пройдена до конца.
+        self.assertIsNone(выбрать_разметку_sig(b"\x00\x02ab\x00\x02cd"))
+        # Последний пакет — пустой заголовок ровно в конце пробы: он считается, и пакетов три.
+        self.assertEqual((0, "big", False), выбрать_разметку_sig(b"\x00\x01\xff\x00\x01\xff\x00\x00"))
+        # Последний пакет длиннее пробы на один байт — не считается (два пакета — мало).
+        self.assertIsNone(выбрать_разметку_sig(b"\x00\x01\xff\x00\x01\xff\x00\x02\xff"))
+        # Один байт в конце — не заголовок: разметка «с заголовком в длине» цела.
+        self.assertEqual((0, "big", True), выбрать_разметку_sig(b"\x00\x04\xaa\xbb" * 3 + b"\x00"))
+        # Три пакета, затем длина меньше заголовка — разметка испорчена, не годится.
+        self.assertIsNone(выбрать_разметку_sig(b"\x00\x03\xaa" * 3 + b"\x00\x01"))
+        # Две разметки с одного места: больше пакетов — правдоподобнее (6 пакетов по 2 байта против 3 по 4).
+        self.assertEqual((0, "big", True), выбрать_разметку_sig(b"\x00\x02" * 6))
+        # Вид по началу без всего файла — по пробе.
+        self.assertEqual("sig", вид_по_началу(b"\x00\x01\xff\x00\x01\xff\x00\x00", весь=False))
+        self.assertIsNone(вид_по_началу(b"\xff" * 100, весь=False))
+
+    def test_чтец_sig_по_пробе_края(self):
+        from reportgen.setevoy import chtenie
+        старое = chtenie.SIG_ПРОБА, chtenie.SIG_ЦЕЛИКОМ_ДО
+        self.addCleanup(lambda: (setattr(chtenie, "SIG_ПРОБА", старое[0]), setattr(chtenie, "SIG_ЦЕЛИКОМ_ДО", старое[1])))
+        chtenie.SIG_ЦЕЛИКОМ_ДО = 0
+        путь = self.папка / "k.sig"
+        # Пустой пакет ровно в конце файла — запись с пустыми данными, файл не оборван.
+        путь.write_bytes(b"\x00\x01\xff" * 3 + b"\x00\x00")
+        записи, ч = self.все(путь)
+        self.assertEqual([b"\xff", b"\xff", b"\xff", b""], [з[1] for з in записи])
+        self.assertFalse(any("оборван" in з for з in ч.заметки), ч.заметки)
+        self.assertIn("разметка выбрана по первым", ч.заметки[0])
+        # Последний пакет не дописан на один байт — его нет, заметка одна, сколько ни спрашивай.
+        путь.write_bytes(b"\x00\x01\xff" * 3 + b"\x00\x02\xff")
+        записи, ч = self.все(путь)
+        self.assertEqual(3, len(записи))
+        self.assertIs(False, ч.следующий())
+        self.assertIs(False, ч.следующий())
+        self.assertEqual(1, sum("оборван" in з for з in ч.заметки), ч.заметки)
+        # Файл ровно в предел «целиком» — проверяется целиком (места из разбора всего файла).
+        данные = b"".join(struct.pack(">H", 20) + bytes([i]) * 20 for i in range(5))
+        путь.write_bytes(данные)
+        chtenie.SIG_ЦЕЛИКОМ_ДО = len(данные)
+        записи, ч = self.все(путь)
+        self.assertEqual(5, len(записи))
+        self.assertFalse(any("разметка выбрана" in з for з in ч.заметки), ч.заметки)
+        # Растущий файл: проба набралась ровно в SIG_ПРОБА байт — разметка выбирается, не дожидаясь конца.
+        chtenie.SIG_ЦЕЛИКОМ_ДО = 1 << 30
+        chtenie.SIG_ПРОБА = len(данные)
+        ч = ЧтецЗахвата(путь, готов=lambda: False)
+        self.addCleanup(ч.закрыть)
+        self.assertEqual(bytes(20), ч.следующий()[1])
+        self.assertEqual(".sig", ч.формат)
+
+    def test_чтец_по_умолчанию_и_мелочи(self):
+        путь = self.папка / "d.pcap"
+        путь.write_bytes(с.pcap(смесь(3)))
+        with ЧтецЗахвата(путь) as ч:                 # без «готов» — файл считается дописанным
+            записи = []
+            while (з := ч.следующий()) not in (None, False):
+                записи.append(з)
+            self.assertEqual(3, len(записи))
+            self.assertIs(False, ч.следующий())
+        self.assertEqual(0, ЧтецЗахвата(self.папка / "нет.pcap").размер())
+        # Растущий файл из ровно четырёх байт сигнатуры pcap — вид уже узнан.
+        путь.write_bytes(с.pcap(смесь(1))[:4])
+        ч = ЧтецЗахвата(путь, готов=lambda: False)
+        self.addCleanup(ч.закрыть)
+        self.assertIsNone(ч.следующий())
+        self.assertEqual("pcap", ч.формат)
+
     def test_пустой_и_короткий_растущий(self):
         путь = self.папка / "e.pcap"
         путь.write_bytes(b"")

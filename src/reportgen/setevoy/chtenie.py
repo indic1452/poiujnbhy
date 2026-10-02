@@ -224,6 +224,7 @@ class ЧтецЗахвата:
         self.заметки: list[str] = []
         self._чтец = None              # chtec.ЧтецФайла для pcap/pcapng
         self._sig: tuple[int, str, bool] | None = None
+        self._места: list | None = None  # .sig, проверенный целиком: (начало, длина) каждого пакета
         self._место = 0
         self._номер = 0
         self._файл = None
@@ -254,20 +255,21 @@ class ЧтецЗахвата:
             return self._чтец.место
         return self._место
 
-    def _узнать(self) -> bool | None:
+    def _узнать(self) -> bool:
+        """Узнать вид файла; False — байт для этого пока мало (подождать)."""
         готов = self.готов()                      # до размера: иначе можно счесть файл целым раньше времени
         размер = self.размер()
         with open(self.путь, "rb") as ф:
             начало = ф.read(min(размер, SIG_ПРОБА))
         if len(начало) < 4 and not готов:
-            return None
+            return False
         if начало[:4] in PCAP_МАГИИ or начало[:4] == PCAPNG_МАГИЯ:
             from .zahvat_seti.chtec import ЧтецФайла  # noqa: PLC0415
             self._чтец = ЧтецФайла(self.путь)
             self.формат = "pcap" if начало[:4] in PCAP_МАГИИ else "pcapng"
             return True
         if not готов and len(начало) < SIG_ПРОБА:
-            return None                            # .sig судим по пробе — ждём, пока наберётся
+            return False                           # .sig судим по пробе — ждём, пока наберётся
         from ..potok.chtenie import разобрать_sig  # noqa: PLC0415
         if готов and размер <= SIG_ЦЕЛИКОМ_ДО:
             with open(self.путь, "rb") as ф:
@@ -279,7 +281,6 @@ class ЧтецЗахвата:
             self.формат = ".sig"
             self.заметки += [формат, *заметки]
             self._места = list(места)
-            self._sig = (-1, "", False)
             return True
         разметка = выбрать_разметку_sig(начало)
         if разметка is None:
@@ -288,7 +289,7 @@ class ЧтецЗахвата:
         self._sig = разметка
         self._место = смещение
         self.формат = ".sig"
-        self.заметки.insert(0, f".Sig: длина в заголовке — два байта, {'старший' if порядок == 'big' else 'младший'} байт "
+        self.заметки.append(f".Sig: длина в заголовке — два байта, {'старший' if порядок == 'big' else 'младший'} байт "
                        f"первым, {'включая' if включает else 'без'} сам заголовок"
                        + (f"; в начале файла свой заголовок в {смещение} байт" if смещение else "")
                        + f"; разметка выбрана по первым {len(начало) >> 20 or 1} МБ")
@@ -297,10 +298,8 @@ class ЧтецЗахвата:
     def следующий(self):
         if self.кончено:
             return False
-        if self._чтец is None and self._sig is None:
-            узнан = self._узнать()
-            if узнан is None:
-                return None
+        if self._чтец is None and self._sig is None and self._места is None and not self._узнать():
+            return None
         if self._чтец is not None:
             запись = self._чтец.следующий()
             готов = None
@@ -327,8 +326,7 @@ class ЧтецЗахвата:
         return False
 
     def _следующий_sig(self):
-        смещение, порядок, включает = self._sig
-        if смещение < 0:                           # файл целиком: места уже известны
+        if self._места is not None:                # файл целиком: места уже известны
             if self._номер >= len(self._места):
                 return self._конец()
             начало, длина = self._места[self._номер]
@@ -338,6 +336,7 @@ class ЧтецЗахвата:
                 ф.seek(начало)
                 данные = ф.read(длина)
             return float(self._номер - 1), данные, длина, "авто", начало
+        _, порядок, включает = self._sig
         готов = self.готов()
         размер = self.размер()
         if self._файл is None:
