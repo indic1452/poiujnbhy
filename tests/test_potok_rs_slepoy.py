@@ -721,7 +721,13 @@ class ТочноTests(unittest.TestCase):
         self.assertEqual((F, len(свои)), (600, 20))
         self.assertAlmostEqual(мера, 20 * np.log(20 / (20 * 2 / 600 * 2)) - 20 + 20 * 2 / 600 * 2)
         self.assertIsNone(R.в_кадрах(np.array([0, 300, 600, 900, 1200]), 255, 1))   # меньше шести
-        self.assertIsNotNone(R.в_кадрах(np.array([0, 300, 600, 900, 1200, 1500]), 255, 1))
+        self.assertEqual(R.в_кадрах(np.array([0, 300, 600, 900, 1200, 1500]), 255, 1)[2], 300)
+        # Разности не длиннее блока (N·I) — не кадр: начала через 510 — кадр 1020, а не 510.
+        self.assertEqual(R.в_кадрах(np.arange(0, 3061, 510), 255, 2)[2], 1020)
+        # Разности 300 короче блока 510 (N = 255, I = 2) — не в счёт, хоть и чаще всего.
+        начала = np.array([0, 300, 1000, 1300, 2000, 2300, 3000, 3300])
+        разности = np.concatenate([начала[k:] - начала[:-k] for k in range(1, 8)])
+        self.assertEqual(R.в_кадрах(начала, 255, 2)[2], int(np.bincount(разности[разности > 510]).argmax()))
         # Соседей по умолчанию 8: девятая разность не смотрится.
         self.assertEqual(R.в_кадрах(np.arange(0, 2000, 100), 255, 1, соседей=2), None)
 
@@ -848,7 +854,7 @@ class ДобивкаTests(unittest.TestCase):
 
     def test_кандидаты_точно(self):
         """Отбор начал кандидата — пары на расстоянии N·I в строке свёртки (и следующей при I > 1)."""
-        for I, блоков in ((1, 150), (3, 60)):
+        for I, блоков in ((1, 150), (3, 60), (2, 80)):
             with self.subTest(I=I):
                 с, _ = слова_64(блоков, I=I, сид=I)
                 шум = np.random.default_rng(I).integers(0, 256, 17)
@@ -862,7 +868,8 @@ class ДобивкаTests(unittest.TestCase):
                 ожидается = свои[(строки == к.строка) | ((строки == (к.строка + 1) % 64) & (I > 1))]
                 self.assertEqual(sorted(к.начала.tolist()), sorted(ожидается.tolist()))
                 self.assertGreaterEqual(len(к.начала), (блоков - 1) * I)
-                self.assertTrue(all((u - 17) % (64 * I) < I for u in к.начала.tolist()))
+                свои_блока = [u for u in к.начала.tolist() if (u - 17) % (64 * I) < I]
+                self.assertGreaterEqual(len(свои_блока), 0.95 * len(к.начала))   # остальное — случайные равенства
                 self.assertIsInstance(к.s, float)
 
     def test_кандидаты_ступени_2_на_шуме_нет(self):
