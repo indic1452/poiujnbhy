@@ -398,7 +398,7 @@ class СтраницаСтола(unittest.TestCase):
         запись = js[js.index("сохранитьСтола('stol-view', {"):]
         self.assertNotIn("ширина: с.ширина", запись[:запись.index("});")])
         self.assertNotIn("['ширина', 'масштаб'", js)
-        self.assertIn("return ключ + '@' + ((state.user && state.user.id) || '');", js)
+        self.assertIn("return ключ + '@' + (кто || '');", js)
         for кусок in ("'/view?stage='", "'/view', тело", "'/as-auto'", "'Как в автомате'", "' без скремблера'",
                       "title: 'Сменить длину строки?'", "frame: с.принят ? с.ширина : 0"):
             self.assertIn(кусок, js)
