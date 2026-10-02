@@ -287,7 +287,7 @@ class Файлы(unittest.TestCase):
                     for кусок in iter(lambda: f.read(1 << 20), b""):
                         h.update(кусок)
                 self.assertEqual(h.hexdigest(), x["sha256"])
-        self.assertLessEqual(max(x["размер"] for x in о.values() if x["положен"]), 40_000_000)
+        self.assertLessEqual(max((x["размер"] for x in о.values() if x["положен"]), default=0), 40_000_000)
 
     def test_таблицы_на_месте_и_читаются(self):
         упомянуто = 0
@@ -453,8 +453,24 @@ class Модуль(unittest.TestCase):
     def test_семейства_и_файл_источника(self):
         сем = кк.семейства("obshchie")
         self.assertGreater(len(сем), 20)
-        f = next(с["файл"] for z in кк.записи() for с in z["источник"] if с.get("положен"))
-        self.assertIsNotNone(кк.файл_источника(f))
+        f = next((с["файл"] for z in кк.записи() for с in z["источник"] if с.get("положен")), None)
+        if f:
+            self.assertIsNotNone(кк.файл_источника(f))
+        # Первоисточники в репозитории не лежат (только опись): несуществующий файл — None, опись — путь.
+        self.assertIsNone(кк.файл_источника("istochniki/katalog/нет-такого.pdf"))
+        self.assertIsNotNone(кк.файл_источника("istochniki/katalog/spisok.json"))
+
+    def test_в_репозитории_только_опись_источников(self):
+        """Первоисточники (PDF, HTML, картинки, копии кода) в репозиторий не кладутся — только опись
+        (README с адресами и sha256, spisok.json, скрипт докачки); файлы — в истории git и по URL."""
+        import shutil  # noqa: PLC0415
+        import subprocess  # noqa: PLC0415
+        if not shutil.which("git") or not (КОРЕНЬ / ".git").exists():
+            self.skipTest("нет git")
+        файлы = subprocess.run(["git", "ls-files", "istochniki"], cwd=КОРЕНЬ, capture_output=True, text=True,
+                               check=True).stdout.split()
+        лишние = [f for f in файлы if not f.endswith((".md", ".json", ".py"))]
+        self.assertEqual([], лишние)
 
     def test_командная_строка(self):
         import contextlib  # noqa: PLC0415
