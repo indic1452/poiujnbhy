@@ -9677,7 +9677,9 @@ div.stol-decoder-op { border: 0; padding: 0; }
 .stol-auto-find .mono { overflow-wrap: anywhere; white-space: normal; }
 .stol-auto-find .btn { justify-self: start; }
 /* «Дек. всех»: вариант, который выбрал бы автомат (из равноценных — кодом в кадрах), и итог пробы. */
-.stol-md-auto-cell { white-space: normal; min-width: 18em; }
+.stol-results td.stol-md-auto-cell { white-space: normal; min-width: 18em; max-width: 34em; }
 .stol-md-auto-pick b { color: var(--accent); }
 .is-selected .stol-md-auto-pick b { color: inherit; }
 .stol-md-auto { overflow-wrap: anywhere; }
+/* Выбранная строка под указателем остаётся выбранной (иначе фон наведения и светлый текст выбора — нечитаемо). */
+.stol-results tbody tr.is-selected:hover { background: var(--accent); }
