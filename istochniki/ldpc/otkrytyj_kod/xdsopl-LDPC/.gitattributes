@@ -1,3 +1,0 @@
-* linguist-vendored
-*.cc linguist-language=cpp linguist-vendored=false
-*.hh linguist-language=cpp linguist-vendored=false

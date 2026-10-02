@@ -1,1 +1,0 @@
-Those files are LDPC H matrices used to configure the LDPC decoders.

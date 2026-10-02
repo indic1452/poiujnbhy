@@ -1,1 +1,0 @@
-linux https://github.com/torvalds/linux 551c722f40809618230001baccf219193e22fc5a lib/raid/raid6/mktables.c

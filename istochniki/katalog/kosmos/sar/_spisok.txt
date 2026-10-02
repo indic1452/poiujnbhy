@@ -1,3 +1,0 @@
-sar/CS_T001_2013.pdf 770612 PDF document, version 1.5 https://www.cospas-sarsat.int/images/stories/SystemDocs/Current/cs_t.001_oct_2013.pdf
-sar/CS_T018_2021.pdf 1697869 PDF document, version 1.7 https://sar.mot.go.th/document/THMCC/T018-MAR-26-2021%20SPECIFICATION%20FOR%20SECOND-GENERATION%20COSPAS-SARSAT%20406-MHz%20DISTRESS%20BEACONS.pdf
-sar/CS_T001_2021.pdf 1436084 PDF document, version 1.7 https://sar.mot.go.th/document/THMCC/T001-MAR-26-2021%20SPECIFICATION%20FOR%20COSPAS-SARSAT%20406%20MHz%20DISTRESS%20BEACONS.pdf

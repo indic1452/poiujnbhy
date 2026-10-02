@@ -693,7 +693,9 @@ class Рандомизатор802_16(unittest.TestCase):
         self.assertEqual(int(np.packbits(п[:16])[0]), 0x03)
         with self.assertRaisesRegex(ValueError, "15 бит"):
             skrembler.рандомизатор_802_16(4, "101")
-        # Текст источника — дословно.
+        # Текст источника — дословно (если первоисточник приложен: в репозитории только опись).
+        if not (ИСТОЧНИКИ / "ieee802/C80216a-02_55.pdf.txt").is_file():
+            return
         текст = _текст("ieee802/C80216a-02_55.pdf.txt")
         self.assertIn("characteris-|tic polynomial 1 + X14 + X15. The LFSR shall be preset at the beginning of "
                       "each burst to the value|100101010000000", текст)

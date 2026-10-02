@@ -1,4 +1,0 @@
-LDPC-codes https://github.com/radfordneal/LDPC-codes.git 74a8e283be8259dbff7a6bab38ad7e9327825cbf
-libfec https://github.com/quiet/libfec.git 9750ca0a6d0a786b506e44692776b541f90daa91
-sage https://github.com/sagemath/sage.git ef38d9578c1bd45497d761d2ba38f160d795608a
-sionna https://github.com/NVlabs/sionna.git 2f0a3820269b53fd022780a6f2f5f720f7ceb9b4
