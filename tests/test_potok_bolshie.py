@@ -488,6 +488,10 @@ class ЧерезСерверTests(unittest.TestCase):
         self.addCleanup(self.сеть.tearDown)
         self.сеть.login("engineer")
         self.к = self.сеть.client
+        from reportgen.web import api  # noqa: PLC0415
+        запас = mock.patch.object(api, "ЗАПАС_ДИСКА", 0)        # тестовой машине гигабайт запаса не нужен
+        запас.start()
+        self.addCleanup(запас.stop)
         self.данные_папка = Path(self.сеть.tmp)
         настройки = self.сеть.app.state.settings
         настройки.potok_memory_mb = 1                       # массив больше 1 МБ — по кускам
@@ -603,7 +607,7 @@ class ЧерезСерверTests(unittest.TestCase):
         with mock.patch.object(potokovo, "КУСОК_БИТ", 1 << 12):
             производный = self.к.post(f"/api/potok/{ид}/derive", json={"stage": 0, "steps": [
                 {"вид": "слой", "слой": "nrzi"}]}).json()["id"]
-            self.assertTrue(self.к.post(f"/api/potok/{производный}/cancel").json()["ok"] in (True, False))
+            self.assertIn(self.к.post(f"/api/potok/{производный}/cancel").status_code, (200, 409))
             с_ = self.дождаться(производный)
         self.assertIn(с_["состояние"], ("отменено", "готово"))
         if с_["состояние"] == "отменено":

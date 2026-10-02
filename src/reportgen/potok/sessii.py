@@ -41,6 +41,12 @@ class Сессии:
     def __init__(self, папка: Path):
         self.папка = Path(папка)
         self._lock = threading.Lock()
+        self._замки: dict[str, threading.Lock] = {}
+
+    def замок(self, ид: str) -> threading.Lock:
+        """Замок одной сессии: добавление файла и удаление сессии не идут одновременно."""
+        with self._lock:
+            return self._замки.setdefault(ид, threading.Lock())
 
     def _путь(self, ид: str) -> Path:
         if not годный_ид(ид):
