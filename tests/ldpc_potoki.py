@@ -254,47 +254,53 @@ def повернуть_qpsk(биты: np.ndarray, повороты: np.ndarray) 
     return итог.reshape(-1)
 
 
+def _повернуть(символы_бит: np.ndarray, бит: int, повороты: np.ndarray) -> np.ndarray:
+    """Символы (по ``бит`` бит подряд) повернуть на повороты·π/2 (QPSK или 8PSK DVB-S2) и снова разметить."""
+    if бит == 3:
+        return повернуть_8psk(символы_бит, повороты)
+    if бит == 2:
+        return повернуть_qpsk(символы_бит, повороты)
+    raise ValueError("скремблер PL в генераторе — для QPSK и 8PSK")
+
+
 def поток_dvbs2(имя: str, кадров: int, *, бчх: bool = True, вид: str = "", pl: bool = False,
-          пилоты: bool = False, скремблер_pl: bool = False, modcod: int | None = None,
-          сид: int = 1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                пилоты: bool = False, скремблер_pl: bool = False, modcod: int | None = None,
+                сид: int = 1) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Поток DVB-S2: (биты, слова LDPC кадров × n, данные кадров × kldpc).
 
-    ``вид`` — перемежение перед модуляцией (8PSK, 16APSK); ``pl`` — PLFRAME (PLHEADER, пилоты);
-    ``скремблер_pl`` — поворот символов последовательностью Голда (QPSK или 8PSK)."""
+    ``вид`` — перемежение перед модуляцией (8PSK, 16APSK); ``pl`` — PLFRAME: PLHEADER 90 бит (π/2-BPSK,
+    бит на символ), данные — биты символов созвездия, пилоты — 36 символов (точка (1 + j)/√2: метка 0 —
+    нули) после каждых 16 слотов; ``скремблер_pl`` — поворот символов данных и пилотов на R·π/2
+    (последовательность Голда заново после каждого PLHEADER; QPSK или 8PSK)."""
     c, u = fecframes(имя, кадров, бчх=бчх, сид=сид)
-    бит_на_символ = {"": 2, "8PSK": 3, "16APSK": 4, "32APSK": 5}[вид]
+    бит = {"": 2, "8PSK": 3, "16APSK": 4, "32APSK": 5}[вид]
     if вид:
         столбцы = ldpc_std.столбцы_перемежения(имя, вид)
         переданы = np.array([перемежить(слово, столбцы) for слово in c])
     else:
         переданы = c.copy()
-    if скремблер_pl:
-        R = _голд()
-        if бит_на_символ == 3:
-            переданы = np.array([повернуть_8psk(с, R) for с in переданы])
-        elif бит_на_символ == 2:
-            переданы = np.array([повернуть_qpsk(с, R) for с in переданы])
-        else:
-            raise ValueError("скремблер PL в генераторе — для QPSK и 8PSK")
     if not pl:
+        if скремблер_pl:
+            переданы = np.array([_повернуть(с, бит, _голд()) for с in переданы])
         return переданы.reshape(-1), c, u
     короткий = c.shape[1] == 16200
     if modcod is None:
-        modcod = _modcod(имя, бит_на_символ)
+        modcod = _modcod(имя, бит)
     pls = dvbs2_pl.слово(dvbs2_pl.код_s2(modcod, короткий, пилоты))
     заголовок = np.concatenate([dvbs2_pl.SOF_БИТЫ, pls])
-    пилот = np.tile({2: [0, 0], 3: [0, 0, 0], 4: [0, 0, 0, 0], 5: [0, 0, 0, 0, 0]}[бит_на_символ], 36)
+    пилот = np.zeros(36 * бит, dtype=np.uint8)
+    слот16 = 16 * 90 * бит
     части = []
     for слово in переданы:
-        части.append(заголовок)
-        if not пилоты:
-            части.append(слово)
-            continue
-        слот = 90 * бит_на_символ
-        for i, место in enumerate(range(0, len(слово), 16 * слот)):
-            if i:
-                части.append(пилот.astype(np.uint8))
-            части.append(слово[место:место + 16 * слот])
+        куски = []
+        for i, место in enumerate(range(0, len(слово), слот16)):
+            if i and пилоты:
+                куски.append(пилот)
+            куски.append(слово[место:место + слот16])
+        тело = np.concatenate(куски)
+        if скремблер_pl:
+            тело = _повернуть(тело, бит, _голд())
+        части += [заголовок, тело]
     return np.concatenate(части).astype(np.uint8), c, u
 
 
