@@ -461,6 +461,34 @@ class УскоренияTests(unittest.TestCase):
             self.assertTrue(np.array_equal(прямо, бпф))
             self.assertEqual(np.int32, прямо.dtype)
 
+    def test_несовпадения_по_определению(self):
+        """Против счёта «в лоб»: длина итога, края, вход bool и int64, БПФ на стыке степени двойки."""
+        def в_лоб(x, w):
+            return np.array([int(np.sum(x[i:i + len(w)] != w)) for i in range(len(x) - len(w) + 1)], dtype=np.int64)
+        x = np.array([0, 1, 1, 0, 1], dtype=np.uint8)
+        self.assertEqual([1, 0, 1, 1], sinhro.несовпадения(x, np.array([1, 1], np.uint8)).tolist())
+        self.assertEqual([5], sinhro.несовпадения(x, np.array([1, 0, 0, 1, 0], np.uint8)).tolist())
+        self.assertEqual([2], sinhro.несовпадения(x, np.array([0, 1, 0, 1, 0], np.uint8)).tolist())
+        self.assertEqual([], sinhro.несовпадения(x, np.ones(6, np.uint8)).tolist())
+        self.assertEqual([1, 0, 1, 1], sinhro.несовпадения(x.astype(bool), np.array([1, 1], np.uint8)).tolist())
+        self.assertEqual([1, 0, 1, 1], sinhro.несовпадения(x.astype(np.int64), np.array([1, 1], np.uint8)).tolist())
+        rng = np.random.default_rng(4)
+        длинный = rng.integers(0, 2, 65_400).astype(np.uint8)
+        слово = rng.integers(0, 2, 300).astype(np.uint8)
+        self.assertTrue(np.array_equal(в_лоб(длинный[:3000], слово), sinhro.несовпадения(длинный[:3000], слово)))
+        итог = sinhro.несовпадения(длинный, слово)
+        self.assertEqual(65_101, len(итог))
+        for i in (0, 1, 65_100, 32_000, 65_099):
+            self.assertEqual(int(np.sum(длинный[i:i + 300] != слово)), int(итог[i]))
+
+    def test_кадры_hdlc_один_кадр_между_двумя_флагами(self):
+        флаг = [0, 1, 1, 1, 1, 1, 1, 0]
+        тело = np.unpackbits(np.frombuffer(b"\x01\x02\x03\x04\x05", np.uint8), bitorder="little")
+        ряд = np.array(флаг + тело.tolist() + флаг, dtype=np.uint8)
+        self.assertEqual([b"\x01\x02\x03\x04\x05"], hdlc.кадры(ряд))
+        self.assertEqual(hdlc._кадры_по_одному(ряд), hdlc.кадры(ряд))
+        self.assertEqual([], hdlc.кадры(np.array(флаг + тело.tolist(), dtype=np.uint8)))
+
     def test_уолш_float32_как_float64(self):
         rng = np.random.default_rng(2)
         for k in (1, 3, 10, 16):
