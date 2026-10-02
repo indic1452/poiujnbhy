@@ -165,6 +165,84 @@ class ЧтениеПотокомTests(unittest.TestCase):
         self.assertEqual(кадры, [з[1] for з in записи])
         self.assertIn("разметка выбрана по первым", ч.заметки[0])
 
+    def test_разметка_sig_варианты(self):
+        def пакеты(длины, порядок="big", включает=False, голова=b""):
+            return голова + b"".join((n + (2 if включает else 0)).to_bytes(2, порядок) + bytes([n % 256]) * n for n in длины)
+        длины = [5, 9, 300, 7, 260, 11, 6, 513]
+        self.assertEqual((0, "big", False), выбрать_разметку_sig(пакеты(длины)))
+        self.assertEqual((0, "little", False), выбрать_разметку_sig(пакеты(длины, "little")))
+        self.assertEqual((0, "big", True), выбрать_разметку_sig(пакеты(длины, включает=True)))
+        self.assertEqual((0, "little", True), выбрать_разметку_sig(пакеты(длины, "little", True)))
+        self.assertEqual((5, "big", False), выбрать_разметку_sig(пакеты(длины, голова=b"\xff" * 5)))
+        self.assertEqual((64, "big", False), выбрать_разметку_sig(пакеты(длины, голова=b"\xff" * 64)))
+        self.assertIsNone(выбрать_разметку_sig(пакеты(длины, голова=b"\xff" * 65)), "свой заголовок файла — до 64 байт")
+        # Меньше трёх целых пакетов в пробе — не судим; ровно три — годится.
+        self.assertIsNone(выбрать_разметку_sig(пакеты([2000, 2000])[:3000]))
+        self.assertEqual((0, "big", False), выбрать_разметку_sig(пакеты([40, 41, 42])))
+        # Проба кончается посреди пакета — это не порча: пакет уходит за пробу.
+        self.assertEqual((0, "big", False), выбрать_разметку_sig(пакеты(длины)[:-100]))
+        # Оба порядка проходят (длины-палиндромы 0x0101): при равном числе пакетов — старший первым.
+        симм = b"".join(b"\x01\x01" + bytes(257) for _ in range(4))
+        self.assertEqual((0, "big", False), выбрать_разметку_sig(симм))
+
+    def test_чтец_sig_по_пробе_места_и_конец(self):
+        from reportgen.setevoy import chtenie
+        старое = chtenie.SIG_ПРОБА, chtenie.SIG_ЦЕЛИКОМ_ДО
+        chtenie.SIG_ПРОБА, chtenie.SIG_ЦЕЛИКОМ_ДО = 64, 10
+        self.addCleanup(lambda: (setattr(chtenie, "SIG_ПРОБА", старое[0]), setattr(chtenie, "SIG_ЦЕЛИКОМ_ДО", старое[1])))
+        кадры = [bytes([i]) * (3 + i % 5) for i in range(30)]
+        данные = b"\xee\xee" + b"".join((len(к) + 2).to_bytes(2, "little") + к for к in кадры)
+        путь = self.папка / "p.sig"
+        путь.write_bytes(данные)
+        записи, ч = self.все(путь)
+        self.assertEqual(кадры, [з[1] for з in записи])
+        self.assertEqual([float(i) for i in range(30)], [з[0] for з in записи])
+        места = [з[4] for з in записи]
+        self.assertEqual([данные[м:м + len(к)] for м, к in zip(места, кадры, strict=True)], кадры)
+        self.assertEqual(len(данные), ч.место())
+        self.assertIs(False, ч.следующий())
+        self.assertIn("в начале файла свой заголовок в 2 байт", ч.заметки[0])
+        self.assertEqual(".sig", ч.формат)
+        # Неполный заголовок пакета в самом конце готового файла — заметка, записи до него целы.
+        путь.write_bytes(данные + b"\x05")
+        записи, ч = self.все(путь)
+        self.assertEqual(30, len(записи))
+        self.assertIn("файл оборван: в конце неполный заголовок пакета", ч.заметки)
+        # Последний пакет обрезан.
+        путь.write_bytes(данные[:-2])
+        записи, ч = self.все(путь)
+        self.assertEqual((29, "файл оборван: последний пакет записан не целиком"), (len(записи), ч.заметки[-1]))
+        # Длина меньше заголовка посреди файла — дальше не читается.
+        путь.write_bytes(данные + b"\x01\x00" + b"\x00" * 6)
+        записи, ч = self.все(путь)
+        self.assertEqual(30, len(записи))
+        self.assertTrue(any("меньше заголовка" in з for з in ч.заметки))
+        # Небольшой готовый .sig — проверка целиком (места из разбора всего файла).
+        chtenie.SIG_ЦЕЛИКОМ_ДО = 1 << 20
+        путь.write_bytes(данные)
+        записи, ч = self.все(путь)
+        self.assertEqual((кадры, места), ([з[1] for з in записи], [з[4] for з in записи]))
+        self.assertEqual(len(данные), ч.место())
+        # Не захват вовсе — понятная ошибка.
+        путь.write_bytes(b"\xff" * 100)
+        with self.assertRaises(ValueError):
+            self.все(путь)
+        chtenie.SIG_ЦЕЛИКОМ_ДО = 10
+        with self.assertRaises(ValueError):
+            self.все(путь)
+
+    def test_пустой_и_короткий_растущий(self):
+        путь = self.папка / "e.pcap"
+        путь.write_bytes(b"")
+        ч = ЧтецЗахвата(путь, готов=lambda: False)
+        self.assertIsNone(ч.следующий())
+        self.assertEqual(0, ч.место())
+        путь.write_bytes(b"\xd4\xc3")
+        self.assertIsNone(ч.следующий(), "меньше четырёх байт — вид ещё не узнать")
+        ч.закрыть()
+        with self.assertRaises(ValueError):
+            self.все(путь)                            # готов и не захват
+
     def test_вид_по_началу(self):
         self.assertEqual("pcap", вид_по_началу(с.pcap(смесь(2)), весь=True))
         self.assertEqual("pcapng", вид_по_началу(с.pcapng(смесь(2)), весь=False))
@@ -1064,7 +1142,15 @@ class ФайлыПоСсылкеTests(unittest.TestCase):
         self.assertEqual(["A", "Б", "C"], [x.имя for x in п])
         self.assertEqual("head", п[1].роль)
         self.assertEqual(п[0].ид, ф.папки(self.настройки)[0].ид, "ид папки постоянен")
+        self.assertEqual(10, len(п[0].ид))
+        self.настройки.input_dirs = []
+        self.assertEqual(1, len(ф.папки(self.настройки)), "папка по умолчанию уже есть — не ошибка")
+        self.настройки.input_dirs = ["  ", str(self.корень / "A"), {"name": "Б", "path": str(self.корень / "B"), "role": "HEAD"},
+                                     {"путь": str(self.корень / "C"), "роль": "нет такой"}]
         self.assertEqual(["A"], [x.имя for x in ф.доступные(self.настройки, self.человек("engineer"))])
+        from types import SimpleNamespace
+        self.assertEqual(["A"], [x.имя for x in ф.доступные(self.настройки, SimpleNamespace(role="engineer"))],
+                         "нет должности — как инженер")
         self.assertEqual(["A", "Б"], [x.имя for x in ф.доступные(self.настройки, self.человек("head"))])
         self.assertEqual([], ф.доступные(self.настройки, self.человек("guest")))
         with self.assertRaises(ф.ОшибкаПути):
@@ -1098,6 +1184,10 @@ class ФайлыПоСсылкеTests(unittest.TestCase):
         self.assertEqual(["a", "z.txt"] + (["внутрь"] if ссылки else []), sorted(э["имя"] for э in список["элементы"]))
         self.assertEqual(("", False), (список["путь"], список["обрезано"]))
         self.assertTrue(список["элементы"][0]["папка"], "папки — первыми")
+        self.assertEqual(0, next(э for э in список["элементы"] if э["имя"] == "a")["размер"], "у папки размер 0")
+        if ссылки:
+            self.assertIn("внутрь/b/x.pcap", [э["путь"] for э in ф.список(п, "", "x.pc")["элементы"]] +
+                          [э["путь"] for э in ф.список(п, "внутрь/b")["элементы"]], "ссылка внутрь папки — видна")
         вложенный = ф.список(п, "a")
         self.assertEqual(["b", "Y.PCAP"], [э["имя"] for э in вложенный["элементы"]])
         self.assertEqual((1, "a/Y.PCAP"), (вложенный["элементы"][1]["размер"], вложенный["элементы"][1]["путь"]))
@@ -1115,6 +1205,20 @@ class ФайлыПоСсылкеTests(unittest.TestCase):
         self.assertEqual(корень.resolve() / "a" / "b" / "x.pcap", ф.файл(п, "a/b/x.pcap"))
         with self.assertRaises(ф.ОшибкаПути):
             ф.файл(п, "a")
+        старая_глубина = ф.ГЛУБИНА_ПОИСКА
+        ф.ГЛУБИНА_ПОИСКА = 1
+        self.addCleanup(setattr, ф, "ГЛУБИНА_ПОИСКА", старая_глубина)
+        self.assertEqual(["a/Y.PCAP"], [э["путь"] for э in ф.список(п, "", "pcap")["элементы"] if not э["путь"].startswith("внутрь")],
+                         "глубже предела поиск не идёт")
+        ф.ГЛУБИНА_ПОИСКА = 2
+        self.assertIn("a/b/x.pcap", [э["путь"] for э in ф.список(п, "", "pcap")["элементы"]])
+        ф.ГЛУБИНА_ПОИСКА = старая_глубина
+        старое_время = ф.ВРЕМЯ_ПОИСКА
+        ф.ВРЕМЯ_ПОИСКА = -1
+        self.addCleanup(setattr, ф, "ВРЕМЯ_ПОИСКА", старое_время)
+        self.assertTrue(ф.список(п, "", "pcap")["обрезано"], "время поиска вышло — сказано")
+        ф.ВРЕМЯ_ПОИСКА = старое_время
+        self.assertFalse(ф.список(п, "", "pcap")["обрезано"])
         старые = ф.НАХОДОК_ДО
         ф.НАХОДОК_ДО = 1
         self.addCleanup(setattr, ф, "НАХОДОК_ДО", старые)
@@ -1124,6 +1228,8 @@ class ФайлыПоСсылкеTests(unittest.TestCase):
         ф.ЭЛЕМЕНТОВ_ДО = 1
         self.addCleanup(setattr, ф, "ЭЛЕМЕНТОВ_ДО", старые_э)
         self.assertEqual((1, True), (len(ф.список(п)["элементы"]), ф.список(п)["обрезано"]))
+        ф.ЭЛЕМЕНТОВ_ДО = len(список["элементы"])
+        self.assertFalse(ф.список(п)["обрезано"], "ровно предел — не обрезано")
 
     def test_отпечаток(self):
         from reportgen import fayly_ssylki as ф
