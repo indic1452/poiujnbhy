@@ -20,7 +20,7 @@ import numpy as np
 import _bootstrap  # noqa: F401
 import potok_sintez as с
 from reportgen.potok import moddekoder as мд
-from reportgen.potok import modem, razbor, skrembler, tpc
+from reportgen.potok import modem, ploskost, razbor, skrembler, tpc
 from test_potok_blok import НАЧАЛЬНОЕ, ОТВОДЫ, лрп
 from test_potok_ruchnoy import Стол
 from test_potok_sessii import функции_js
@@ -243,6 +243,13 @@ class ФактыНаСинтетике(unittest.TestCase):
             for поле in ("снят", "проверок", "уверенность", "блок"):
                 self.assertEqual(один[поле], общий[поле], (т, поле))
             self.assertAlmostEqual(один["структура"], общий["структура"], places=12)
+        # Первая — пробой, как у автомата (_снять_лучший): метки всей выборки, кадры с участка с данными.
+        старт = tpc.начало_данных(self.биты, self.начала, self.длина)
+        код = tpc.найти_в_кадрах(ploskost.с_фазой(self.биты, 3, {"таблица": группа[0]}, 0),
+                                 self.начала[старт:старт + modem.КАДРОВ_ПРОБЫ], self.длина)
+        первая = факты["таблицы"][" ".join(map(str, группа[0]))]
+        self.assertEqual((modem._проверок(код), код.уверенность), (первая["проверок"], первая["уверенность"]))
+        self.assertEqual(skrembler.мера_структуры(np.asarray(код.дальше[:1 << 20], np.uint8)), первая["структура"])
         р = modem.решить_равноценные(группа, факты)
         self.assertEqual(ИСТИННАЯ, группа[р["выбран"]])
         self.assertEqual(2, р["ступень"])

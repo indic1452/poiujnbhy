@@ -14470,7 +14470,8 @@
                         h('td', { class: 'mono' }, в.мера.toFixed(1).replace('.', ',')),
                         h('td', { class: 'mono' }, ((в.мера - р.медиана) / Math.max(1e-4, р.разброс)).toFixed(1).replace('.', ',') + ' σ'),
                         h('td', { class: 'small' }, в.как || ''),
-                        h('td', { class: 'small' + (в.автомат ? ' stol-md-auto-pick' : ' muted') }, строкаАвтомата(в)));
+                        h('td', { class: 'small stol-md-auto-cell' + (в.автомат ? ' stol-md-auto-pick' : ' muted'), title: строкаАвтомата(в) || null },
+                            в.автомат ? [h('b', {}, 'так выберет автомат'), h('div', {}, в.автомат)] : в.равноценный ? 'равноценный' : ''));
                     tr.addEventListener('click', () => выбрать(i));
                     tr.addEventListener('dblclick', () => { выбрать(i); декодировать(); });
                     телоВариантов.appendChild(tr);
