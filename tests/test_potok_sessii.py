@@ -19,7 +19,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import reportgen.potok.zadaniya as модуль
-from reportgen.potok import rastr, skrembler
+from reportgen.potok import rastr, skrembler, stol_raschety
 from reportgen.potok.razbor import снять_вручную
 from reportgen.potok.cikl import автокорреляция, размер_бпф
 from reportgen.potok.sessii import Сессии, годный_ид
@@ -111,7 +111,7 @@ class РазметкаTests(unittest.TestCase):
     def test_проверка_ошибки(self):
         for плохое in ({"отрезки": [[-1, 3]]}, {"отрезки": [[0, 0]]},
                        {"правила": [{"период": 0}]}, {"правила": [{"период": 8, "ширина": 9}]},
-                       {"правила": [{"период": 8, "ширина": 0}]}, {"правила": [{"период": 65537}]},
+                       {"правила": [{"период": 8, "ширина": 0}]}, {"правила": [{"период": rastr.ПЕРИОД_ДО + 1}]},
                        {"правила": [{"период": 8, "сдвиг": -1}]}, {"правила": [{"период": 8, "от": -1}]},
                        {"правила": [{"период": 8, "до": -1}]}, [1, 2],
                        {"правила": [{"период": 8}] * (rastr.ПРАВИЛ_ДО + 1)}):
@@ -318,7 +318,7 @@ class ПоискПериодаTests(unittest.TestCase):
         б = np.random.default_rng(9).integers(0, 2, 1 << 22, dtype=np.uint8)
         self.assertEqual([], rastr.поиск_периода(б, от=8, до=8192))
         self.assertEqual([], rastr.поиск_периода(б[:100], от=8, до=64))    # меньше 16 циклов
-        for плохое in ({"от": 1}, {"от": 100, "до": 50}, {"до": 70000}, {"глубина_от": 9, "глубина_до": 8},
+        for плохое in ({"от": 1}, {"от": 100, "до": 50}, {"до": rastr.ПЕРИОД_ДО + 1}, {"глубина_от": 9, "глубина_до": 8},
                        {"качество": 49}, {"качество": 101}):
             with self.subTest(плохое=плохое), self.assertRaises(ValueError):
                 rastr.поиск_периода(б, **плохое)
@@ -1007,8 +1007,23 @@ class СессииЧерезСерверTests(unittest.TestCase):
         self.assertEqual((2001, 1.0), (len(ак["r"]), ак["r"][0]))
         self.assertEqual(1000, max(range(900, 1100), key=lambda л: ак["r"][л]))
         self.assertEqual(round(1 / len(б[:1 << 21]) ** 0.5, 5), ак["шум"])
-        self.assertEqual(8193, len(к.get(f"/api/potok/{ид}/autocorr", params={"max": 0}).json()["r"]))
-        self.assertEqual(65537, len(к.get(f"/api/potok/{ид}/autocorr", params={"max": 10 ** 6}).json()["r"]))
+        # 0 — без предела (до половины выборки), без max — максимальный период поиска из настроек (по умолчанию
+        # миллион): лагов больше 65 536 — точки корзинами, в точке сильнейший лаг корзины (пик 1000 — на месте).
+        for params in ({"max": 0}, {}):
+            ак = к.get(f"/api/potok/{ид}/autocorr", params=params).json()
+            шаг = -(-(len(б) // 2 + 1) // stol_raschety.АВТОКОРРЕЛЯЦИЯ_ТОЧЕК)
+            self.assertEqual((len(б) // 2, шаг), (ак["лагов"], ак["шаг"]))
+            self.assertGreater(шаг, 1)
+            self.assertEqual(len(ак["r"]), len(ак["лаги"]))
+            self.assertEqual(len(ак["r"]), len(ак["r_мин"]))
+            self.assertLessEqual(len(ак["r"]), stol_raschety.АВТОКОРРЕЛЯЦИЯ_ТОЧЕК)
+            self.assertIn(1000, ак["лаги"])
+            self.assertEqual(0, ак["лаги"][int(np.argmax(ак["r"][100:])) + 100] % 1000)    # пик — на кратном маркера
+        self.assertEqual(400, к.get(f"/api/potok/{ид}/autocorr", params={"max": -1}).status_code)
+        # Настройка поменялась — автокорреляция без max идёт до нового предела (без перезапуска).
+        self.assertEqual(200, к.put("/api/potok-settings", json={"период_до": 4096}).status_code)
+        self.assertEqual(4097, len(к.get(f"/api/potok/{ид}/autocorr").json()["r"]))
+        к.put("/api/potok-settings", json={"период_до": 1_000_000})
         # Поле кадра любой ширины: с бита, в битах, с отбором по полю бит и поиском своего значения.
         строки = б[:len(б) // 1000 * 1000].reshape(-1, 1000)
         значения = [int("".join(map(str, р[3:16])), 2) for р in строки]
@@ -1195,7 +1210,7 @@ class ПриёмыПросмотраTests(unittest.TestCase):
                "частотыБайт", "диграммыБайт", "единиц32", "словоИзЗаписи", "началаСлова", "закладкиБита", "слитьОтрезки",
                "вычестьОтрезки", "изменитьОтрезки", "цветВеса", "числоИзЗаписи", "упорядочитьЗначения", "описатьШаг",
                "диапазоны", "описатьРазметку", "расчётОбрезки", "перенестиИзбранные", "правилаБезСтолбцов", "вырезыСтолбцов", "описатьУстановку", "рамкаУказателя", "местоЛупы",
-               "пикиАвтокорреляции", "пикУУказателя"]
+               "пикиАвтокорреляции", "отметитьКратныеПики", "пикУУказателя"]
 
     def выполнить(self, случаи: list[dict]) -> list:
         код = функции_js(self.ФУНКЦИИ, ["ЕДИНИЦ_В_БАЙТЕ", "ПИК_ОТ_СИГМ"])

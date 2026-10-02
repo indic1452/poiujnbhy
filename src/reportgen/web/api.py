@@ -3722,22 +3722,60 @@ def potok_periods(request: Request, job_id: str, stage: int = 0) -> dict[str, An
     задания = _potok(request)
     _файл_бит_или_400(request, user, job_id, stage)
     источник = _источник(request, job_id, stage)
-    return {"items": задания.запомнить(job_id, stage, "периоды",
-                                       lambda: _посчитать(request, user, stol_raschety.периоды, источник))}
+    период_до = _период_до(request, user)
+    return {"items": задания.запомнить(job_id, stage, f"периоды:{период_до}",
+                                       lambda: _посчитать(request, user, stol_raschety.периоды, источник, период_до))}
 
 
-#: График автокорреляции — лаги не дальше этого.
-АВТОКОРРЕЛЯЦИЯ_ДО = 1 << 16
+# -- настройки анализа потоков человека: максимальный период поиска -------------------------
+
+def _период_до(request: Request, user) -> int:
+    """Максимальный период поиска человека (0 — без предела)."""
+    return _potok(request).настройки.период_до(user.id)
+
+
+def _настройки_ответ(настройки: dict[str, Any]) -> dict[str, Any]:
+    from ..potok import nastroyki  # noqa: PLC0415
+    return {"settings": настройки, "defaults": nastroyki.по_умолчанию(),
+            "limits": {"period_max_from": nastroyki.ПЕРИОД_ДО_ОТ, "period_max_to": nastroyki.ПЕРИОД_ДО_НАИБОЛЬШИЙ,
+                       "no_limit": nastroyki.БЕЗ_ПРЕДЕЛА}}
+
+
+@router.get("/potok-settings")
+def potok_settings(request: Request) -> dict[str, Any]:
+    """Настройки анализа потоков человека: ``период_до`` — максимальный период поиска, бит (0 — без предела)."""
+    user = require_user(request)
+    return _настройки_ответ(_potok(request).настройки.прочитать(user.id))
+
+
+@router.put("/potok-settings")
+def potok_settings_save(request: Request) -> dict[str, Any]:
+    """Изменить настройки анализа: применяются сразу — к следующему разбору и окнам стола."""
+    user = require_user(request)
+    try:
+        настройки = _potok(request).настройки.записать(user.id, _body(request))
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("potok.settings", user=user, object_type="potok", object_id="",
+                              details=настройки)
+    return _настройки_ответ(настройки)
 
 
 @router.get("/potok/{job_id}/autocorr")
-def potok_autocorr(request: Request, job_id: str, stage: int = 0, max: int = 8192) -> dict[str, Any]:  # noqa: A002
-    """Автокорреляция по лагам 0…max (по началу массива, как поиск периода) — для графика в окне поиска."""
-    from ..potok import stol_raschety  # noqa: PLC0415
+def potok_autocorr(request: Request, job_id: str, stage: int = 0, max: int | None = None) -> dict[str, Any]:  # noqa: A002
+    """Автокорреляция по лагам 0…max (по началу массива, как поиск периода) — для графика в окне поиска.
+
+    Без ``max`` — до максимального периода поиска человека; 0 — без предела (до половины выборки).
+    Лагов больше stol_raschety.АВТОКОРРЕЛЯЦИЯ_ТОЧЕК — точки по корзинам лагов (см. там).
+    """
+    from ..potok import rastr, stol_raschety  # noqa: PLC0415
     user = require_user(request)
     _файл_бит_или_400(request, user, job_id, stage)
     задания = _potok(request)
-    наибольший = min(АВТОКОРРЕЛЯЦИЯ_ДО, max if max > 0 else 8192)
+    наибольший = _период_до(request, user) if max is None else int(max)
+    if наибольший < 0:
+        raise ServiceError("max — число лагов, 0 — без предела", 400)
+    наибольший = наибольший or rastr.ПЕРИОД_ДО
     источник = _источник(request, job_id, stage)
     return задания.запомнить(job_id, stage, f"автокорреляция:{наибольший}",
                              lambda: _посчитать(request, user, stol_raschety.автокорреляция, источник, наибольший))
@@ -4018,18 +4056,23 @@ def potok_period_search(request: Request, job_id: str) -> dict[str, Any]:
     _файл_бит_или_400(request, user, job_id, этап)
     задания = _potok(request)
     try:
-        параметры = {"от": int(тело.get("from") or 8), "до": int(тело.get("to") or 8192),
+        # Конечный период не задан — максимальный период поиска из настроек человека (0 — без предела:
+        # тогда ограничивает длина массива).
+        до = int(тело["to"]) if тело.get("to") not in (None, "") else _период_до(request, user)
+        параметры = {"от": int(тело.get("from") or 8), "до": до or rastr.ПЕРИОД_ДО,
                      "шаг": int(тело.get("step") or 1), "глубина_от": int(тело.get("depth_min") or 8),
                      "глубина_до": int(тело.get("depth_max") or 64),
                      "качество": float(тело.get("quality") or 90)}
-        rastr.бит_поиску_периода(параметры["до"], параметры["глубина_до"])        # проверка до очереди
+        if not 2 <= параметры["от"] <= параметры["до"] <= rastr.ПЕРИОД_ДО:     # проверка до очереди
+            raise ValueError("период — от 2 бит, начальный не больше конечного")
         источник = _источник(request, job_id, этап)
         найдено = задания.запомнить(
             job_id, этап, "поиск_периода:" + json.dumps(параметры, sort_keys=True),
             lambda: _посчитать(request, user, stol_raschety.поиск_периода, источник, параметры))
-    except (ValueError, TypeError) as ошибка:
+    except (ValueError, TypeError, OverflowError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
-    return {"items": найдено}
+    return {"items": найдено, **rastr.предел_поиска(len(источник), параметры["от"], параметры["до"],
+                                                    параметры["глубина_до"])}
 
 
 #: У скольких лучших полиномов каждой степени считать начальную установку аддитивного скремблера.
@@ -4110,15 +4153,17 @@ def potok_as_auto(request: Request, job_id: str) -> dict[str, Any]:
     фм = [k] if k else сведения["фм"]
     if блок is not None and not 64 <= блок <= 1 << 20:
         raise ServiceError("блок — от 64 бит", 400)
-    if кадр is not None and not 16 <= кадр <= 1 << 20:
+    from ..potok import rastr, stol_raschety  # noqa: PLC0415
+    if кадр is not None and not 16 <= кадр <= rastr.ПЕРИОД_ДО:
         raise ServiceError("кадр — от 16 бит", 400)
-    from ..potok import stol_raschety  # noqa: PLC0415
-    параметры = {"шаг": шаг, "блок": блок, "кадр": кадр, "фм": фм}
+    # Цикл «как в автомате» ищется до того же максимального периода, что у автомата этого человека.
+    параметры = {"шаг": шаг, "блок": блок, "кадр": кадр, "фм": фм, "период_до": _период_до(request, user)}
     источник = _источник(request, job_id, этап)
     # Тяжёлый расчёт (подбор плоскости — до минуты) — в исполнителе, как прочие расчёты стола.
     итог = задания.запомнить(
         job_id, этап, "как-автомат:" + json.dumps(параметры, sort_keys=True, ensure_ascii=False),
-        lambda: _посчитать(request, user, stol_raschety.как_автомат, источник, шаг, блок, кадр, list(фм)))
+        lambda: _посчитать(request, user, stol_raschety.как_автомат, источник, шаг, блок, кадр, list(фм),
+                           параметры["период_до"]))
     return итог | {"параметры": параметры}
 
 
@@ -5262,7 +5307,8 @@ def potok_moddecoder_analysis(request: Request, job_id: str) -> dict[str, Any]:
     фаза = тело.get("фаза")
     фаза = None if фаза in (None, "", "авто") else _целое(тело, "фаза", 0, 0, k - 1)
     источник = _источник_разметки(request, user, job_id, тело)
-    return _посчитать(request, user, stol_raschety.разметка_анализ, источник, РАЗМЕТКА_БИТ_ДО, k, фаза)
+    return _посчитать(request, user, stol_raschety.разметка_анализ, источник, РАЗМЕТКА_БИТ_ДО, k, фаза,
+                      _период_до(request, user))
 
 
 def _слово_синхро(тело: dict[str, Any]):
@@ -5305,7 +5351,7 @@ def potok_moddecoder_sync(request: Request, job_id: str) -> dict[str, Any]:
     источник = _источник_разметки(request, user, job_id, тело)
     try:
         return _посчитать(request, user, stol_raschety.разметка_по_синхрослову, источник, РАЗМЕТКА_БИТ_ДО, k,
-                          слово, имя)
+                          слово, имя, _период_до(request, user))
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
 
