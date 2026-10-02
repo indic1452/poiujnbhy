@@ -373,6 +373,9 @@ class ХранилищеTests(unittest.TestCase):
         self.assertEqual(0, len(х.записи_по([])))
         self.assertEqual([0.0, 0.5], х.времена(0, 2).tolist())
         self.assertEqual([3, 3], х.длины(298, 400).tolist())
+        self.assertEqual(([3, 3], [0.5, 1.0], [0, 0]), (х.длины(1, 3).tolist(), х.времена(1, 3).tolist(), х.потоки(1, 3).tolist()))
+        self.assertEqual((300, 300, 300), (len(х.длины()), len(х.времена()), len(х.потоки())))
+        self.assertEqual(([], []), (х.времена(5, 5).tolist(), х.длины(7, 3).tolist()))
         with self.assertRaises(IndexError):
             х.сводка(300)
         with self.assertRaises(IndexError):
