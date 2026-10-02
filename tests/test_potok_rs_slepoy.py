@@ -1124,6 +1124,7 @@ class ПоискTests(unittest.TestCase):
         сч = Counter((к.ступень, к.m) for к in глубоко)
         self.assertEqual((сч[2, 8], сч[2, 10], сч[2, 4], сч[1, 3]), (480, 360, 12, 16))
         self.assertEqual({к.p for к in глубоко if к.ступень == 2 and к.m == 8}, set(R.многочлены_поля(8)))
+        self.assertEqual({к.I for к in глубоко if к.ступень == 2 and к.m != 8}, {1, 2, 4})
         self.assertEqual(R.план("нет такого"), обычно)
         for к in глубоко:                                             # фазы — все 0…m−1 или одна 0, или 1…7
             self.assertIn(к.фазы, (tuple(range(к.m)), (0,), tuple(range(1, к.m))), к)
