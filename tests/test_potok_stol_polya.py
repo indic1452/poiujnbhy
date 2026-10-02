@@ -36,7 +36,7 @@ global.localStorage = {
 
 def выполнить(сценарий: str):
     код = PRELUDE + "\n".join(вырезать(APP, имя) for имя in (
-        "хранилищеСтола", "сохранитьСтола", "поляМассива", "сохранитьПоля",
+        "ключСтола", "хранилищеСтола", "сохранитьСтола", "поляМассива", "сохранитьПоля",
         "остальныеСтолбцы", "значениеПоляСтрокой", "описаниеЗначений")) + "\n" + сценарий
     итог = subprocess.run([NODE, "-e", код], capture_output=True, text=True, timeout=30)
     if итог.returncode:
@@ -107,7 +107,7 @@ class ПоляTests(unittest.TestCase):
             сохранитьПоля(б, [{ имя: 'x', от: 0, длина: 1, ширина: 8 }]);
             есть.push(поляМассива(а));
             global.сломано = false;
-            localStorage.setItem('stol-fields', JSON.stringify({ 'j1:2': 'не список' }));
+            localStorage.setItem('stol-fields@', JSON.stringify({ 'j1:2': 'не список' }));   // ключ — с пользователем
             есть.push(поляМассива(а));
             console.log(JSON.stringify(есть));""")
         self.assertEqual([[{"имя": "счётчик", "от": 3, "длина": 4, "ширина": 64}], [], [], []], итог)

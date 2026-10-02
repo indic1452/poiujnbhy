@@ -3986,6 +3986,12 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
                                  профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
                                  разбирать=bool(тело.get("analyze")), происхождение=описание,
                                  сессия=состояние.get("сессия") or "", бит=len(биты))
+    # Вид (период строки и первый бит) — от родителя, если строка та же (обрезка, инверсия,
+    # моддекодер…); после кода, маски, вырезки — нет: длина строки у ребёнка другая.
+    from ..potok.zadaniya import унаследованный_вид  # noqa: PLC0415
+    вид = унаследованный_вид(_potok(request).вид(job_id, этап), шаги)
+    if вид:
+        _potok(request).записать_вид(ид, 0, вид, кто=user.id, откуда=f"от массива {job_id}#{этап}")
     return {"id": ид}
 
 
@@ -4152,6 +4158,36 @@ def potok_marks_save(request: Request, job_id: str) -> dict[str, Any]:
     return {"marks": разметка}
 
 
+@router.get("/potok/{job_id}/view")
+def potok_view(request: Request, job_id: str, stage: int = 0) -> dict[str, Any]:
+    """Вид массива на столе (период строки, первый бит, порядок, выравнивание) — свой у узла,
+    общий для участников сессии; пустой — у узла своего вида ещё нет."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    вид = _potok(request).вид(job_id, int(stage))
+    if вид.get("изменил"):
+        люди = _люди(request, [вид["изменил"]])
+        вид["изменил_имя"] = люди[0]["full_name"] if люди else ""
+    return {"view": вид}
+
+
+@router.put("/potok/{job_id}/view")
+def potok_view_save(request: Request, job_id: str) -> dict[str, Any]:
+    """Сохранить вид массива: кто вправе видеть узел (владелец, участники сессии), тот и правит —
+    как разметку. Пустой ``view`` — сбросить вид узла."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    тело = _body(request)
+    try:
+        этап = int(тело.get("stage") or 0)
+        вид = _potok(request).записать_вид(job_id, этап, тело.get("view") or {}, кто=user.id)
+    except (ValueError, TypeError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    except KeyError:
+        raise ServiceError("задание не найдено", 404) from None
+    return {"view": вид}
+
+
 @router.post("/potok/{job_id}/period-search")
 def potok_period_search(request: Request, job_id: str) -> dict[str, Any]:
     """Быстрый поиск периода по синхромаркеру: период, первый бит, вес, сам маркер."""
@@ -4204,6 +4240,66 @@ def potok_scrambler_search(request: Request, job_id: str) -> dict[str, Any]:
                                аддитивный, кадр, начало_кадра, СКРЕМБЛЕР_УСТАНОВОК))
     except (ValueError, TypeError) as ошибка:
         raise ServiceError(str(ошибка), 400) from None
+
+
+def _сведения_узла(задания, состояние: dict[str, Any], этап: int) -> dict[str, Any]:
+    """Что известно о массиве для следующего шага: свойства этапа автомата или последнего слоя
+    производного узла (блок данных ТКБ/РС, кадр), модуляция из имени файла, принятый период."""
+    from ..potok import ploskost  # noqa: PLC0415
+    свойства: dict[str, Any] = {}
+    if этап >= 1:
+        этапы = состояние.get("этапы") or []
+        if этап <= len(этапы):
+            свойства = dict(этапы[этап - 1].get("свойства") or {})
+    else:
+        свойства = dict(состояние.get("свойства") or {})
+    _, фм = ploskost.модуляции(состояние.get("имя") or "", числа=False)
+    фм = list(состояние.get("фм") or фм)
+    вид = задания.вид(состояние["ид"], этап)
+    return {"блок": свойства.get("данных_в_блоке") or None, "кадр_кода": свойства.get("кадр") or None,
+            "фм": фм, "период": вид.get("ширина") if вид.get("принят") else None, "свойства": свойства}
+
+
+@router.post("/potok/{job_id}/as-auto")
+def potok_as_auto(request: Request, job_id: str) -> dict[str, Any]:
+    """«Как в автомате»: шаг разбора (цикл, плоскость, ткб, код, скремблер) на этом массиве так, как его
+    делает автомат, — те же данные (начало массива), те же функции и параметры по умолчанию.
+
+    Параметры по умолчанию берутся из узла: блок данных — из свойств ТКБ/РС, модуляция — из имени
+    файла, кадр — принятый оператором период; ``block``, ``frame``, ``k`` их заменяют. Итог — находки
+    со шагами стола («слои»), подсказка и сведения (кадр, первый бит, блок)."""
+    from ..potok import razbor  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        этап = int(тело.get("stage") or 0)
+        блок = int(тело["block"]) if тело.get("block") not in (None, "") else None
+        кадр = int(тело["frame"]) if тело.get("frame") not in (None, "") else None
+        k = int(тело["k"]) if тело.get("k") not in (None, "") else None
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("stage, block, frame, k — целые числа", 400) from None
+    шаг = str(тело.get("step") or "")
+    if шаг not in razbor.ШАГИ_КАК_АВТОМАТ:
+        raise ServiceError("шаг — " + ", ".join(razbor.ШАГИ_КАК_АВТОМАТ), 400)
+    состояние = _задание_или_404(request, user, job_id)
+    _файл_бит_или_400(request, user, job_id, этап)
+    задания = _potok(request)
+    сведения = _сведения_узла(задания, состояние, этап)
+    блок = блок if блок is not None else сведения["блок"]
+    кадр = кадр if кадр is not None else сведения["период"]
+    фм = [k] if k else сведения["фм"]
+    if блок is not None and not 64 <= блок <= 1 << 20:
+        raise ServiceError("блок — от 64 бит", 400)
+    if кадр is not None and not 16 <= кадр <= 1 << 20:
+        raise ServiceError("кадр — от 16 бит", 400)
+    from ..potok import stol_raschety  # noqa: PLC0415
+    параметры = {"шаг": шаг, "блок": блок, "кадр": кадр, "фм": фм}
+    источник = _источник(request, job_id, этап)
+    # Тяжёлый расчёт (подбор плоскости — до минуты) — в исполнителе, как прочие расчёты стола.
+    итог = задания.запомнить(
+        job_id, этап, "как-автомат:" + json.dumps(параметры, sort_keys=True, ensure_ascii=False),
+        lambda: _посчитать(request, user, stol_raschety.как_автомат, источник, шаг, блок, кадр, list(фм)))
+    return итог | {"параметры": параметры}
 
 
 #: Разборы GFP окна стола: последние несколько (с областями нагрузки — для страниц таблицы и
