@@ -5734,7 +5734,7 @@ class InterfaceCopyTests(unittest.TestCase):
         которых не видно тех, у кого горит.
         """
         self.assertIn("const idle = people.filter(", self.js)
-        self.assertIn("'Показать ещё ' + idle.length", self.js)
+        self.assertIn("'Показать свободных (' + idle.length + ')'", self.js)
         self.assertIn("'Скрыть свободных'", self.js)
 
     def test_the_whole_name_is_asked_for_where_a_person_is_entered(self):
@@ -6543,9 +6543,11 @@ class МенюОтдела(unittest.TestCase):
         self.assertIn("pendingNew = false", участок)
 
     def test_вход_в_поиск_показывает_сочетание_клавиш(self):
+        # Вход в поиск — один, в шапке страницы с «Ctrl K»; второй в меню слева был лишней остановкой Tab.
         участок = self.js.split("function buildNavHead()")[1].split("\n    //:")[0]
-        self.assertIn("openPalette()", участок)
-        self.assertIn("Ctrl K", участок)
+        self.assertNotIn("openPalette()", участок)
+        self.assertIn("<kbd>Ctrl K</kbd>", (ROOT / "src" / "reportgen" / "web" / "static" / "index.html").read_text(encoding="utf-8"))
+        self.assertIn("button.onclick = () => openPalette();", self.js)
 
     def test_недавнее_живёт_у_человека_в_браузере(self):
         # Список личный: на сервере ему делать нечего.

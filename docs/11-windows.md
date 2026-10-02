@@ -227,7 +227,7 @@ bge-reranker-v2-m3-Q8_0.gguf    0.65 ГБ
 ```json
 "brand_name": "Рабочее место",
 "brand_short": "РМ",
-"brand_subtitle": "Подготовка, учёт и проверка технических отчётов",
+"brand_subtitle": "Подготовка отчётов, анализ потоков и пакетов",
 "brand_accent": "#15507e",
 "report_footer": ""
 ```
