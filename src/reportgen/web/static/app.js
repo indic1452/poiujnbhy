@@ -1213,7 +1213,6 @@
         { id: 'work', title: 'Работа' },
         { id: 'analiz', title: 'Анализ' },
         { id: 'know', title: 'Знание' },
-        { id: 'analiz', title: 'Анализ' },
         { id: 'dept', title: 'Отдел' },
     ];
 

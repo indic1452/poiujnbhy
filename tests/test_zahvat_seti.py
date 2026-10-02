@@ -2235,6 +2235,15 @@ class СтраницаTests(unittest.TestCase):
         self.assertEqual([{"name": "zahvat", "id": None}, {"name": "zahvat", "id": "20260929-150737-3deda1"},
                           {"name": "zahvat", "id": "a/b"}], self.выполнить(код))
         self.assertIn("route: 'zahvat', href: '#/zahvat', title: 'Приём с сети'", self.js, "свой пункт меню «Приём с сети»")
+        # Группы и пункты меню — без повторов (слияние веток уже раз удвоило группу «Анализ»).
+        import re  # noqa: PLC0415
+        группы = self.js[self.js.index("const SECTION_GROUPS = ["):]
+        группы = группы[:группы.index("];")]
+        ид = re.findall(r"\{ id: '([a-z]+)'", группы)
+        self.assertEqual(["work", "analiz", "know", "dept"], ид)
+        пункты = re.findall(r"\{ group: '[a-z]+', route: '([a-z]+)'", self.js)
+        self.assertEqual(len(пункты), len(set(пункты)), пункты)
+        self.assertIn("pakety", пункты)
         self.assertIn("остановитьОпросЗахватаСети();", self.вырезать(self.js, "renderRoute"))
         self.assertIn("renderZahvat(view, route.id)", self.вырезать(self.js, "рисоватьРаздел"))
         for страница in ("renderPakety", "renderSessions"):
