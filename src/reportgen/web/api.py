@@ -4974,6 +4974,19 @@ def potok_ldpc_auto(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError(str(ошибка), 400) from None
 
 
+@router.post("/potok/{job_id}/ldpc/find")
+def potok_ldpc_find(request: Request, job_id: str) -> dict[str, Any]:
+    """«Найти по встроенным»: все встроенные коды и файлы отдела — опознавателем по синдрому; кандидаты с
+    долей выполненных проверок, началом и шагом слова и полями окна."""
+    from ..potok import stol_raschety  # noqa: PLC0415
+    параметры, _, этап = _ldpc_окно(request, job_id)
+    try:
+        return _посчитать(request, require_user(request), stol_raschety.ldpc_найти,
+                          _источник(request, job_id, этап), параметры)
+    except (ValueError, KeyError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+
+
 # -- модуляционный декодер: плоскости (.etl), просмотр, перебор вариантов ------------------
 
 @router.get("/potok-planes")
