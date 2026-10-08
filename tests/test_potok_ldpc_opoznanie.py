@@ -345,6 +345,25 @@ class ВАвтомате(unittest.TestCase):
         self.assertEqual([], пусто["найдено"])
         self.assertIn("Моддекодер", пусто["подсказка"])
 
+    def test_подсказка_моддекодер_после_8psk(self):
+        """Метки 8PSK в чужой разметке (линейная перестановка меток): LDPC не опознаётся, и подсказка ведёт к
+        «Моддекодер» → «Дек. всех»; со своей разметкой — опознаётся."""
+        from reportgen.potok import podskazki, rastr
+        биты, c, _ = g.поток_dvbs2("dvb-s2-16200-7200", 6, бчх=False, вид="")
+        тройки = биты[:len(биты) // 3 * 3].reshape(-1, 3)
+        чужая = np.array([0, 1, 3, 2, 7, 6, 4, 5])[тройки @ [4, 2, 1]]
+        чужие = ((чужая[:, None] >> np.array([2, 1, 0])) & 1).reshape(-1).astype(np.uint8)
+        self.assertIsNone(rastr.инструмент(чужие, "ldpc"))
+        приметы = podskazki.приметы(чужие)
+        подсказки = podskazki.подсказки({"имя": "zapis_8PSK.bin"}, 0, приметы)
+        моддек = [п for п in подсказки if "ФМ-8" in п["что"]]
+        self.assertEqual(1, len(моддек))
+        self.assertIn("«Дек. всех»", моддек[0]["почему"])
+        self.assertEqual("ldpc", моддек[0]["действия"][0]["имя"])
+        self.assertFalse([п for п in podskazki.подсказки({"имя": "zapis.bin"}, 0, приметы) if "ФМ-8" in п["что"]])
+        найдено = rastr.инструмент(биты, "ldpc")
+        self.assertIn("по матрице «dvb-s2-16200-7200»", найдено.что)
+
     def test_слой_со_вставками_вручную(self):
         биты, c = g.ccsds("ar4ja-2560-1024", 12)
         ряд, запись = razbor.снять_вручную(биты, "ldpc ar4ja-2560-1024 рандомизатор ccsds начало 32 шаг 2080")
