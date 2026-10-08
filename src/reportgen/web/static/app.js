@@ -10274,7 +10274,10 @@
     const КУСОК_БАЙТ = 4 << 20;
     const КЭШ_БАЙТ_ДО = 512 << 20;
     //: Больше этого массив в браузер не берём: полгигабайта — предел разумного для вкладки.
-    const МАССИВ_В_БРАУЗЕРЕ_ДО = 512 << 20;
+    const МАССИВ_В_БРАУЗЕРЕ_ДО = 2047 * (1 << 20);
+    //: Массив до этого объёма браузер подкачивает целиком в фоне; больший — только видимые куски
+    //: (буфер выделяется на весь массив, но память занимают лишь прочитанные места).
+    const ПОДКАЧКА_ДО = 64 << 20;
     const кэшБайт = new Map();
     const ЕДИНИЦ_В_БАЙТЕ = (() => {
         const т = new Uint8Array(256);
@@ -10320,7 +10323,11 @@
                     }
                     х.всего = всего;
                     х.бит = Math.min(бит, всего * 8);
-                    х.байты = new Uint8Array(всего);
+                    try {
+                        х.байты = new Uint8Array(всего);
+                    } catch (e) {
+                        throw new ApiError(413, 'Мало памяти для массива ' + fmtBytes(всего) + '. Обрежьте его.');
+                    }
                     х.готов = new Uint8Array(Math.max(1, Math.ceil(всего / КУСОК_БАЙТ)));
                     ужатьКэшБайт();
                 }
@@ -10333,7 +10340,7 @@
                 х.идёт.delete(н);
             }
             х.слушатели.forEach((fn) => fn());
-            if (!х.ошибка && х.готов && !х.идёт.size) {
+            if (!х.ошибка && х.готов && !х.идёт.size && х.всего <= ПОДКАЧКА_ДО) {
                 const следующий = х.готов.indexOf(0);
                 if (следующий >= 0) кусок(следующий);
             }
@@ -11705,7 +11712,9 @@
                 сетка.appendChild(h('div', { class: 'stol-empty' },
                     h('div', {}, h('b', {}, 'В сессии пока нет файлов')),
                     h('div', { class: 'muted small' }, 'Перетащите файлы сюда или нажмите «Добавить файлы». Можно взять часть файла.'),
-                    h('button', { class: 'btn btn--primary', onclick: () => выбратьФайлы() }, 'Добавить файлы')));
+                    h('div', {}, h('button', { class: 'btn btn--primary', onclick: () => выбратьФайлы() }, 'Добавить файлы'), ' ',
+                        h('button', { class: 'btn btn--ghost', onclick: () => окноФайловСервера(sessionId, (ид) => { с.нижняя = 'биты'; return загрузитьДерево(ид + ':0'); }) },
+                            'С сервера…'))));
                 с.выбран = null;
                 рисоватьЖурнал();
                 рисоватьНиз();
@@ -11752,6 +11761,8 @@
                         (люди.length > 1 ? ' · участники: ' + люди.map((ч) => ч.full_name).join(', ') : '')),
                     h('span', { class: 'stol-title-actions' },
                         h('button', { class: 'btn btn--sm btn--primary', onclick: () => выбратьФайлы() }, 'Добавить файлы'),
+                        h('button', { class: 'btn btn--sm btn--ghost', title: 'Файл с сервера, без загрузки',
+                            onclick: () => окноФайловСервера(sessionId, (ид) => { с.нижняя = 'биты'; return загрузитьДерево(ид + ':0'); }) }, 'С сервера…'),
                         св.mine ? h('button', { class: 'btn btn--sm btn--ghost', onclick: () => окноДоступа(св, () => загрузитьДерево()) }, 'Поделиться') : null,
                         св.mine ? h('button', { class: 'btn btn--sm btn--ghost', onclick: async () => {
                             const имя = await promptDialog({ title: 'Имя сессии', value: св.name });
@@ -15835,7 +15846,7 @@
             // Копия для автомата (без шагов) — биты готовы сразу: их видно, пока автомат идёт.
             const битыГотовы = у.stage === 0 && у.родитель && !((у.задание || {}).шаги || []).length;
             if ((у.состояние === 'ждёт' || у.состояние === 'идёт') && !битыГотовы) {
-                нижнееТело.appendChild(loadingBox('Массив ' + у.номер + ' готовится…'));
+                нижнееТело.appendChild(ходУзла(у));
                 return;
             }
             if (с.нижняя === 'биты') просмотр = битовыйПросмотр(нижнееТело, у);
@@ -15852,6 +15863,33 @@
          * Битовый просмотр: байты массива — в браузере, картинка строится здесь же. Длина строки,
          * первый бит, масштаб, прокрутка, выделение, разметка — без запросов к серверу, сразу.
          */
+        /** Узел ещё готовится (шаги по кускам или автоанализ): доля, последняя строка хода, «Остановить».
+         *  Опрос — лёгким запросом состояния раз в секунду, страница не ждёт тяжёлых ответов. */
+        function ходУзла(у) {
+            const доля = h('progress', { max: 1, value: 0, style: { width: '100%' } });
+            const строка = h('div', { class: 'muted small' }, 'Массив ' + у.номер + ' готовится…');
+            const стоп = h('button', { class: 'btn btn--sm btn--ghost', onclick: async () => {
+                стоп.disabled = true;
+                try { await api.post('/api/potok/' + encodeURIComponent(у.job) + '/cancel'); строка.textContent = 'Останавливаю…'; }
+                catch (error) { toastError(error); стоп.disabled = false; }
+            } }, 'Остановить');
+            const узел = h('div', { class: 'empty empty--loading potok-hod-uzla' }, h('div', { class: 'spinner' }), строка, доля, стоп);
+            async function опрос() {
+                if (!узел.isConnected) return;
+                try {
+                    const d = await api.get('/api/potok/' + encodeURIComponent(у.job));
+                    if (typeof d.доля === 'number') доля.value = d.доля; else доля.removeAttribute('value');
+                    const ж = d.журнал || [];
+                    строка.textContent = 'Массив ' + у.номер + ': ' + (d.состояние === 'ждёт' ? 'в очереди' + (d.перед_ним ? ' (' + d.перед_ним + ')' : '')
+                        : (ж.length ? ж[ж.length - 1] : 'идёт')) + (typeof d.доля === 'number' ? ' · ' + Math.round(d.доля * 100) + ' %' : '');
+                    if (d.состояние !== 'ждёт' && d.состояние !== 'идёт') return;
+                } catch (error) { /* связь — попробуем ещё */ }
+                setTimeout(опрос, 1000);
+            }
+            setTimeout(опрос, 0);
+            return узел;
+        }
+
         function битовыйПросмотр(место, у) {
             const х = байтыМассива(у.job, у.stage);
             const поле = (значение, подпись, ширина, подсказка) => h('input', { type: 'number', value: значение, 'aria-label': подпись,
@@ -17856,17 +17894,13 @@
             if (!ответ) return;
             let последний = null;
             for (const в of ответ.файлы) {
-                const уведомление = toast('«' + в.файл.name + '»: отправка…', 'info', 600000);
                 try {
-                    const d = await отправитьФайлСессии(sessionId, в, ответ.автоанализ, (доля) => {
-                        if (уведомление && уведомление.set) уведомление.set('«' + в.файл.name + '»: ' + Math.round(доля * 100) + ' %');
-                    }, ответ.порядок);
+                    // Большой файл — кусками, с ходом, отменой и докачкой; малый — одним запросом.
+                    const d = await отправитьФайлСессииСХодом(sessionId, в, ответ.автоанализ, ответ.порядок);
                     последний = d.id;
                     if (d.bit_order_note) toast('«' + в.файл.name + '»: ' + d.bit_order_note, 'info', 9000);
                 } catch (error) {
                     toastError(error);
-                } finally {
-                    if (уведомление && уведомление.close) уведомление.close();
                 }
             }
             if (последний) {
@@ -18040,6 +18074,160 @@
         if (автоанализ) форма.append('analyze', '1');
         форма.append('bit_order', порядок || 'auto');
         return uploadFile('/api/sessions/' + encodeURIComponent(сессия) + '/files', форма, ход);
+    }
+
+    // ---------------------------------------------------------------------
+    // Большие файлы потоков: загрузка кусками (ход, отмена, докачка после обрыва и после
+    // перезагрузки страницы) и добавление с сервера по ссылке — без загрузки вовсе.
+    // ---------------------------------------------------------------------
+
+    //: Файл больше этого идёт кусками; меньше — одним запросом, как прежде.
+    const КУСКАМИ_ОТ = 16 << 20;
+    //: Сколько раз подряд повторять кусок при обрыве связи (с паузой 1, 2, 4… с).
+    const ПОВТОРОВ_КУСКА = 8;
+
+    /** Уведомление с ходом и кнопкой «Отменить»: {set(текст), close()}. */
+    function уведомлениеХода(текст, отмена) {
+        const box = $('#toasts');
+        const строка = h('div', {}, текст);
+        const кнопка = h('button', { class: 'btn btn--sm btn--ghost', onclick: () => { кнопка.disabled = true; отмена(); } }, 'Отменить');
+        const узел = h('div', { class: 'toast is-info potok-hod' }, строка, кнопка);
+        if (box) { box.appendChild(узел); местоУведомлений(); }
+        return { set: (т) => { строка.textContent = т; }, close: () => узел.remove() };
+    }
+
+    function ключЗагрузки(сессия, файл) {
+        return 'potok-upload:' + сессия + ':' + файл.name + ':' + файл.size + ':' + (файл.lastModified || 0);
+    }
+
+    /**
+     * Файл в сессию кусками: {id, chunk} от сервера, затем PUT кусков по порядку. Обрыв — повтор
+     * с паузой; сервер ответил «не с того места» — продолжаем с того, сколько он принял. Номер
+     * загрузки — в браузере: после перезагрузки страницы тот же файл докачивается, а не идёт заново.
+     * ``ход(доля, текст)``; ``сигнал`` — {отменено: bool}.
+     */
+    async function загрузитьКусками(сессия, в, автоанализ, порядок, ход, сигнал) {
+        const файл = в.часть && !ФАЙЛЫ_С_РАЗБОРОМ.test(в.файл.name)
+            ? в.файл.slice(в.начало, в.длина ? в.начало + в.длина : в.файл.size) : в.файл;
+        const вырезан = файл !== в.файл;
+        const ключ = ключЗагрузки(сессия, в.файл) + (вырезан ? ':' + в.начало + ':' + в.длина : '');
+        let ид = null, принято = 0, кусок = 8 << 20;
+        try {
+            const было = JSON.parse(localStorage.getItem(ключ) || 'null');
+            if (было && было.id) {
+                const d = await api.get('/api/potok-uploads/' + encodeURIComponent(было.id));
+                if (d && d.size === файл.size) { ид = было.id; принято = d.received || 0; кусок = было.chunk || кусок; }
+            }
+        } catch (error) { ид = null; }
+        if (!ид) {
+            const тело = { name: в.файл.name, size: файл.size, bit_order: порядок || 'auto', analyze: автоанализ ? '1' : '' };
+            if (вырезан) Object.assign(тело, { sliced: '1', start: в.начало });
+            else if (в.часть) Object.assign(тело, { start: в.начало, length: в.длина || 0 });
+            const d = await api.post('/api/sessions/' + encodeURIComponent(сессия) + '/uploads', тело);
+            ид = d.id; кусок = d.chunk || кусок;
+            try { localStorage.setItem(ключ, JSON.stringify({ id: ид, chunk: кусок })); } catch (error) { /* хранилище недоступно — без докачки после перезагрузки */ }
+        } else if (принято) {
+            ход(принято / файл.size, 'продолжаю с ' + fmtBytes(принято));
+        }
+        const начато = Date.now(), былоПринято = принято;
+        let повторов = 0;
+        while (принято < файл.size) {
+            if (сигнал.отменено) {
+                try { await api.del('/api/potok-uploads/' + encodeURIComponent(ид)); } catch (error) { /* уже нет */ }
+                try { localStorage.removeItem(ключ); } catch (error) { /* нет хранилища */ }
+                throw new ApiError(0, 'загрузка отменена');
+            }
+            const часть = файл.slice(принято, Math.min(файл.size, принято + кусок));
+            let ответ;
+            try {
+                ответ = await fetch('/api/potok-uploads/' + encodeURIComponent(ид) + '?offset=' + принято,
+                    { method: 'PUT', body: часть, credentials: 'same-origin', headers: { 'Content-Type': 'application/octet-stream' } });
+            } catch (error) {
+                повторов += 1;
+                if (повторов > ПОВТОРОВ_КУСКА) throw new ApiError(0, 'Нет связи. Добавьте файл снова — загрузка продолжится.');
+                ход(принято / файл.size, 'нет связи, повтор через ' + (1 << (повторов - 1)) + ' с');
+                await new Promise((r) => setTimeout(r, 1000 << (повторов - 1)));
+                continue;
+            }
+            if (ответ.status === 401) { goToLogin(); throw new ApiError(401, 'требуется вход в систему'); }
+            let d = {};
+            try { d = await ответ.json(); } catch (error) { d = {}; }
+            if (ответ.status === 409 && typeof d.received === 'number') { принято = d.received; continue; }
+            if (!ответ.ok) throw new ApiError(ответ.status, d.error || ('Ошибка загрузки (код ' + ответ.status + ')'));
+            повторов = 0;
+            принято = d.received;
+            const скорость = (принято - былоПринято) / Math.max(0.001, (Date.now() - начато) / 1000);
+            ход(принято / файл.size, fmtBytes(принято) + ' из ' + fmtBytes(файл.size) + ' · ' + fmtBytes(скорость) + '/с');
+        }
+        ход(1, 'готовлю массив…');
+        const итог = await api.post('/api/potok-uploads/' + encodeURIComponent(ид) + '/done');
+        try { localStorage.removeItem(ключ); } catch (error) { /* нет хранилища */ }
+        return итог;
+    }
+
+    /** Отправить файл: большой — кусками, остальные — одним запросом. С ходом и отменой. */
+    async function отправитьФайлСессииСХодом(сессия, в, автоанализ, порядок) {
+        const сигнал = { отменено: false };
+        const уведомление = уведомлениеХода('«' + в.файл.name + '»: отправка…', () => { сигнал.отменено = true; });
+        try {
+            if (в.файл.size >= КУСКАМИ_ОТ) {
+                return await загрузитьКусками(сессия, в, автоанализ, порядок, (доля, текст) =>
+                    уведомление.set('«' + в.файл.name + '»: ' + Math.round(доля * 100) + ' % · ' + текст), сигнал);
+            }
+            return await отправитьФайлСессии(сессия, в, автоанализ, (доля) =>
+                уведомление.set('«' + в.файл.name + '»: ' + Math.round(доля * 100) + ' %'), порядок);
+        } finally {
+            уведомление.close();
+        }
+    }
+
+    /**
+     * Файл сервера — в сессию по ссылке: выбор в общем окне «Файл на сервере» (то же, что у «Анализа пакетов»:
+     * папки входных файлов, поиск по имени, размер и дата), затем — часть файла, порядок бит, автоанализ.
+     * Файл не загружается и не копируется: узел читает его на месте.
+     */
+    function окноФайловСервера(сессия, после) {
+        выбратьФайлНаСервере({ заголовок: 'Файл на сервере', выбрать: (ф) => параметрыСсылки(сессия, ф, после) });
+    }
+
+    function параметрыСсылки(сессия, ф, после) {
+        const запомненные = хранилищеСтола('session-server', {});
+        const часть = h('input', { type: 'checkbox' });
+        const с_ = h('input', { type: 'number', min: 0, value: '0', style: { width: '8em' } });
+        const объём = h('input', { type: 'number', min: 0, value: '0', style: { width: '8em' }, title: '0 — до конца файла' });
+        const детали = h('span', { hidden: true }, ' с байта ', с_, ' объём, байт ', объём, h('span', { class: 'muted small' }, ' (0 — до конца)'));
+        часть.addEventListener('change', () => { детали.hidden = !часть.checked; });
+        const порядок = h('select', { 'aria-label': 'Порядок бит в байте файла' }, ПОРЯДКИ_БИТ_ФАЙЛА.map(([з, т]) =>
+            h('option', { value: з, selected: з === (запомненные.порядок || 'auto') }, т)));
+        const авто = h('input', { type: 'checkbox', checked: !!запомненные.авто });
+        const окно = openModal({
+            title: 'Добавить файл',
+            body: h('div', { class: 'stol-dialog' },
+                h('div', { class: 'session-file-name' }, h('b', {}, ф.имя), h('span', { class: 'muted small' }, ' · ' + fmtBytes(ф.размер))),
+                h('div', {}, h('label', { class: 'small' }, часть, ' взять часть'), детали),
+                h('div', {}, h('label', { class: 'small' }, 'Порядок бит в байте ', порядок)),
+                h('div', {}, h('label', { class: 'small' }, авто, ' автоанализ'))),
+            footer: [
+                h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена'),
+                h('button', { class: 'btn btn--primary', onclick: () => добавить() }, 'Добавить'),
+            ],
+        });
+        async function добавить() {
+            сохранитьСтола('session-server', { порядок: порядок.value, авто: авто.checked });
+            окно.close();
+            const у = toast('«' + ф.имя + '»: добавляю…', 'info', 600000);
+            try {
+                const d = await api.post('/api/sessions/' + encodeURIComponent(сессия) + '/files/link', {
+                    root: ф.root, path: ф.path, bit_order: порядок.value, analyze: авто.checked ? '1' : '',
+                    start: часть.checked ? Number(с_.value) || 0 : 0, length: часть.checked ? Number(объём.value) || 0 : 0 });
+                if (d.bit_order_note) toast('«' + ф.имя + '»: ' + d.bit_order_note, 'info', 9000);
+                if (после) await после(d.id);
+            } catch (error) {
+                toastError(error);
+            } finally {
+                у.close();
+            }
+        }
     }
 
     /** Поделиться сессией: отметить сослуживцев; снять отметку — убрать доступ. */

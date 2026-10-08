@@ -197,15 +197,16 @@ def описание_tsbk(п: dict[str, object]) -> str:
 
 def кадры(биты: np.ndarray) -> list[dict[str, object]]:
     """Кадры: синхрослово (прямо или с обратной полярностью), NID, у TSDU — TSBK."""
+    from . import sinhro  # noqa: PLC0415 — sinhro знает слова протоколов
     биты = np.asarray(биты, dtype=np.uint8)
     if len(биты) < 114:
         return []
-    окна = np.lib.stride_tricks.sliding_window_view(биты, 48)
     эталон = _бит_числа(СИНХРО, 48)
     обратный = эталон ^ np.array([1, 0] * 24, dtype=np.uint8)
     итог = []
     for образец, обратная in ((эталон, False), (обратный, True)):
-        for м in np.flatnonzero((окна == образец).all(axis=1)):
+        # Места, где все 48 бит совпали, — счётом несовпадений (а не окнами 48 × N в памяти).
+        for м in np.flatnonzero(sinhro.несовпадения(биты, образец) == 0):
             м = int(м)
             кадр = биты[м:м + 900]
             if обратная:
