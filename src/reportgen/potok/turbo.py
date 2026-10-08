@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from . import svyortka
+from . import nastroyki, svyortka
 
 
 def связь_u_p1(u: np.ndarray, p1: np.ndarray, обратная: int, прямая: int) -> np.ndarray:
@@ -38,15 +38,22 @@ def связь_u_p1(u: np.ndarray, p1: np.ndarray, обратная: int, пря
     return свёртка(u, прямая) ^ свёртка(p1, обратная)
 
 
-def длина_блока(нарушения: np.ndarray, до: int = 8192) -> tuple[int, float] | None:
-    """Период всплесков нарушений: (период в шагах, сила пика в сигмах)."""
+def длина_блока(нарушения: np.ndarray, до: int | None = None) -> tuple[int, float] | None:
+    """Период всплесков нарушений: (период в шагах, сила пика в сигмах).
+
+    ``до`` — наибольший период (None — максимальный период поиска разбора, 0 — без предела);
+    в любом случае — не длиннее четверти ряда.
+    """
     x = нарушения.astype(np.float64) - нарушения.mean()
     if not x.any():
         return None
     n = len(x)
+    наибольший = nastroyki.наибольший(nastroyki.период_до() if до is None else до, n, 4)
+    if наибольший < 9:
+        return None
     размер = 1 << int(np.ceil(np.log2(2 * n)))
     спектр = np.fft.rfft(x, размер)
-    r = np.fft.irfft(спектр * np.conj(спектр), размер)[:min(до, n // 4) + 1]
+    r = np.fft.irfft(спектр * np.conj(спектр), размер)[:наибольший + 1]
     r /= r[0]
     шум = 1 / np.sqrt(n)
     окно = r[8:]
@@ -54,10 +61,8 @@ def длина_блока(нарушения: np.ndarray, до: int = 8192) -> t
     if r[лучший] < 8 * шум:
         return None
     # Основной период — наименьший с пиком не слабее 60 % лучшего.
-    for p in range(8, лучший + 1):
-        if r[p] >= 0.6 * r[лучший]:
-            return p, float(r[p] / шум)
-    return лучший, float(r[лучший] / шум)
+    p = 8 + int(np.argmax(r[8:лучший + 1] >= 0.6 * r[лучший]))
+    return p, float(r[p] / шум)
 
 
 def восстановить_перемежённые(p2: np.ndarray, обратная: int, прямая: int, K: int

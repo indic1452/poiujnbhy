@@ -19,7 +19,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import cikl, skrembler, stafing
+from reportgen.potok import cikl, nastroyki, skrembler, stafing
 from reportgen.potok.bity import в_биты
 
 ASM = np.unpackbits(np.frombuffer(bytes.fromhex("1ACFFC1D"), np.uint8))
@@ -98,19 +98,21 @@ class ЦиклПоСлову(unittest.TestCase):
         self.assertIn("автокорреляцию забивает нагрузка", найдено.подробно[0])
 
     def test_длинный_кадр_ррл(self):
-        """Кадр РРЛ в 100 000 бит (длиннее ЦИКЛ_ДО автокорреляции) с синхрословом 240 бит."""
+        """Кадр РРЛ в 100 000 бит с синхрословом 240 бит; «максимальный период поиска» короче — не ищется."""
         rng = np.random.default_rng(10)
         слово = rng.integers(0, 2, 240).astype(np.uint8)
         k = rng.integers(0, 2, (30, 100_000)).astype(np.uint8)
         k[:, :240] = слово
         биты = np.concatenate([rng.integers(0, 2, 1234).astype(np.uint8), k.reshape(-1)])
-        self.assertGreater(100_000, cikl.ЦИКЛ_ДО)
         найдено = cikl.найти(биты)
         self.assertIsNotNone(найдено)
         self.assertEqual(найдено.свойства["длина"], 100_000)
         self.assertIn("синхрослово 240 бит", найдено.что)
-        with mock.patch.object(cikl, "ПОВТОР_ЦИКЛ_ДО", cikl.ЦИКЛ_ДО):
+        with nastroyki.с_пределом(65536):
             self.assertIsNone(cikl._цикл_по_слову(биты, cikl.ПОВТОР_БЕЗ_ПИКА))
+            подсказки = []
+            self.assertIsNone(cikl.найти(биты, подсказки))
+            self.assertEqual([], подсказки)            # предел меньше выборки / 16 — длинные просто не искались
 
     def test_случайный_ряд_без_цикла(self):
         биты = np.random.default_rng(3).integers(0, 2, 1 << 21).astype(np.uint8)
