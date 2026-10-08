@@ -14607,6 +14607,8 @@
             const рандомизатор = h('input', { type: 'checkbox' });
             const входИнверсия = h('input', { type: 'checkbox' });
             const входРеверс = h('input', { type: 'checkbox' });
+            const plframe = h('select', { 'aria-label': 'PLFRAME DVB-S2' }, [['', 'нет'], ['да', 'снять PLHEADER и пилоты'],
+                ['скремблер', 'и скремблер PL']].map(([v, т]) => h('option', { value: v }, т)));
             const кандидатыБлок = h('div', { class: 'small stol-ldpc-cands' }, h('span', { class: 'muted' },
                 '«Найти по встроенным» — все встроенные коды и файлы отдела по синдрому: доля выполненных проверок, граница слова, вид потока.'));
             const автоИтог = h('div', { class: 'small stol-auto-result', hidden: true });
@@ -14664,7 +14666,9 @@
                             h('label', { class: 'stol-md-row', title: 'Начала слов внутри периода, если в кадре их несколько (ASM и 4 слова: 0,700,1400,2100)' }, h('span', {}, 'Смещения в периоде'), смещения),
                             h('label', { class: 'stol-md-opt' }, рандомизатор, ' Рандомизатор CCSDS поверх слова'),
                             h('label', { class: 'stol-md-opt' }, входИнверсия, ' Вход инверсный'),
-                            h('label', { class: 'stol-md-opt' }, входРеверс, ' Младший бит байта первым')),
+                            h('label', { class: 'stol-md-opt' }, входРеверс, ' Младший бит байта первым'),
+                            h('label', { class: 'stol-md-row', title: 'DVB-S2: поток с заголовками PLHEADER (биты символа) — FECFRAME без заголовков и пилотов, MODCOD по PLS' },
+                                h('span', {}, 'PLFRAME DVB-S2'), plframe)),
                         h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Кадровая синхронизация'),
                             h('div', { class: 'stol-md-row', role: 'radiogroup', 'aria-label': 'Синхрослово' }, безСинхро.узел, сосредоточенное.узел, распределённое.узел),
                             h('label', { class: 'stol-md-row' }, h('span', {}, 'Длина кадра'), длинаКадра),
@@ -14757,7 +14761,7 @@
                 return { тип: тип.value, блок: блок.hidden ? '' : блок.value, скорость: с_ ? с_.подпись : '', код: код.value,
                     выколоты: выколоты.value.trim(), укорочены: укорочены.value.trim(), перемежение: перемежение.value,
                     начало: начало.value.trim(), шаг: шаг.value.trim(), смещения: смещения.value.trim(), рандомизатор: рандомизатор.checked,
-                    вход_инверсия: входИнверсия.checked, вход_реверс: входРеверс.checked,
+                    вход_инверсия: входИнверсия.checked, вход_реверс: входРеверс.checked, plframe: plframe.value,
                     синхро: { вид: синхроВид(), слово: слово.value.trim(), длина: Number(длинаКадра.value) || 0,
                         длина_слова: Number(длинаСлова.value) || 0, выводить: выводить.checked },
                     мультипликативный: мульт.checked ? отводы.value.trim() : '', аддитивный_dvb: dvb.checked, инверсия: инверсия.checked };
@@ -14853,7 +14857,7 @@
                     выколоты.value = н.выколоты; укорочены.value = н.укорочены;
                     перемежение.value = (н.перемежение || '').split(' ')[0];
                     начало.value = н.начало === undefined || н.начало === null ? '' : String(н.начало); шаг.value = ''; смещения.value = '';
-                    рандомизатор.checked = false; входИнверсия.checked = false; входРеверс.checked = false;
+                    рандомизатор.checked = false; входИнверсия.checked = false; входРеверс.checked = false; plframe.value = '';
                     сказать('найдено: ' + н.что + ' — ' + н.мера, false);
                     await посмотреть();
                 } catch (error) {
@@ -14893,6 +14897,7 @@
                 шаг.value = п.шаг ? String(п.шаг) : '';
                 смещения.value = п.смещения || '';
                 рандомизатор.checked = !!п.рандомизатор; входИнверсия.checked = !!п.вход_инверсия; входРеверс.checked = !!п.вход_реверс;
+                plframe.value = п.plframe || '';
                 проверить();
                 if (смотреть) await посмотреть();
             }
@@ -14920,7 +14925,7 @@
             тип.addEventListener('change', заполнитьБлоки);
             блок.addEventListener('change', заполнитьСкорости);
             скорость.addEventListener('change', заполнитьКоды);
-            [код, перемежение, выводить, мульт, dvb, инверсия, рандомизатор, входИнверсия, входРеверс].forEach((п) => п.addEventListener('change', проверить));
+            [код, перемежение, выводить, мульт, dvb, инверсия, рандомизатор, входИнверсия, входРеверс, plframe].forEach((п) => п.addEventListener('change', проверить));
             [начало, шаг, смещения].forEach((п) => п.addEventListener('input', проверить));
             [безСинхро, сосредоточенное, распределённое].forEach((о) => о.r.addEventListener('change', проверить));
             [выколоты, укорочены, длинаКадра, длинаСлова, слово, отводы].forEach((п) => п.addEventListener('input', проверить));

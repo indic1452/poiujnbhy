@@ -370,6 +370,24 @@ class ОкноLDPC(unittest.TestCase):
         np.testing.assert_array_equal(данные_слов("dvb-s2-16200-7200", c).reshape(-1)[:len(просмотр["биты"])],
                                       просмотр["биты"])
 
+    def test_plframe_с_пилотами_и_скремблером(self):
+        """PLHEADER «биты символа», пилоты, скремблер PL не снят: кандидат по MODCOD, слои «plframe скремблер» и
+        «ldpc …» — тот же результат и «Просмотром», и шагами стола."""
+        биты, c, _ = g.поток_dvbs2("dvb-s2-16200-10800", 5, бчх=True, pl=True, пилоты=True, скремблер_pl=True, вид="8PSK")
+        биты = g.сдвинуть(биты, 45)
+        к = ldpc_okno.найти_встроенные(биты, {})["кандидаты"][0]
+        self.assertEqual(["plframe скремблер", "ldpc dvb-s2-16200-10800 перемежение 8PSK начало 0"], к["слои"])
+        self.assertEqual("скремблер", к["поля"]["plframe"])
+        ждём = данные_слов("dvb-s2-16200-10800", c).reshape(-1)
+        просмотр = ldpc_okno.просмотр(биты, к["поля"])
+        np.testing.assert_array_equal(ждём[:len(просмотр["биты"])], просмотр["биты"])
+        ряд = биты
+        for слой in к["слои"]:
+            ряд, _ = razbor.снять_вручную(ряд, слой)
+        np.testing.assert_array_equal(ждём[:len(ряд)], ряд)
+        with self.assertRaisesRegex(ValueError, "plframe"):
+            razbor.снять_вручную(c.reshape(-1), "plframe")
+
     def test_поля_окна(self):
         self.assertEqual("ldpc wifi-648-324 рандомизатор ccsds начало 5 шаг 700 смещения 0,10",
                          ldpc_okno.слой({"код": "wifi-648-324", "начало": 5, "шаг": 700, "смещения": "0, 10",
@@ -378,7 +396,9 @@ class ОкноLDPC(unittest.TestCase):
                          ({"начало": 1, "шаг": 9, "смещения": "а"}, "через запятую")):
             with self.subTest(п=п), self.assertRaisesRegex(ValueError, слово):
                 ldpc_okno.слой({"код": "wifi-648-324", **п})
-        self.assertEqual(["реверс 8", "инверсия"], ldpc_okno.предобработка({"вход_реверс": True, "вход_инверсия": True}))
+        self.assertEqual(["реверс 8", "инверсия", "plframe скремблер"],
+                         ldpc_okno.предобработка({"вход_реверс": True, "вход_инверсия": True, "plframe": "скремблер"}))
+        self.assertEqual(["plframe"], ldpc_okno.предобработка({"plframe": "да"}))
 
     def test_ничего(self):
         итог = ldpc_okno.найти_встроенные(np.zeros(5000, np.uint8), {})
