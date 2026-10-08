@@ -320,11 +320,82 @@ def _modcod(имя: str, бит_на_символ: int) -> int:
 
 # -- 5G NR ---------------------------------------------------------------------------------------
 
+def _обратная_gf2(A: np.ndarray) -> np.ndarray:
+    n = len(A)
+    M = np.concatenate([A.astype(np.uint8), np.eye(n, dtype=np.uint8)], axis=1)
+    for j in range(n):
+        p = j + int(np.flatnonzero(M[j:, j])[0])
+        if p != j:
+            M[[j, p]] = M[[p, j]]
+        где = np.flatnonzero(M[:, j])
+        M[где[где != j]] ^= M[j]
+    return M[:, n:]
+
+
+class КодерNR:
+    """Кодер 5G NR по строению базового графа (38.212, 5.3.2): ядро — 4 блок-строки и 4 блок-столбца
+    чётности (обращается как 4Z × 4Z), расширение — у строки i ≥ 4 своя позиция чётности с единичным
+    блоком (сдвиг 0): она — сумма остальных. Быстрее общего Гаусса при больших Z (H 17664 × 26112)."""
+
+    def __init__(self, bg: int, Z: int):
+        self.м = ldpc_std.матрица(f"nr-bg{bg}-z{Z}")
+        self.Z = Z
+        self.k = ldpc_std.NR_ДАННЫХ[bg] * Z
+        self.данные = np.arange(self.k)
+        k, я = self.k, 4 * Z
+        H = np.zeros((я, я), dtype=np.uint8)
+        for i in range(я):
+            с = self.м.строки[i]
+            H[i, с[(с >= k) & (с < k + я)] - k] = 1
+        self.обр = _обратная_gf2(H).astype(np.float32)
+
+    def закодировать(self, u: np.ndarray) -> np.ndarray:
+        u = np.atleast_2d(np.asarray(u, dtype=np.uint8))
+        Z, k = self.Z, self.k
+        c = np.zeros((len(u), self.м.n), dtype=np.uint8)
+        c[:, :k] = u
+        s = np.zeros((len(u), 4 * Z), dtype=np.uint8)
+        for i in range(4 * Z):
+            с = self.м.строки[i]
+            s[:, i] = np.bitwise_xor.reduce(c[:, с[с < k]], axis=1)
+        c[:, k:k + 4 * Z] = ((s.astype(np.float32) @ self.обр.T) % 2).astype(np.uint8)
+        for i in range(4 * Z, self.м.m):
+            с = self.м.строки[i]
+            своя = k + i
+            assert своя == с.max()
+            c[:, своя] = np.bitwise_xor.reduce(c[:, с[с != своя]], axis=1)
+        return c
+
+
+@lru_cache(maxsize=4)
+def кодер_nr(bg: int, Z: int) -> КодерNR:
+    return КодерNR(bg, Z)
+
+
+def голд_nr(c_init: int, длина: int) -> np.ndarray:
+    """Скремблер 5G NR прямо по 38.211, 5.2.1 (независимо от проекта): c(n) = x1(n + Nc) + x2(n + Nc), Nc = 1600,
+    x1(n+31) = x1(n+3) + x1(n), x1(0) = 1; x2(n+31) = x2(n+3) + x2(n+2) + x2(n+1) + x2(n), x2(i) — бит i c_init."""
+    Nc = 1600
+    x1 = np.zeros(Nc + длина + 31, dtype=np.uint8)
+    x2 = np.zeros(Nc + длина + 31, dtype=np.uint8)
+    x1[0] = 1
+    x2[:31] = [(c_init >> i) & 1 for i in range(31)]
+    for n in range(Nc + длина):
+        x1[n + 31] = x1[n + 3] ^ x1[n]
+        x2[n + 31] = x2[n + 3] ^ x2[n + 2] ^ x2[n + 1] ^ x2[n]
+    return x1[Nc:Nc + длина] ^ x2[Nc:Nc + длина]
+
+
 def nr(bg: int, Z: int, слов: int, *, E: int | None = None, Qm: int = 1, сид: int = 1
        ) -> tuple[np.ndarray, np.ndarray]:
     """Слова 5G NR после согласования скорости: (биты, полные слова). E — бит на слово."""
     имя = f"nr-bg{bg}-z{Z}"
-    c = кодовые(имя, слов, сид)
+    if Z >= 128:
+        к = кодер_nr(bg, Z)
+        c = к.закодировать(np.random.default_rng(сид).integers(0, 2, (слов, к.k)).astype(np.uint8))
+        assert синдром_нулевой(к.м, c[:2]).all(), "кодер NR дал не кодовое слово"
+    else:
+        c = кодовые(имя, слов, сид)
     N = c.shape[1] - 2 * Z
     E = E or N
     буфер = c[:, 2 * Z:]
@@ -333,6 +404,16 @@ def nr(bg: int, Z: int, слов: int, *, E: int | None = None, Qm: int = 1, с�
     if Qm > 1:
         e = e.reshape(слов, Qm, E // Qm).transpose(0, 2, 1).reshape(слов, E)
     return e.reshape(-1), c
+
+
+def nr_со_скремблером(bg: int, Z: int, слов: int, *, E: int, c_init: int, блоков: int = 1, сид: int = 1
+                      ) -> tuple[np.ndarray, np.ndarray]:
+    """5G NR (BPSK, Qm = 1): слова по E бит, транспортный блок — ``блоков`` кодовых блоков подряд; скремблер
+    Голда (38.211, 7.3.1.1) — по всему транспортному блоку заново (c_init без номера слота — маска та же)."""
+    биты, c = nr(bg, Z, слов, E=E, сид=сид)
+    маска = голд_nr(c_init, блоков * E)
+    слова = биты.reshape(слов, E) ^ маска.reshape(блоков, E)[np.arange(слов) % блоков]
+    return слова.reshape(-1), c
 
 
 # -- CCSDS ---------------------------------------------------------------------------------------

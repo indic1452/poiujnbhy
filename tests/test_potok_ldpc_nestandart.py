@@ -1,0 +1,174 @@
+"""LDPC «нестандарт» файлов отдела: 5G NR по длине (16512 = 43·384) и слова под постоянной маской.
+
+Эталоны независимы от проекта: кодер NR по строению базового графа (``ldpc_potoki.КодерNR``, слово
+проверяется H·c = 0 по строкам H), скремблер Голда — прямо по формулам 38.211, 5.2.1
+(``ldpc_potoki.голд_nr``), ПСП кадрового скремблера — своим регистром.
+"""
+
+import unittest
+
+import numpy as np
+
+import _bootstrap  # noqa: F401
+import ldpc_potoki as лп
+from reportgen.potok import ldpc_opoznanie as оп
+from reportgen.potok import ldpc_std
+from reportgen.potok.razbor import слои_находки, снять_вручную
+
+Z = 384
+E = 43 * Z                       # 16512: BG1 без первых 2Z, первые 45 столбцов (rv0, без заполнителей)
+K = 22 * Z
+
+
+def _данные_совпали(данные: np.ndarray, c: np.ndarray, k: int) -> int:
+    вышло = np.asarray(данные).reshape(-1, k)
+    return int((вышло == c[:len(вышло), :k]).all(axis=1).sum())
+
+
+def _псп(отводы, начало, длина):
+    """Своя ПСП: s[n] = ⊕ s[n − t], первые биты — начало."""
+    s = list(начало) + [0] * (длина - len(начало))
+    for n in range(len(начало), длина):
+        b = 0
+        for t in отводы:
+            b ^= s[n - t]
+        s[n] = b
+    return np.array(s[:длина], dtype=np.uint8)
+
+
+class ГолдNR(unittest.TestCase):
+    def test_как_по_формулам(self):
+        for c_init in (0, 1, 0x1234 * 2**15 + 2**14 + 77, 2**31 - 1):
+            np.testing.assert_array_equal(лп.голд_nr(c_init, 3000), оп.голд_nr(c_init, 3000))
+
+    def test_кодер_nr_даёт_слова(self):
+        к = лп.кодер_nr(1, Z)
+        c = к.закодировать(np.random.default_rng(3).integers(0, 2, (3, K)).astype(np.uint8))
+        self.assertTrue(лп.синдром_нулевой(к.м, c).all())
+
+
+class NR16512(unittest.TestCase):
+    """Файл «LDPC_16512»: BG1, Z = 384, переданы позиции 2Z … 45Z − 1 (хвост выколот согласованием скорости)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.биты, cls.c = лп.nr(1, Z, 40, E=E, сид=4)
+
+    def test_без_скремблера(self):
+        шум = лп.ошибки(лп.сдвинуть(self.биты, 777), 1e-3, сид=5)
+        кк, _ = оп.опознать(шум, имена=["nr-bg1-z384", "nr-bg1-z352", "nr-bg2-z384"], срок=60)
+        self.assertTrue(кк)
+        к = кк[0]
+        self.assertEqual(("nr-bg1-z384", E, E, 0, 777 % E), (к.имя, к.шаг, к.длина_слова, к.маска, к.начало % E))
+        данные, _, сошлось = оп.снять(шум, к)
+        self.assertEqual(1.0, сошлось)
+        self.assertEqual(40, _данные_совпали(данные, self.c, K))
+
+    def test_голд_один_блок(self):
+        c_init = 0x1234 * 2**15 + 2**14 + 77
+        поток, c = лп.nr_со_скремблером(1, Z, 40, E=E, c_init=c_init, сид=4)
+        шум = лп.ошибки(поток, 1e-3, сид=6)
+        кк, _ = оп.опознать(шум, имена=["nr-bg1-z384"], срок=60)
+        self.assertTrue(кк)
+        к = кк[0]
+        self.assertEqual((E, 1), (к.шаг, к.маска))
+        данные, подробно, сошлось = оп.снять(шум, к)
+        self.assertEqual(1.0, сошлось)
+        self.assertEqual(40, _данные_совпали(данные, c, K))
+        self.assertIn(f"c_init = {c_init}", " ".join(подробно))
+
+    def test_голд_два_блока_в_транспортном(self):
+        c_init = 0x0BEE * 2**15 + 5
+        поток, c = лп.nr_со_скремблером(1, Z, 40, E=E, c_init=c_init, блоков=2, сид=4)
+        шум = лп.ошибки(лп.сдвинуть(поток, E), 1e-3, сид=7)      # перед словами — кусок записи длиной в слово
+        кк, _ = оп.опознать(шум, имена=["nr-bg1-z384"], срок=60)
+        self.assertTrue(кк)
+        к = кк[0]
+        self.assertEqual((E, 2), (к.шаг, к.маска))
+        данные, подробно, сошлось = оп.снять(шум, к)
+        self.assertEqual(40 / 41, сошлось)                       # чужое первое «слово» не сходится
+        self.assertEqual(40, _данные_совпали(данные.reshape(-1, K)[1:], c, K))
+        self.assertIn(f"c_init = {c_init}", " ".join(подробно))
+
+    def test_слой_стола_как_автомат(self):
+        c_init = 4242
+        поток, c = лп.nr_со_скремблером(1, Z, 24, E=E, c_init=c_init, сид=4)
+        шум = лп.ошибки(поток, 1e-3, сид=8)
+        кк, св = оп.опознать(шум, имена=["nr-bg1-z384"], срок=60)
+        находка = оп.находка(шум, кк[0], сведения=св)
+        слои = слои_находки(находка)
+        self.assertEqual(1, len(слои))
+        self.assertIn("маска 1", слои[0])
+        ряд, н = снять_вручную(шум, слои[0])
+        np.testing.assert_array_equal(np.asarray(находка.дальше), ряд)
+        self.assertEqual(24, _данные_совпали(ряд, c, K))
+
+
+class МаскаКадра(unittest.TestCase):
+    """Скремблер кадра модема поверх слов (заново на каждом слове) — маска одна на все слова."""
+
+    ИМЯ = "wifi-1944-972"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.c = лп.кодовые(cls.ИМЯ, 120, сид=9)
+
+    def test_пс_п_известного_многочлена(self):
+        маска = _псп((14, 15), [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], 1944)
+        шум = лп.ошибки(лп.сдвинуть((self.c ^ маска).reshape(-1), 300), 1e-3, сид=10)
+        кк, _ = оп.опознать(шум, имена=[self.ИМЯ, "wifi-1944-1296", "wimax-1920-960"], срок=60)
+        self.assertTrue(кк)
+        к = кк[0]
+        self.assertEqual((self.ИМЯ, 1), (к.имя, к.маска))
+        данные, подробно, сошлось = оп.снять(шум, к)
+        self.assertGreater(сошлось, 0.98)
+        вышло = данные.reshape(-1, 972)
+        self.assertEqual(120, len(вышло))
+        self.assertGreater(int((вышло == self.c[:, :972]).all(axis=1).sum()), 117)
+        self.assertIn("1 + x⁻¹⁴ + x⁻¹⁵", " ".join(подробно))
+
+    def test_неизвестная_маска_данные_относительно_первого(self):
+        маска = np.random.default_rng(11).integers(0, 2, 1944).astype(np.uint8)
+        шум = лп.ошибки((self.c ^ маска).reshape(-1), 1e-3, сид=12)
+        кк, _ = оп.опознать(шум, имена=[self.ИМЯ], срок=60)
+        self.assertTrue(кк and кк[0].маска == 1)
+        данные, подробно, _ = оп.снять(шум, кк[0])
+        вышло = данные.reshape(-1, 972)
+        относительно = self.c[:len(вышло), :972] ^ self.c[0, :972]
+        self.assertGreater(int((вышло == относительно).all(axis=1).sum()), len(вышло) - 3)
+        self.assertIn("с точностью до кодового слова", " ".join(подробно))
+
+    def test_повтор_одного_слова_не_код(self):
+        слово = np.random.default_rng(13).integers(0, 2, 20000).astype(np.uint8)
+        кк, _ = оп.опознать(np.tile(слово, 40), имена=[self.ИМЯ, "nr-bg1-z384", "dvb-s2-16200-7200"], срок=60)
+        self.assertEqual([], кк)
+
+    def test_случайные_биты_не_код(self):
+        б = np.random.default_rng(14).integers(0, 2, 1 << 20).astype(np.uint8)
+        кк, _ = оп.опознать(б, имена=[self.ИМЯ, "nr-bg1-z384", "nr-bg2-z384", "dvb-s2-64800-32400"], срок=60)
+        self.assertEqual([], кк)
+
+
+class Декодер(unittest.TestCase):
+    """Декодер по рёбрам даёт то же, что прежняя запись по дополненным строкам."""
+
+    def test_как_прежний(self):
+        from reportgen.potok import ldpc
+        for имя, ber in (("wifi-648-324", 0.04), ("nr-bg2-z16", 0.05), ("ar4ja-2560-1024", 0.05)):
+            схема = ldpc_std.схема(имя)
+            c = лп.кодовые(имя, 12, сид=2)
+            пр = лп.ошибки(c[:, схема.переданы].reshape(-1), ber, сид=5).reshape(12, -1)
+            связи = схема.матрица.связи()
+            a, oa = ldpc.мин_сумма(схема.llr(пр), связи, схема.матрица.n, 50)
+            b, ob = ldpc.мин_сумма_прежний(схема.llr(пр), связи, схема.матрица.n, 50)
+            np.testing.assert_array_equal(a, b)
+            np.testing.assert_array_equal(oa, ob)
+
+    def test_без_висячих_выколотых_проверок(self):
+        к = оп.Кандидат("nr-bg1-z384", "", 66 * Z, 0, E, 0.0, 0.5, 0.0, слово=E)
+        схема = оп.схема_кандидата(к)
+        self.assertEqual(23 * Z, len(схема.связи_декодера()))        # 23 блок-строки целиком внутри 45 столбцов
+
+
+if __name__ == "__main__":
+    unittest.main()
