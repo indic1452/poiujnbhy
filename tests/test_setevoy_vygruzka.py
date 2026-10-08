@@ -215,7 +215,7 @@ class ВыгрузкиЧерезСервер(unittest.TestCase):
         страница = self.get("/report").content.decode()
         for чего_нет in ("http://", "https://", "<script", "src=", "<link"):
             self.assertNotIn(чего_нет, страница)
-        for что in ("Обзор захвата «все.pcap»", "<h2>Протоколы</h2>", "архив.zip", "prefers-color-scheme: dark"):
+        for что in ("Обзор записи «все.pcap»", "<h2>Протоколы</h2>", "архив.zip", "prefers-color-scheme: dark"):
             self.assertIn(что, страница)
         текст = self.get("/report", format="txt").content.decode()
         self.assertIn("Объекты по видам:\n  FTP: 1\n", текст)
@@ -334,13 +334,13 @@ class ВыгрузкаФункцииTests(unittest.TestCase):
     def test_отчёт_пустой_и_полный(self):
         страница, текст = vygruzka.отчёт("x.pcap", {"пакетов": 0}, [], {}, [])
         self.assertIn("Пакетов нет", страница)
-        self.assertEqual("Обзор захвата «x.pcap»\n\nПод фильтр не попало ни одного пакета.", текст)
+        self.assertEqual("Обзор записи «x.pcap»\n\nПод фильтр не попало ни одного пакета.", текст)
         сводки, нагрузки, _ = ос.разобрать(ос.захват_всех_видов())
         итог = obekty.собрать(сводки, нагрузки)
         обзор = statistika.обзор(сводки, [{}] * len(сводки), нагрузки)
         дерево = statistika.иерархия_строками(statistika.иерархия(сводки)[0])
         страница, текст = vygruzka.отчёт("<все>.pcap", обзор, дерево, obekty.по_видам(итог), итог["объекты"], 180)
-        self.assertIn("Обзор захвата «&lt;все&gt;.pcap»", страница)
+        self.assertIn("Обзор записи «&lt;все&gt;.pcap»", страница)
         self.assertIn("<td>\u00a0\u00a0IPv4</td>", страница)
         self.assertIn("  1. [HTTP] отчёт.docx — 401 байт, TCP 10.0.0.2:80 → 10.0.0.1:41000\n", текст)
         self.assertIn("+03:00", страница)
