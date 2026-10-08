@@ -806,6 +806,7 @@ class Ведущий:
     # -- снаружи --
 
     def запустить(self) -> None:
+        self._осмотреться(True)                                # идёт ли загрузка — до первой разметки
         self._писать_ход(сразу=True)
         self._поток = threading.Thread(target=self._цикл, daemon=True, name="reportgen-pakety-vedushiy")
         self._поток.start()

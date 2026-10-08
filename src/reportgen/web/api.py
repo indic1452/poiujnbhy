@@ -2154,22 +2154,29 @@ _PAKETY_LOCK = threading.Lock()
 КУСОК_ЗАГРУЗКИ = 8 << 20
 
 
-def _pakety(request: Request):
-    """Записи страницы «Анализ пакетов» — одно хранилище на приложение, папка pakety в data_dir."""
-    захваты = getattr(request.app.state, "pakety", None)
+def открыть_пакеты(app: Any):
+    """Записи страницы «Анализ пакетов» — одно хранилище на приложение, папка pakety в data_dir. Большие файлы
+    разбираются пачками в общем пуле разборов (тот же, что у анализа потоков: честная очередь на всех)."""
+    захваты = getattr(app.state, "pakety", None)
     if захваты is not None:
         return захваты
     with _PAKETY_LOCK:
-        захваты = getattr(request.app.state, "pakety", None)
+        захваты = getattr(app.state, "pakety", None)
         if захваты is None:
             from ..setevoy.zahvaty import Захваты  # noqa: PLC0415
-            settings = _settings(request)
+            settings = app.state.settings
             захваты = Захваты(Path(settings.data_dir) / "pakety", разборов=max(0, int(settings.pakety_workers)),
                               отборов=max(0, int(settings.pakety_filter_workers)),
                               процессы=bool(settings.pakety_worker_process),
-                              процессом_от=max(0, int(settings.pakety_process_from_mb)) << 20)
-            request.app.state.pakety = захваты
+                              процессом_от=max(0, int(settings.pakety_process_from_mb)) << 20,
+                              пул=lambda: открыть_задания(app).разборы,
+                              пачками=bool(getattr(settings, "pakety_pachkami", True)))
+            app.state.pakety = захваты
     return захваты
+
+
+def _pakety(request: Request):
+    return открыть_пакеты(request.app)
 
 
 def _захват_или_404(request: Request, user, ид: str) -> dict[str, Any]:

@@ -97,8 +97,11 @@ def create_app(settings: Settings | None = None,
         anyio.to_thread.current_default_thread_limiter().total_tokens = НИТЕЙ_ОБРАБОТЧИКОВ
         # Задания разбора потоков — сразу при старте: незавершённые до перезапуска разборы
         # снова встают в очередь, не дожидаясь, пока кто-нибудь откроет страницу.
-        from .api import открыть_задания  # noqa: PLC0415
+        from .api import открыть_задания, открыть_пакеты  # noqa: PLC0415
         открыть_задания(app)
+        # «Анализ пакетов» — тоже при старте: разбор пачками, прерванный перезапуском, продолжается с последней
+        # сшитой пачки сам, не дожидаясь, пока кто-нибудь откроет страницу.
+        открыть_пакеты(app)
         if service.vectors is not None:
             state = service.vectors.start_if_needed()
             if state.get("running"):
