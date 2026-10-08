@@ -385,7 +385,7 @@ def _генератор_j83b(p: int, fcr: int, корней: int) -> np.ndarray:
     g = [1]
     for i in range(корней - 1):
         к = int(степень[(fcr + i) % Q])
-        g = [a ^ int(умн[b, к]) for a, b in zip(g + [0], [0] + g)]
+        g = [a ^ int(умн[b, к]) for a, b in zip(g + [0], [0] + g, strict=True)]
     x = int(степень[(fcr + корней - 1) % Q])
     v = 0
     for c in g:

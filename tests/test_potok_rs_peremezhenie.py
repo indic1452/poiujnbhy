@@ -149,6 +149,16 @@ class ПрофилиTests(unittest.TestCase):
         биты, _ = С.j83b(1300, I=128, J=4, сдвиг=4)
         self.assertIsNone(RP.проверить_профиль(биты, RP.профиль("j83b"), полно=False))
 
+    def test_dvb_по_прежнему(self):
+        """DVB с синхробайтами снимает dvb.найти, как раньше; профиль «dvb» на том же потоке — то же перемежение."""
+        import potok_sintez as с  # noqa: PLC0415
+        данные = с.dvb(400)
+        находка = dvb.найти(данные, 0)
+        self.assertIsNotNone(находка)
+        self.assertIn("перемежением I = 12, M = 17", находка.что)
+        код = RP.проверить_профиль(np.unpackbits(np.frombuffer(данные, dtype=np.uint8)), RP.профиль("dvb"))
+        self.assertEqual((код.N, код.k, код.B, код.d, код.чистых_до), (204, 188, 12, 204, 1.0))
+
     def test_профиль_на_чужом_потоке_нет(self):
         случайные = np.random.default_rng(7).integers(0, 2, 1 << 21).astype(np.uint8)
         обычный = С.случайный_rs(146, 130, 1500)
@@ -260,6 +270,32 @@ class СлойTests(unittest.TestCase):
         self.assertTrue(итог["слои"][0].startswith("рс 146 130 перемежение рэмси 13 146"), итог["слои"])
 
 
+class МестоВАвтоматеTests(unittest.TestCase):
+    def test_порядок_детекторов(self):
+        б = razbor.Бюджет(конец=time.monotonic() + 60, профиль=razbor.ПРОФИЛИ["быстро"])
+        имена = [и for и, _, _ in razbor._детекторы(np.zeros(10, np.uint8), б, 0, блок=1168)]
+        профили = имена.index("код Рида — Соломона со свёрточным перемежением (DSS, DVB, ATSC, J.83B)")
+        вслепую = имена.index("код Рида — Соломона со свёрточным перемежением вслепую")
+        выколотый = имена.index("выколотый свёрточный код стандарта (DVB-S, IESS, DSS 6/7)")
+        self.assertEqual(профили, 0)                                   # раньше «РС в блоке» и ПСП блока
+        self.assertLess(профили, имена.index("код Рида — Соломона в блоке (146 байт)"))
+        self.assertLess(профили, имена.index("LDPC по загруженным и встроенным матрицам"))
+        self.assertEqual(выколотый, имена.index("свёрточный 1/2 и короткий блочный код") + 1)
+        self.assertLess(имена.index("турбокод 1/3"), вслепую)
+        self.assertEqual(вслепую + 1, имена.index("скремблер"))
+
+    def test_профили_и_сроки(self):
+        from unittest import mock  # noqa: PLC0415
+        б = razbor.Бюджет(конец=time.monotonic() + 600, профиль=razbor.ПРОФИЛИ["обычно"])
+        with mock.patch.object(RP, "найти", return_value=None) as найти:
+            razbor._рс_перемежение(np.zeros(8, np.uint8), б, 0, вслепую=False)
+            self.assertEqual((найти.call_args.kwargs["профили"], найти.call_args.kwargs["вслепую"]), ("основные", False))
+            razbor._рс_перемежение(np.zeros(8, np.uint8), б, 2)
+            к = найти.call_args.kwargs
+            self.assertEqual((к["профили"], к["вслепую"], к["профиль"]), (False, True, "обычно"))
+            self.assertLessEqual(к["бюджет"], razbor.РС_НИЖЕ_СРОК)
+
+
 class ЦепочкаTests(unittest.TestCase):
     """DSS под свёрточным кодом: Витерби (как в автомате — kod / vykalyvanie), затем РС с перемежением."""
 
@@ -299,6 +335,17 @@ class АвтоматTests(unittest.TestCase):
         self.разобрать(скорость="1/2", ber=1e-3, сдвиг=3)
         self.разобрать(скорость="2/3", ber=1e-4)
         self.разобрать(скорость="6/7")
+
+    def test_atsc_и_j83b(self):
+        for биты, д, k in (С.atsc(1500, сдвиг=3, ber=1e-4) + (187,), С.j83b(2500, сдвиг=2) + (122,)):
+            р = razbor.разобрать(данные=np.packbits(биты).tobytes(), профиль="быстро")
+            рс = [н for н in р.находки if "свёрточным перемежением" in н.что]
+            self.assertTrue(рс, [н.что for н in р.находки])
+            if k == 187:
+                ок, всего = совпало(рс[0].дальше, д, k)
+                self.assertGreaterEqual(ок, всего - 1)
+            else:
+                self.assertEqual((рс[0].свойства["N"], рс[0].свойства["m"]), (128, 7))
 
 
 @unittest.skipUnless(shutil.which("node"), "нужен node")

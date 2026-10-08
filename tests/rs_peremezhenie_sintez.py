@@ -62,7 +62,7 @@ def кодировать(данные, F: Поле, fcr: int, корней: int)
     g = [1]
     for i in range(корней):
         к = F.степень(fcr + i)
-        g = [a ^ F.умн(b, к) for a, b in zip(g + [0], [0] + g)]
+        g = [a ^ F.умн(b, к) for a, b in zip(g + [0], [0] + g, strict=True)]
     r = [int(x) for x in данные] + [0] * корней
     for i in range(len(данные)):
         c = r[i]
