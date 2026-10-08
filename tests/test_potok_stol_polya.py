@@ -130,8 +130,14 @@ class МенюСтолаTests(unittest.TestCase):
         self.assertIn("stol-menu-top", APP[APP.index("function меню(x, y, сверху)"):])
 
     def test_колесо_масштаб_и_ширина(self):
-        начало = APP.index("холст.addEventListener('wheel'")
-        обработчик = APP[начало:APP.index("}, { passive: false });", начало)]
+        # Колесо битового просмотра — тот обработчик холста, что листает (в файле есть и другие холсты
+        # с колесом: созвездие моддекодера, облако I/Q — у них колесо только масштабирует).
+        обработчики = []
+        начало = APP.find("холст.addEventListener('wheel'")
+        while начало >= 0:
+            обработчики.append(APP[начало:APP.index("}, { passive: false });", начало)])
+            начало = APP.find("холст.addEventListener('wheel'", начало + 1)
+        обработчик = next(о for о in обработчики if "шир(" in о)
         # Ctrl + колесо — масштаб (как в настольных средствах), Alt + колесо — длина строки ± шаг.
         self.assertIn("if (e.ctrlKey || e.metaKey) { приблизить(-знак); return; }", обработчик)
         self.assertIn("if (e.altKey) { шир(-знак * с.шаг); return; }", обработчик)

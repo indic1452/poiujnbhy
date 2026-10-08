@@ -43,20 +43,48 @@ class Источник:
     бит: int
     метка: int = 0
     размер: int = 0
+    #: Часть файла и порядок бит (массив по ссылке на файл сервера — см. hranenie), отпечаток ссылки.
+    смещение: int = 0
+    развернуть: bool = False
+    ссылка: dict | None = None
+    #: Массив больше стольких бит целиком в память не берётся: ``биты()`` — его начало (0 — без предела).
+    предел: int = 0
 
     def __len__(self) -> int:
         return self.бит
 
+    @property
+    def по_ссылке(self) -> bool:
+        return bool(self.ссылка or self.смещение or self.развернуть)
+
+    @property
+    def часть(self) -> bool:
+        """``биты()`` отдаёт лишь начало массива (он больше предела памяти)."""
+        return bool(self.предел) and self.бит > self.предел
+
+    def _массив(self):
+        from .hranenie import Источник as Массив  # noqa: PLC0415
+        return Массив(self.файл, смещение=self.смещение, бит=self.бит, развернуть=self.развернуть,
+                      ссылка=self.ссылка)
+
     def биты(self) -> np.ndarray:
-        """Весь массив (только для чтения), из памяти исполнителя, если уже читался."""
-        ключ = (self.файл, self.метка, self.размер)
+        """Весь массив (только для чтения), из памяти исполнителя, если уже читался.
+
+        Массив больше ``предел`` бит (гигабайтный файл — 8 Гбит) целиком не распаковывается: отдаётся
+        его начало в пределах памяти, сервер помечает ответ «по первым N МБ» (``часть``)."""
+        if self.часть:
+            return self.участок(0, self.предел)
+        ключ = (self.файл, self.метка, self.размер, self.смещение, self.развернуть)
         with _кэш_lock:
             биты = _кэш.get(ключ)
             if биты is not None:
                 _кэш.move_to_end(ключ)
                 return биты
-        with open(self.файл, "rb") as поток:
-            биты = np.unpackbits(np.frombuffer(поток.read(), dtype=np.uint8))[:self.бит]
+        if self.по_ссылке:
+            биты = self._массив().все()
+        else:
+            with open(self.файл, "rb") as поток:
+                биты = np.unpackbits(np.frombuffer(поток.read(), dtype=np.uint8))[:self.бит]
         биты.flags.writeable = False
         if len(биты) <= КЭШ_БИТ:
             with _кэш_lock:
@@ -70,9 +98,13 @@ class Источник:
         до = self.бит if до is None else max(0, min(int(до), self.бит))
         от = max(0, min(int(от), до))
         with _кэш_lock:
-            биты = _кэш.get((self.файл, self.метка, self.размер))
+            биты = _кэш.get((self.файл, self.метка, self.размер, self.смещение, self.развернуть))
         if биты is not None:
             return биты[от:до]
+        if self.по_ссылке:
+            биты = self._массив().биты(от, до)
+            биты.flags.writeable = False
+            return биты
         with open(self.файл, "rb") as поток:
             поток.seek(от // 8)
             кусок = поток.read((до + 7) // 8 - от // 8)
@@ -268,6 +300,12 @@ def ldpc_автомат(источник: Источник, параметры: 
     from . import ldpc, ldpc_katalog, ldpc_okno  # noqa: PLC0415
     return ldpc_okno.автомат(источник.участок(0, ldpc_okno.АВТОМАТ_БИТ), параметры,
                              ldpc_katalog.с_файлами(ldpc.список()))
+
+
+def ldpc_найти(источник: Источник, параметры: dict[str, Any]) -> dict[str, Any]:
+    """«Найти по встроенным» окна LDPC: кандидаты опознавателя по синдрому."""
+    from . import ldpc_okno  # noqa: PLC0415
+    return ldpc_okno.найти_встроенные(источник.участок(0, ldpc_okno.АВТОМАТ_БИТ), параметры)
 
 
 def моддекодер_просмотр(источник: Источник, параметры: dict[str, Any], показать: int, с: int,

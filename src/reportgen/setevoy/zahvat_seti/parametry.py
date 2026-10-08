@@ -71,7 +71,7 @@ def разобрать_порты(значение: Any) -> list[int]:
             порты.append(целое(часть, "порт", 1, 65535))
     порты = list(dict.fromkeys(порты))
     if len(порты) > ПОРТОВ_ДО:
-        raise ValueError(f"порты: не больше {ПОРТОВ_ДО} за один захват")
+        raise ValueError(f"порты: не больше {ПОРТОВ_ДО} за один приём")
     return порты
 
 
@@ -211,10 +211,10 @@ def проверить(данные: Any, *, потолок_секунд: int = 
     вычёркиваются всегда (задаёт сервер, из запроса не берётся).
     """
     if not isinstance(данные, dict):
-        raise ValueError("параметры захвата — объект JSON")
+        raise ValueError("параметры приёма — объект JSON")
     режим = str(данные.get("режим") or данные.get("mode") or "").strip().lower()
     if режим not in РЕЖИМЫ:
-        raise ValueError("режим: «udp» (приём UDP) или «карта» (захват с карты)")
+        raise ValueError("режим: «udp» (приём UDP) или «карта» (приём с сетевой карты)")
     пределы = данные.get("пределы") or данные.get("limits") or {}
     if not isinstance(пределы, dict):
         raise ValueError("пределы — объект: секунд, пакетов, мегабайт")
@@ -261,7 +261,7 @@ def проверить(данные: Any, *, потолок_секунд: int = 
             raise ValueError("выберите сетевую карту")
         п.способ = str(данные.get("способ") or данные.get("method") or "авто").strip().lower()
         if п.способ not in СПОСОБЫ:
-            raise ValueError("способ захвата: " + ", ".join(СПОСОБЫ))
+            raise ValueError("способ приёма: " + ", ".join(СПОСОБЫ))
         п.фильтр = Фильтр.из(данные.get("фильтр") or данные.get("filter") or {})
         п.фильтр.исключить = tuple(sorted({int(п_) for п_ in исключить_порты if 1 <= int(п_) <= 65535}))
     return п
