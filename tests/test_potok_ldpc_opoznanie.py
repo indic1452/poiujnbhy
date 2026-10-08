@@ -253,6 +253,13 @@ class КэшНаборов(unittest.TestCase):
                 lo._НАБОРЫ.clear()
                 lo._С_ДИСКА.update({"прочитано": False, "изменено": False})
                 self.assertEqual(н.L, lo.набор("wifi-648-324").L)      # битый файл — строится заново
+                with mock.patch.dict(os.environ, {lo.ПЕРЕМЕННАЯ_НАБОРОВ: "нет"}):
+                    self.assertIsNone(lo._путь_кэша())
+                    lo._С_ДИСКА.update({"прочитано": False, "изменено": True})
+                    lo.сохранить_кэш()                                    # без диска — молча ничего
+                    self.assertTrue(lo._С_ДИСКА["изменено"])
+                with mock.patch.dict(os.environ, {lo.ПЕРЕМЕННАЯ_НАБОРОВ: str(Path(папка) / "свой.pickle")}):
+                    self.assertEqual(Path(папка) / "свой.pickle", lo._путь_кэша())
             finally:
                 lo._НАБОРЫ.clear()
                 lo._НАБОРЫ.update(было[0])
