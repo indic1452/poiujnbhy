@@ -424,6 +424,20 @@ class ОкноLDPC(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "plframe"):
             razbor.снять_вручную(c.reshape(-1), "plframe")
 
+    def test_автомат_окна_по_типу(self):
+        """«Автомат» окна ищет среди кодов выбранного типа — опознавателем (вставки, инверсия), поля окна —
+        в ответе; чужой тип — не находит."""
+        from reportgen.potok import ldpc_katalog
+        биты, c, _ = g.поток_dvbs2("dvb-s2-16200-7200", 6, бчх=True, pl=True)
+        биты = g.сдвинуть(1 - биты, 20)
+        типы = ldpc_katalog.с_файлами([])
+        итог = ldpc_okno.автомат(биты, {"тип": "DVB-S2 short"}, типы, бюджет=60)["найдено"]
+        self.assertEqual(("dvb-s2-16200-7200", 110), (итог["код"], итог["начало"]))
+        self.assertEqual({"шаг": 16290, "вход_инверсия": True}, {к: итог["поля"][к] for к in ("шаг", "вход_инверсия")})
+        просмотр = ldpc_okno.просмотр(биты, итог["поля"])
+        self.assertEqual(100.0, просмотр["сошлось"])
+        self.assertIsNone(ldpc_okno.автомат(биты, {"тип": "Wi-Fi 802.11n/ac"}, типы, бюджет=30)["найдено"])
+
     def test_поля_окна(self):
         self.assertEqual("ldpc wifi-648-324 рандомизатор ccsds начало 5 шаг 700 смещения 0,10",
                          ldpc_okno.слой({"код": "wifi-648-324", "начало": 5, "шаг": 700, "смещения": "0, 10",
