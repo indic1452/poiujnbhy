@@ -21,7 +21,8 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import ldpc_potoki as g
-from reportgen.potok import dlinnye, dvbs2_pl, ldpc, ldpc_okno, ldpc_opoznanie as lo, ldpc_std, razbor
+from reportgen.potok import dlinnye, dvbs2_pl, ldpc, ldpc_okno, ldpc_std, razbor
+from reportgen.potok import ldpc_opoznanie as lo
 from reportgen.potok.bity import в_байты
 
 МЕДЛЕННО = os.environ.get("REPORTGEN_LDPC_MEDLENNO") == "1"
@@ -138,7 +139,7 @@ class Проверки(unittest.TestCase):
 
     def test_ядро_слова_подряд(self):
         """Сложение s(t) по словам и решение: найдено сложением (не по позициям); правила отбора и сверки."""
-        import dataclasses
+        import dataclasses  # noqa: PLC0415
         c = g.кодовые("wifi-648-324", 30)
         биты = g.сдвинуть(g.ошибки(c.reshape(-1), 1e-2), 50)
         н = lo.набор("wifi-648-324")
@@ -335,6 +336,20 @@ class КэшНаборов(unittest.TestCase):
                     снова = lo.набор("wifi-648-324")
                 self.assertEqual(н.L, снова.L)
                 self.assertTrue(all(np.array_equal(a, b) for a, b in zip(н.ранние, снова.ранние, strict=True)))
+                for поле in ("сверка", "ранние_сверка"):
+                    self.assertTrue(all(np.array_equal(a, b) for a, b in
+                                        zip(getattr(н, поле), getattr(снова, поле), strict=True)), поле)
+                self.assertEqual((н.край, н.рандомизатор), (снова.край, снова.рандомизатор))
+                # Файл в общей временной папке читается без pickle: подложенный pickle не выполняется,
+                # набор строится заново.
+                import pickle  # noqa: PLC0415
+                class Ловушка:
+                    def __reduce__(self):
+                        return (exec, ("raise SystemExit('pickle выполнен')",))
+                Path(lo._путь_кэша()).write_bytes(pickle.dumps({"x": Ловушка()}))
+                lo._НАБОРЫ.clear()
+                lo._С_ДИСКА.update({"прочитано": False, "изменено": False})
+                self.assertEqual(н.L, lo.набор("wifi-648-324").L)
                 Path(lo._путь_кэша()).write_bytes(b"\x80\x04 broken")
                 lo._НАБОРЫ.clear()
                 lo._С_ДИСКА.update({"прочитано": False, "изменено": False})
@@ -344,8 +359,8 @@ class КэшНаборов(unittest.TestCase):
                     lo._С_ДИСКА.update({"прочитано": False, "изменено": True})
                     lo.сохранить_кэш()                                    # без диска — молча ничего
                     self.assertTrue(lo._С_ДИСКА["изменено"])
-                with mock.patch.dict(os.environ, {lo.ПЕРЕМЕННАЯ_НАБОРОВ: str(Path(папка) / "свой.pickle")}):
-                    self.assertEqual(Path(папка) / "свой.pickle", lo._путь_кэша())
+                with mock.patch.dict(os.environ, {lo.ПЕРЕМЕННАЯ_НАБОРОВ: str(Path(папка) / "свой.npz")}):
+                    self.assertEqual(Path(папка) / "свой.npz", lo._путь_кэша())
             finally:
                 lo._НАБОРЫ.clear()
                 lo._НАБОРЫ.update(было[0])
@@ -360,7 +375,7 @@ class PLFRAME(unittest.TestCase):
         self.assertEqual(("dvb-s2-64800-43200", "8PSK"), dvbs2_pl.код_ldpc(13, False))
         self.assertEqual(("dvb-s2-64800-58320", "32APSK"), dvbs2_pl.код_ldpc(28, False))
         self.assertIsNone(dvbs2_pl.код_ldpc(99, False))
-        for modcod, (_, бит, _) in dvbs2_pl.MODCOD.items():
+        for modcod in dvbs2_pl.MODCOD:
             имя, вид = dvbs2_pl.код_ldpc(modcod, False)
             self.assertTrue(ldpc_std.есть(имя), имя)
             if вид:
@@ -441,7 +456,7 @@ class ВАвтомате(unittest.TestCase):
     def test_подсказка_моддекодер_после_8psk(self):
         """Метки 8PSK в чужой разметке (линейная перестановка меток): LDPC не опознаётся, и подсказка ведёт к
         «Моддекодер» → «Дек. всех»; со своей разметкой — опознаётся."""
-        from reportgen.potok import podskazki, rastr
+        from reportgen.potok import podskazki, rastr  # noqa: PLC0415
         биты, c, _ = g.поток_dvbs2("dvb-s2-16200-7200", 6, бчх=False, вид="")
         тройки = биты[:len(биты) // 3 * 3].reshape(-1, 3)
         чужая = np.array([0, 1, 3, 2, 7, 6, 4, 5])[тройки @ [4, 2, 1]]
@@ -503,7 +518,7 @@ class ОкноLDPC(unittest.TestCase):
     def test_автомат_окна_по_типу(self):
         """«Автомат» окна ищет среди кодов выбранного типа — опознавателем (вставки, инверсия), поля окна —
         в ответе; чужой тип — не находит."""
-        from reportgen.potok import ldpc_katalog
+        from reportgen.potok import ldpc_katalog  # noqa: PLC0415
         биты, c, _ = g.поток_dvbs2("dvb-s2-16200-7200", 6, бчх=True, pl=True)
         биты = g.сдвинуть(1 - биты, 20)
         типы = ldpc_katalog.с_файлами([])

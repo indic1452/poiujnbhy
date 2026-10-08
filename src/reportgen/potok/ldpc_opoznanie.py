@@ -31,9 +31,9 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import os
-import pickle
 import tempfile
 import time
 from collections import Counter
@@ -296,7 +296,36 @@ def _путь_кэша() -> Path | None:
     for путь in sorted(здесь.glob("ldpc*.py")) + sorted((здесь / "data").glob("ldpc_*.json")):
         ст = путь.stat()
         h.update(f"{путь.name}:{ст.st_size}:{int(ст.st_mtime)}".encode())
-    return Path(tempfile.gettempdir()) / f"reportgen-ldpc-nabory-{h.hexdigest()[:16]}.pickle"
+    return Path(tempfile.gettempdir()) / f"reportgen-ldpc-nabory-{h.hexdigest()[:16]}.npz"
+
+
+def _в_npz(данные: dict) -> dict[str, np.ndarray]:
+    """Наборы → массивы для np.savez: оглавление JSON (числа и длины списков) и все проверки подряд.
+    Без pickle: файл лежит в общей временной папке, и чтение не должно уметь выполнять код."""
+    оглавление, куски = [], []
+    for (имя, вид), (L, ран, сверка, край, ранд, ран_сверка) in данные.items():
+        длины = [[len(с) for с in список] for список in (ран, сверка, ран_сверка)]
+        куски.extend(np.asarray(с, dtype=np.int64) for список in (ран, сверка, ран_сверка) for с in список)
+        оглавление.append([имя, вид, int(L), int(край), ранд, длины])
+    текст = json.dumps(оглавление, ensure_ascii=False).encode("utf-8")
+    return {"оглавление": np.frombuffer(текст, dtype=np.uint8),
+            "проверки": np.concatenate(куски) if куски else np.zeros(0, dtype=np.int64)}
+
+
+def _из_npz(оглавление: np.ndarray, проверки: np.ndarray) -> dict:
+    данные, место = {}, 0
+    for имя, вид, L, край, ранд, длины in json.loads(bytes(оглавление).decode("utf-8")):
+        списки = []
+        for длины_списка in длины:
+            список = []
+            for d in длины_списка:
+                список.append(проверки[место:место + d].copy())
+                место += d
+            списки.append(список)
+        данные[(имя, вид)] = (L, списки[0], списки[1], край, ранд, списки[2])
+    if место != len(проверки):
+        raise ValueError("файл наборов не сходится с оглавлением")
+    return данные
 
 
 def _прочитать_кэш() -> None:
@@ -307,11 +336,11 @@ def _прочитать_кэш() -> None:
     if путь is None:
         return
     try:
-        with путь.open("rb") as ф:
-            данные = pickle.load(ф)
+        with np.load(путь, allow_pickle=False) as ф:
+            данные = _из_npz(ф["оглавление"], ф["проверки"])
         for (имя, вид), (L, ран, сверка, край, ранд, ран_сверка) in данные.items():
             _НАБОРЫ.setdefault((имя, вид), Набор(имя, вид, L, ран, сверка, край, ранд, None, ран_сверка))
-    except (OSError, EOFError, pickle.UnpicklingError, ValueError, TypeError, AttributeError):
+    except (OSError, EOFError, ValueError, TypeError, KeyError):
         return
 
 
@@ -323,7 +352,7 @@ def сохранить_кэш() -> None:
     данные = {к: (н.L, н.ранние, н.сверка, н.край, н.рандомизатор, н.ранние_сверка) for к, н in _НАБОРЫ.items()}
     try:
         with tempfile.NamedTemporaryFile("wb", dir=путь.parent, delete=False, suffix=".tmp") as ф:
-            pickle.dump(данные, ф, protocol=pickle.HIGHEST_PROTOCOL)
+            np.savez(ф, **_в_npz(данные))
         os.replace(ф.name, путь)
         _С_ДИСКА["изменено"] = False
     except OSError:
