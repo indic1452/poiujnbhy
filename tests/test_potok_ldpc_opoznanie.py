@@ -453,7 +453,7 @@ class ОкноLDPC(unittest.TestCase):
     def test_ничего(self):
         итог = ldpc_okno.найти_встроенные(np.zeros(5000, np.uint8), {})
         self.assertEqual([], итог["кандидаты"])
-        self.assertIn("ни один встроенный код", итог["почему"])
+        self.assertIn("Ни один код не совпал", итог["почему"])
 
 
 class ВслепуюСдвигами(unittest.TestCase):
