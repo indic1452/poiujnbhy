@@ -242,7 +242,7 @@ class ПочтаTests(unittest.TestCase):
         м.кусок("к", b"EHLO x\r\n")
         м.кусок("к", b"BDAT 3\r\nabc")
         (о,) = объекты(м.пакеты)
-        self.assertEqual((b"abc", ["обрыв: BDAT LAST в захвате нет"], [2]), (о.данные, о.заметки, о.пакеты))
+        self.assertEqual((b"abc", ["обрыв: BDAT LAST в записи нет"], [2]), (о.данные, о.заметки, о.пакеты))
         м = ос.Обмен(порт_к=41004, порт_с=25)
         м.кусок("к", b"BDAT 3\r\nabcBDAT 2 LAST\r\nde")
         м.кусок("к", b"BDAT 2 LAST\r\nfg")
@@ -308,7 +308,7 @@ class TftpTests(unittest.TestCase):
         self.assertEqual(["чтение (RRQ), режим octet, блок 600"], о.заметки)
         oack_ts = ос.udp(b"\x00\x06tsize\x00600\x00", 4000, 3000, src="10.0.0.2", dst="10.0.0.1")
         (о,) = объекты([кадры[0], oack_ts, self.данные(1, b"B" * 550)])      # tsize — не размер блока
-        self.assertEqual(["чтение (RRQ), режим octet, блок 512", "обрыв: последнего (короткого) блока в захвате нет"],
+        self.assertEqual(["чтение (RRQ), режим octet, блок 512", "обрыв: последнего (короткого) блока в записи нет"],
                          о.заметки)
 
     def test_три_запроса_и_два_клиента(self):

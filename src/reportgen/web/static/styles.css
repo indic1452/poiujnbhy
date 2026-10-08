@@ -8627,6 +8627,47 @@ body.reading .msg .body {
 .pk-chips .muted { margin-left: auto; }
 .pk-split { display: flex; flex-direction: column; overflow: hidden; }
 .pk-list { max-height: 42vh; overflow: auto; outline: none; border-bottom: 1px solid var(--border); }
+/* Виртуальный список: окно строк прилипает к верху прокрутки, распорка задаёт её длину — в DOM только видимые строки. */
+.pk-vlist { height: 42vh; max-height: none; position: relative; }
+.pk-vwin { position: sticky; top: 0; overflow: hidden; }
+.pk-vspace { width: 1px; }
+.pk-vhead, .pk-vrows { table-layout: fixed; width: 100%; }
+.pk-vhead { margin: 0; }
+.pk-table.pk-vrows tr { height: 24px; }
+.pk-table.pk-vrows td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 24px; padding-top: 0; padding-bottom: 0; line-height: 24px; }
+.pk-table.pk-vrows td.pk-info { white-space: nowrap; min-width: 0; }
+.pk-table.pk-vhead th { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-vrows tr.pk-vwait td { background: transparent; }
+.pk-vfoot { justify-content: space-between; padding: 4px 10px; border-bottom: 1px solid var(--border); }
+/* Ход загрузки и разбора. */
+.pk-progress { display: grid; gap: 6px; margin-bottom: 12px; }
+.pk-progress-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pk-progress-text { font-variant-numeric: tabular-nums; }
+.pk-progress-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.pk-progress-bar > span { display: block; height: 100%; background: var(--accent, #2f6fde); transition: width .4s ease; }
+.pk-progress-bar.is-upload > span { background: var(--pk-tls, #8a63d2); filter: saturate(2.5) brightness(.8); }
+.pk-progress-bar.is-paused > span { opacity: .45; }
+.pk-live-note { margin: 0 0 6px; }
+.pk-upload-list { display: grid; gap: 2px; margin-top: 6px; }
+/* Широкий экран: список слева, разбор пакета справа — виден сразу, без прокрутки страницы. */
+@media (min-width: 1200px) {
+  .pk-split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; align-items: stretch; }
+  .pk-split > .pk-vhead, .pk-split > .pk-vlist, .pk-split > .pk-vfoot { grid-column: 1; }
+  .pk-split > .pk-detail { grid-column: 2; grid-row: 1 / span 3; border-left: 1px solid var(--border); overflow: auto;
+    max-height: calc(100vh - 120px); position: sticky; top: 8px; }
+  .pk-vlist { height: calc(100vh - 360px); min-height: 280px; }
+  .pk-split > .pk-detail .pk-panes { grid-template-columns: minmax(0, 1fr); }
+  .pk-split > .pk-detail .pk-side { max-width: none; }
+  .pk-split > .pk-detail .pk-tree { max-height: 38vh; }
+}
+/* Компактная шапка записи и свёрнутая повторная обработка. */
+.pakety .page-head-actions .btn { padding-top: 3px; padding-bottom: 3px; font-size: var(--fs-sm); }
+.pk-reproc { margin-bottom: 10px; }
+.pk-reproc > summary { cursor: pointer; padding: 8px 12px; font-size: var(--fs-sm); color: var(--muted, inherit); }
+.pk-reproc[open] > summary { border-bottom: 1px solid var(--border); }
+.pk-reproc > .pg-panel { box-shadow: none; border: 0; margin: 0; }
+.pk-filterbar { padding-top: 8px; padding-bottom: 8px; }
+.pk-filterbar .pk-chips { margin-top: 4px; }
 .pk-table { font-size: var(--fs-sm); width: 100%; }
 .pk-table th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
 .pk-table td { padding-top: 2px; padding-bottom: 2px; white-space: nowrap; }
@@ -9541,6 +9582,20 @@ button.pk-hier-col:hover { color: var(--accent); }
 .stol-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
 .stol-codes-panel { max-width: 44rem; display: grid; gap: 0.4rem; }
 
+/* «Приём с сети»: «Старт» — сразу под полями режима; карты — только в режиме сетевой карты. */
+.zs-form .row.zs-start { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 12px 0 8px; }
+.zs-form .zs-start .field { flex: 0 1 520px; width: auto; min-width: 220px; margin: 0; }
+.zs-form .zs-start .btn { flex: 0 0 auto; }
+.zs-form .zs-start .muted { flex: 1 1 200px; align-self: center; }
+.zs-cards-box { margin-bottom: 10px; }
+
+/* Обзор файлов сервера (открыть по ссылке). */
+.fs-pick .row { gap: 8px; margin-bottom: 8px; }
+.fs-pick input[type=search] { flex: 1 1 auto; }
+.fs-list { max-height: 55vh; overflow: auto; }
+.fs-list tr.is-clickable { cursor: pointer; }
+.fs-crumbs { gap: 2px; margin-bottom: 6px; }
+.pk-unk-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 /* Вид массива под номером в таблице массивов: «файл», «автомат», «цикл», «плоскость», «код»… */
 .stol-svg text.stol-node-kind { font: 9px system-ui, sans-serif; fill: var(--muted); font-weight: 400; }
 

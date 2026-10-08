@@ -116,6 +116,11 @@ def create_app(settings: Settings | None = None,
         прогоны = getattr(app.state, "progony", None)
         if прогоны is not None:
             прогоны.остановить_все()
+        # Разборы и отборы «Анализа пакетов» — отдельные процессы: остановить, чтобы не пережили сервер
+        # (после запуска прерванные разборы начнутся заново сами).
+        пакеты = getattr(app.state, "pakety", None)
+        if пакеты is not None:
+            пакеты.закрыть()
         # Исполнители разборов и стола — отдельные процессы: погасить. Идущие разборы остаются
         # «идёт» на диске и при следующем запуске начнутся заново.
         задания = getattr(app.state, "potok", None)
@@ -302,6 +307,13 @@ def _install_handlers(app: FastAPI) -> None:
         if error.status >= 500:
             logger.error("Ошибка сервиса: %s", error, exc_info=True)
         return JSONResponse(status_code=error.status, content={"error": str(error)})
+
+    from ..fayly_ssylki import ОшибкаПути, ФайлИзменён
+
+    @app.exception_handler(ОшибкаПути)
+    async def path_error_handler(request: Request, error: ОшибкаПути) -> JSONResponse:
+        # Файл, открытый по ссылке, изменён или удалён на сервере — 409 словами, а не «внутренняя ошибка».
+        return JSONResponse(status_code=409 if isinstance(error, ФайлИзменён) else 400, content={"error": str(error)})
 
     @app.exception_handler(Exception)
     async def unhandled_handler(request: Request, error: Exception) -> JSONResponse:
