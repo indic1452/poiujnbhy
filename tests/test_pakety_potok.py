@@ -422,8 +422,8 @@ class ХранилищеTests(unittest.TestCase):
         (self.папка / "исходник").write_bytes(bytes(4) + bytes([1]) * 4 + bytes([2]) * 4 + bytes([3]) * 4)
         self._пакет(п, 1, канал="IP", место=4)
         self._пакет(п, 2, канал="IP", место=8)
-        self._пакет(п, 3, канал="Linux SLL", место=12)
-        п.отметить_собранный()
+        from reportgen.setevoy.hranilishe import СОБРАННЫЙ
+        self._пакет(п, 3, канал="Linux SLL", место=12, признаки=СОБРАННЫЙ)
         п.сбросить()
         self.assertEqual(4, п.записано)
         self.assertEqual([(bytes([1]) * 4, "IP"), (bytes([2]) * 4, "IP"), (bytes([3]) * 4, "Linux SLL")],
