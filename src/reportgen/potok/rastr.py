@@ -815,7 +815,7 @@ def инструмент(биты: np.ndarray, имя: str, k: int = 0, **пар
         import time  # noqa: PLC0415
         б = Бюджет(конец=time.monotonic() + 120, профиль=ПРОФИЛИ["обычно"])
         from . import dvbs2_pl  # noqa: PLC0415
-        заголовки = dvbs2_pl.найти(выборка)
+        заголовки = dvbs2_pl.найти_с_кадрами(выборка)
         return (_ldpc_plframe(заголовки, б) if заголовки is not None else None) or _ldpc(выборка, б)
     if имя == "плоскость-фм":
         if not k:

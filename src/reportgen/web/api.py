@@ -5489,6 +5489,157 @@ def potok_ldpc_find(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError(str(ошибка), 400) from None
 
 
+# -- восстановление матрицы LDPC (слов меньше длины): в фоне, ход, «Стоп», сохранить --------------
+
+#: Срок восстановления по умолчанию и наибольший, с; бит массива — не больше.
+ВОССТ_СРОК = 300.0
+ВОССТ_СРОК_ДО = 7200.0
+ВОССТ_БИТ_ДО = 1 << 27
+#: Поиск → (файл снимка, n): найденное читается из снимка и после «Стоп».
+_СНИМКИ_ВОССТ: dict[str, tuple[str, int]] = {}
+_СНИМКИ_ВОССТ_ВРЕМЯ: dict[str, float] = {}
+
+
+def _восстановления():
+    from ..potok import ldpc_vosst  # noqa: PLC0415
+    return ldpc_vosst.восстановления()
+
+
+@router.post("/potok/{job_id}/ldpc/recover")
+def potok_ldpc_recover(request: Request, job_id: str) -> dict[str, Any]:
+    """«Восстановить матрицу»: проверки нестандартного LDPC по словам массива — в фоне: {поиск}; ход — GET
+    /potok-ldpc-recover/{поиск}, «Стоп» — POST …/stop (найденное остаётся), «Сохранить» — POST …/save."""
+    import secrets  # noqa: PLC0415
+    import tempfile  # noqa: PLC0415
+    import time  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
+
+    from ..potok import ispolniteli, ldpc_vosst, razmetka, stol_raschety  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    этап = _целое(тело, "stage", 0, 0, 10 ** 6)
+    массив = _файл_бит_или_400(request, user, job_id, этап)
+    n = _целое(тело, "n", 0, 16, 1 << 17)
+    начало = _целое(тело, "начало", 0, 0, 1 << 40)
+    шаг = _целое(тело, "шаг", 0, 0, 1 << 20)
+    if шаг and шаг < n:
+        raise ServiceError("шаг — не меньше длины слова", 400)
+    try:
+        срок = float(тело.get("срок") or ВОССТ_СРОК)
+    except (TypeError, ValueError):
+        raise ServiceError("срок — секунд", 400) from None
+    if not 5 <= срок <= ВОССТ_СРОК_ДО:
+        raise ServiceError(f"срок — от 5 до {ВОССТ_СРОК_ДО:g} с", 400)
+    бит = min(int(массив.бит), ВОССТ_БИТ_ДО)
+    if бит - начало < 16 * n:
+        raise ServiceError(f"слов по {n} бит меньше 16 — восстанавливать не по чему", 400)
+    источник = _источник(request, job_id, этап)
+    папка = Path(tempfile.gettempdir()) / "reportgen-ldpc-vosst"
+    папка.mkdir(parents=True, exist_ok=True)
+    for старый in папка.glob("*.npz"):              # снимки старше суток — прочь
+        with suppress(OSError):
+            if time.time() - старый.stat().st_mtime > 86400:
+                старый.unlink()
+    for ид_, (путь_, _) in list(_СНИМКИ_ВОССТ.items()):
+        if not Path(путь_).exists() and time.time() - _СНИМКИ_ВОССТ_ВРЕМЯ.get(ид_, 0) > 86400:
+            _СНИМКИ_ВОССТ.pop(ид_, None)
+            _СНИМКИ_ВОССТ_ВРЕМЯ.pop(ид_, None)
+    снимок = str(папка / f"{secrets.token_hex(8)}.npz")
+    задания = _potok(request)
+
+    def задача(ход):
+        """Расчёт — в исполнителе стола; эта нить передаёт ход окну. «Стоп» снимает расчёт, а найденное
+        берётся из снимка (исполнитель пишет его после каждого раунда)."""
+        последний = [0.0, "начат"]
+
+        def передать(вид: str, данные: Any) -> None:
+            if вид == "ход":
+                последний[:] = данные
+        поиск = задания.подать_расчёт(stol_raschety.ldpc_восстановить, источник, n, начало, шаг, бит, срок, снимок,
+                                      владелец=user.id, при_сообщении=передать, срок_задачи=срок + 300)
+        while True:
+            try:
+                ход(*последний)
+            except razmetka.Остановлено:
+                поиск.пул.отменить(поиск)
+                break
+            try:
+                итог = поиск.ждать(0.3)
+            except TimeoutError:
+                continue
+            except ispolniteli.Отменено:
+                break
+            with suppress(razmetka.Остановлено):
+                ход(1.0, последний[1])
+            return {**итог, "снимок": True}
+        if not Path(снимок).exists():
+            return {"n": n, "ранг": 0, "почему": "остановлено до первого раунда", "снимок": False}
+        частичный = ldpc_vosst.прочитать_снимок(снимок)
+        частичный.почему = "остановлено"
+        return {**{к: в for к, в in частичный.словарь().items() if к != "ход"}, "снимок": True}
+
+    ид = _восстановления().начать(user.id, задача, f"восстановление LDPC: слово {n} бит")
+    _СНИМКИ_ВОССТ[ид] = (снимок, n)
+    _СНИМКИ_ВОССТ_ВРЕМЯ[ид] = time.time()
+    _repos(request).audit.log("potok.ldpc-recover", user=user, object_type="job", object_id=job_id,
+                              details={"n": n, "начало": начало, "срок": срок})
+    return {"поиск": ид}
+
+
+@router.get("/potok-ldpc-recover/{search_id}")
+def potok_ldpc_recover_state(request: Request, search_id: str) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        return _восстановления().состояние(search_id, user.id)
+    except KeyError:
+        raise ServiceError("восстановление не найдено", 404) from None
+
+
+@router.post("/potok-ldpc-recover/{search_id}/stop")
+def potok_ldpc_recover_stop(request: Request, search_id: str) -> dict[str, Any]:
+    user = require_user(request)
+    try:
+        _восстановления().остановить(search_id, user.id)
+    except KeyError:
+        raise ServiceError("восстановление не найдено", 404) from None
+    return {"ok": True}
+
+
+@router.post("/potok-ldpc-recover/{search_id}/save")
+def potok_ldpc_recover_save(request: Request, search_id: str) -> dict[str, Any]:
+    """«Сохранить матрицу»: найденные проверки — файлом alist в папку матриц отдела; итог — имя и слой стола."""
+    from pathlib import Path  # noqa: PLC0415
+
+    from ..potok import ldpc, ldpc_vosst  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        состояние = _восстановления().состояние(search_id, user.id)
+    except KeyError:
+        raise ServiceError("восстановление не найдено", 404) from None
+    снимок, _ = _СНИМКИ_ВОССТ.get(search_id, ("", 0))
+    if not снимок or not Path(снимок).exists():
+        raise ServiceError("найденного ещё нет — дождитесь первого раунда", 409)
+    итог = ldpc_vosst.прочитать_снимок(снимок)
+    if итог.ранг < 1:
+        raise ServiceError("проверок не найдено — сохранять нечего", 409)
+    сведения = состояние.get("итог") or {}
+    итог.доля = float(сведения.get("доля") or итог.доля)
+    итог.сошлось = float(сведения.get("сошлось") or итог.сошлось)
+    имя = str(тело.get("имя") or "").strip() or None
+    _potok(request)                      # задаёт папку матриц
+    try:
+        имя = ldpc_vosst.сохранить(итог, откуда=f"окно LDPC, {user.login}",
+                                   имя=имя)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    _repos(request).audit.log("potok.ldpc-file", user=user, object_type="ldpc", object_id=имя,
+                              details={"n": итог.n, "m": итог.ранг, "вид": "восстановлена"})
+    return {"имя": имя, "n": итог.n, "k": итог.k, "начало": итог.начало, "шаг": итог.шаг,
+            "слой": f"ldpc {имя} начало {итог.начало}" + (f" шаг {итог.шаг}" if итог.шаг != итог.n else ""),
+            "файлы": ldpc.список()}
+
+
 # -- модуляционный декодер: плоскости (.etl), просмотр, перебор вариантов ------------------
 
 @router.get("/potok-planes")
