@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import re
 
-from .. import prilozh
+from .. import obshee, prilozh
 from ..pole import печатное
 from ..razbor import ДОП_УРОВНИ, Разбор
 from . import oks7, promyshlennye
@@ -86,7 +86,7 @@ _ЗАПРОС = re.compile(rb"([A-Za-z][A-Za-z0-9.!%*_+`'~-]*) (\S+) SIP/2\.0")
 _ОТВЕТ = re.compile(rb"SIP/2\.0 ([1-6]\d\d) ([^\r\n]*)")
 _ПАРАМЕТР = re.compile(r'([\w.!%*+`\'~-]+)\s*=\s*("(?:[^"\\]|\\.)*"|[^\s,;]+)')
 _ПОЛЬЗОВАТЕЛЬ = re.compile(r"^(?:sips?|tel):([^@;>]+)@?", re.IGNORECASE)
-ВЫЗОВЫ = "sip-вызовы"                  # общий словарь захвата: Call-ID → [номер первого пакета, от, к]
+ВЫЗОВЫ = obshee.ВЫЗОВЫ                 # общий словарь захвата: Call-ID → [номер первого пакета, от, к]
 
 
 def _строки(д: bytes, м: int, конец: int):
@@ -297,8 +297,8 @@ def _сообщение(р: Разбор, м: int, конец: int):
         итог += f", пользователь {сводка['username']}"
     у.итог = итог + "".join(f" (с {ч})" for ч in итог_тела)
     if "call-id" in сводка and р.шаблоны is not None:
-        вызовы = р.шаблоны.setdefault(ВЫЗОВЫ, {})
-        вызовы.setdefault(сводка["call-id"], [р.п.номер, сводка.get("from", ("", ""))[1], сводка.get("to", ("", ""))[1]])
+        obshee.сделать(р, "sip+", сводка["call-id"],
+                       [р.п.номер, сводка.get("from", ("", ""))[1], сводка.get("to", ("", ""))[1]])
     return край
 
 

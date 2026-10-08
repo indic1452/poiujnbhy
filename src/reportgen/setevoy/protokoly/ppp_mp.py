@@ -12,6 +12,7 @@ MP (RFC 1990, 3): заголовок длинный — байт B E CLS(4) 00 �
 
 from __future__ import annotations
 
+from .. import obshee
 from ..pole import u16
 from ..razbor import ДОП_PPP, Разбор, ppp, данные
 from .kanalnye import eap
@@ -34,7 +35,7 @@ def mp_заголовок(р: Разбор, м: int) -> tuple:
     """(короткий, B, E, класс, номер, длина заголовка)."""
     р.нужно(м, 2)
     б = р.д[м]
-    короткий = р.как.get(MP_КОРОТКИЕ[0]) == MP_КОРОТКИЕ[1] or bool(б & 0x03)
+    короткий = obshee.правило(р, MP_КОРОТКИЕ[0]) == MP_КОРОТКИЕ[1] or bool(б & 0x03)
     if короткий:
         return True, bool(б & 0x80), bool(б & 0x40), (б & 0x30) >> 4, u16(р.д, м) & 0x0FFF, 2
     р.нужно(м, 4)

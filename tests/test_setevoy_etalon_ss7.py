@@ -227,7 +227,7 @@ class СборкаВЗахватеTests(unittest.TestCase):
             пакет = захваты.пакет(ид, 3)
             self.assertEqual(["TCAP", "MAP"], [у["протокол"] for у in пакет["собранный"]["уровни"]])
             self.assertEqual([3], [i + 1 for i in захваты.отобрать(ид, "gsm_map")])
-            self.assertEqual("TCAP (SSN 8)", (Path(папка) / ид / "собранные" / "3.канал").read_text(encoding="utf-8"))
+            self.assertEqual("TCAP (SSN 8)", захваты.хранилище(ид).собранный_с_каналом(3)[1])
 
 
 class СообщенияTests(unittest.TestCase):

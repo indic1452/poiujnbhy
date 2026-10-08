@@ -1,6 +1,6 @@
 """Пакет для хранилища: сводка для списка, плоские поля для фильтров, сборка фрагментов.
 
-IPv4, разрезанный на фрагменты, собирается: к последнему фрагменту
+IPv4 и IPv6, разрезанные на фрагменты, собираются: к последнему фрагменту
 добавляется разбор собранного пакета (уровни «собранный …»), а его байты
 лежат отдельно — их показывает шестнадцатеричный дамп. Так же собираются
 фрагменты многоканального PPP (MP, RFC 1990): по классу и номерам от
@@ -16,6 +16,7 @@ import struct
 from pathlib import Path
 from typing import Any
 
+from .hranilishe import Собранные
 from .pole import Пакет, сумма16
 from .razbor import разобрать_пакет
 
@@ -66,12 +67,17 @@ class Сборщик:
     def __init__(self):
         self.куски: dict[tuple, dict[str, Any]] = {}
 
+    @staticmethod
+    def нужен(п: Пакет, поля: dict[str, list[Any]]) -> bool:
+        """Фрагмент ли это (тогда ``добавить`` его берёт); зависит только от самого пакета."""
+        if "ipv4" not in поля or not поля.get("ip.flags.mf") or not поля.get("ip.frag_offset"):
+            return False
+        return bool(поля["ip.flags.mf"][0] or поля["ip.frag_offset"][0])
+
     def добавить(self, п: Пакет, поля: dict[str, list[Any]]) -> bytes | None:
-        if "ipv4" not in поля or not поля.get("ip.flags.mf") or "ip.frag_offset" not in поля:
+        if not self.нужен(п, поля):
             return None
         mf, смещение = поля["ip.flags.mf"][0], поля["ip.frag_offset"][0]
-        if not mf and not смещение:
-            return None
         уровень = next(у for у in п.уровни if у.протокол == "IPv4")
         начало = уровень.смещение
         ihl, всего = уровень.длина, struct.unpack_from(">H", п.данные, начало + 2)[0]
@@ -101,6 +107,87 @@ class Сборщик:
         return bytes(заголовок) + собрано
 
 
+class СборщикIPv6:
+    """Сборка фрагментов IPv6 (RFC 8200, 4.5) по (источник, получатель, идентификатор): нефрагментируемая часть
+    (заголовок IPv6 и заголовки расширения до заголовка фрагмента) — из первого фрагмента, в ней «следующий
+    заголовок» перед фрагментом — из заголовка фрагмента, длина нагрузки — по собранному."""
+
+    #: Сколько начатых сборок держать.
+    ЖДАТЬ = 4096
+
+    def __init__(self):
+        self.куски: dict[tuple, dict[str, Any]] = {}
+        self.последние_номера: list[int] = []
+
+    @staticmethod
+    def _фрагмент(п: Пакет, поля: dict[str, list[Any]]):
+        """(уровень IPv6, место заголовка фрагмента, смещение, M, id) или None — пакет не фрагмент IPv6
+        (зависит только от самого пакета; целый пакет с заголовком фрагмента — смещение 0 и M = 0 — не фрагмент)."""
+        if "ipv6.fraghdr" not in поля:
+            return None
+        for у in п.уровни:
+            if у.протокол != "IPv6":
+                continue
+            ф = next((ф for ф in у.поля if ф.ключ == "ipv6.fraghdr"), None)
+            if ф is None:
+                continue
+            д = п.данные
+            if ф.смещение + 8 > len(д):
+                return None
+            слово = struct.unpack_from(">H", д, ф.смещение + 2)[0]
+            смещение, m = (слово >> 3) * 8, слово & 1
+            if not смещение and not m:
+                return None
+            return у, ф.смещение, смещение, m, struct.unpack_from(">I", д, ф.смещение + 4)[0]
+        return None
+
+    @classmethod
+    def нужен(cls, п: Пакет, поля: dict[str, list[Any]]) -> bool:
+        return cls._фрагмент(п, поля) is not None
+
+    def добавить(self, п: Пакет, поля: dict[str, list[Any]]) -> bytes | None:
+        найдено = self._фрагмент(п, поля)
+        if найдено is None:
+            return None
+        у, место, смещение, m, ид = найдено
+        д = п.данные
+        начало = у.смещение
+        конец = min(len(д), начало + 40 + struct.unpack_from(">H", д, начало + 4)[0])
+        ключ = (bytes(д[начало + 8:начало + 40]), ид)
+        з = self.куски.get(ключ)
+        if з is None:
+            if len(self.куски) >= self.ЖДАТЬ:
+                self.куски.pop(next(iter(self.куски)))
+            з = self.куски[ключ] = {"части": {}, "конец": None, "голова": None, "номера": []}
+        з["части"][смещение] = д[место + 8:конец]
+        з["номера"].append(п.номер)
+        if смещение == 0:
+            # Нефрагментируемая часть; «следующий заголовок» перед фрагментом — из заголовка фрагмента.
+            голова = bytearray(д[начало:место])
+            где, следующий, м = 6, д[начало + 6], 40
+            while следующий != 44 and м + 2 <= len(голова):
+                где, следующий = м, голова[м]
+                м += (голова[м + 1] + 2) * 4 if следующий == 51 else (голова[м + 1] + 1) * 8
+            голова[где] = д[место]
+            з["голова"] = голова
+        if not m:
+            з["конец"] = смещение + конец - (место + 8)
+        if з["голова"] is None or з["конец"] is None:
+            return None
+        собрано, м = b"", 0
+        while м < з["конец"]:
+            часть = з["части"].get(м)
+            if not часть:
+                return None
+            собрано += часть
+            м += len(часть)
+        del self.куски[ключ]
+        голова = з["голова"]
+        struct.pack_into(">H", голова, 4, len(голова) - 40 + len(собрано))
+        self.последние_номера = з["номера"]
+        return bytes(голова) + собрано
+
+
 class СборщикMP:
     """Сборка фрагментов MP (RFC 1990, 4): от B до E номера идут подряд (по модулю 2²⁴ или 2¹²)."""
 
@@ -111,15 +198,25 @@ class СборщикMP:
         self.куски: dict[int, dict[int, tuple[bool, bool, bytes, int]]] = {}
         self.последние_номера: list[int] = []
 
+    @staticmethod
+    def нужен(п: Пакет, поля: dict[str, list[Any]]) -> bool:
+        """Фрагмент MP (не целый пакет с B и E); зависит только от самого пакета. Уровень MP без полей
+        (заголовок оборван) — не фрагмент."""
+        if "mp" not in поля or not поля.get("mp.first") or not поля.get("mp.last"):
+            return False
+        if not поля.get("mp.sseq" if "mp.sseq" in поля else "mp.seq"):
+            return False
+        if not поля.get("mp.short_sequence_num_cls" if "mp.sseq" in поля else "mp.sequence_num_cls"):
+            return False
+        return not (поля["mp.first"][0] and поля["mp.last"][0])
+
     def добавить(self, п: Пакет, поля: dict[str, list[Any]]) -> bytes | None:
-        уровень = next((у for у in п.уровни if у.протокол == "MP"), None)
-        if уровень is None:
+        if not self.нужен(п, поля):
             return None
+        уровень = next(у for у in п.уровни if у.протокол == "MP")
         короткий = "mp.sseq" in поля
         номер = поля["mp.sseq" if короткий else "mp.seq"][0]
         первый, последний = bool(поля["mp.first"][0]), bool(поля["mp.last"][0])
-        if первый and последний:
-            return None
         класс = поля["mp.short_sequence_num_cls" if короткий else "mp.sequence_num_cls"][0]
         модуль = 1 << (12 if короткий else 24)
         куски = self.куски.setdefault(класс, {})
@@ -166,14 +263,29 @@ class СборщикSCCP:
         #: Канал разбора собранного: «TCAP (SSN n)» по подсистеме получателя (иначе отправителя).
         self.канал = "TCAP"
 
+    @staticmethod
+    def _данные(п: Пакет, поля: dict[str, list[Any]]):
+        """Поле параметра «данные» сегмента SCCP или None — пакет не сегмент (зависит только от пакета)."""
+        if "sccp.segmentation.remaining" not in поля or not поля.get("sccp.segmentation.first") \
+                or not поля.get("sccp.segmentation.slr"):
+            return None
+        уровень = next((у for у in п.уровни if у.протокол == "SCCP"), None)
+        if уровень is None:
+            return None
+        данные_ = next((ф for ф in уровень.поля if ф.ключ == "sccp.parameter" and ф.сырое == 0x0F), None)
+        if данные_ is None or поля["sccp.segmentation.first"][0] and поля["sccp.segmentation.remaining"][0] == 0:
+            return None
+        return данные_
+
+    @classmethod
+    def нужен(cls, п: Пакет, поля: dict[str, list[Any]]) -> bool:
+        return cls._данные(п, поля) is not None
+
     def добавить(self, п: Пакет, поля: dict[str, list[Any]]) -> bytes | None:
-        if "sccp.segmentation.remaining" not in поля:
+        данные_ = self._данные(п, поля)
+        if данные_ is None:
             return None
         первый, осталось = поля["sccp.segmentation.first"][0], поля["sccp.segmentation.remaining"][0]
-        уровень = next(у for у in п.уровни if у.протокол == "SCCP")
-        данные_ = next((ф for ф in уровень.поля if ф.ключ == "sccp.parameter" and ф.сырое == 0x0F), None)
-        if данные_ is None or первый and осталось == 0:
-            return None
         часть = п.данные[данные_.смещение + 1:данные_.смещение + данные_.длина]
         ключ = (tuple(поля.get("sccp.calling.pc", ())), tuple(поля.get("sccp.calling.ssn", ())),
                 tuple(поля.get("sccp.calling.digits", ())), поля["sccp.segmentation.slr"][0])
@@ -198,13 +310,10 @@ class СборщикSCCP:
         return b"".join(з["части"])
 
 
-def собранный(папка: Path, п: Пакет, собрано: bytes, номера: list[int], как: dict[str, str] | None = None, *,
+def собранный(куда: Собранные, п: Пакет, собрано: bytes, номера: list[int], как: dict[str, str] | None = None, *,
               канал: str = "IPv4", имя: str = "IPv4", из: str = "фрагментов") -> None:
-    """Собранный пакет — в ``папка/собранные/N.bin`` (и канал, если не IPv4); его разбор — к уровням пакета."""
-    (папка / "собранные").mkdir(exist_ok=True)
-    (папка / "собранные" / f"{п.номер}.bin").write_bytes(собрано)
-    if канал != "IPv4":
-        (папка / "собранные" / f"{п.номер}.канал").write_text(канал, encoding="utf-8")
+    """Собранный пакет — в хранилище собранных (``hranilishe.Собранные``); его разбор — к уровням пакета."""
+    куда.добавить(п.номер, собрано, канал)
     с = разобрать_пакет(собрано, канал, номер=п.номер, время=п.время, как=как)
     первый = с.уровни[0]
     первый.протокол = f"собранный {имя}"
@@ -214,7 +323,7 @@ def собранный(папка: Path, п: Пакет, собрано: bytes, 
     п.ошибки += с.ошибки
     п.порт_от, п.порт_к = с.порт_от, с.порт_к
     п.нагрузка, п.нагрузка_смещение = None, 0
-    # Нагрузка TCP/UDP собранного пакета — в его байтах (собранные/N.bin), не в кадре.
+    # Нагрузка TCP/UDP собранного пакета — в его байтах (собранные.bin), не в кадре.
     п.транспорт = None
     п.транспорт_собранный = [с.транспорт[0], с.транспорт[1] - с.транспорт[0]] if с.транспорт else None
 
@@ -226,27 +335,52 @@ class Сборка:
         self.папка = Path(папка)
         self.как = dict(как)
         self.ip, self.mp, self.sccp = Сборщик(), СборщикMP(), СборщикSCCP()
+        self.ip6 = СборщикIPv6()
         self.mp_короткие_с: int | None = None
+        self.собранные = Собранные(self.папка)
 
-    def пакет(self, п: Пакет) -> tuple[dict[str, list[Any]], bool]:
-        """Поля фильтра пакета после сборки и был ли собран пакет."""
-        поля = п.поля_фильтра()
+    def __setstate__(self, состояние: dict[str, Any]) -> None:
+        self.__dict__.update(состояние)
+        if "ip6" not in состояние:                       # состояние сшивки прежнего вида
+            self.ip6 = СборщикIPv6()
+
+    def закрыть(self) -> None:
+        self.собранные.закрыть()
+
+    @staticmethod
+    def нужна(п: Пакет, поля: dict[str, list[Any]]) -> bool:
+        """Возьмёт ли пакет хоть один сборщик (фрагмент IPv4, MP или сегмент SCCP) — по самому пакету, без
+        состояния сборки. Прочие пакеты ``пакет()`` не меняет и состояния сборки не трогает (кроме LCP)."""
+        return (Сборщик.нужен(п, поля) or СборщикIPv6.нужен(п, поля) or СборщикMP.нужен(п, поля)
+                or СборщикSCCP.нужен(п, поля))
+
+    def lcp(self, поля: dict[str, list[Any]], номер: int) -> None:
+        """Configure-Ack LCP с опцией 18 (SSNH): дальше заголовки MP — короткие."""
+        if self.mp_короткие_с is None and True in поля.get("lcp.opt.ssnh", []):
+            self.как = {**self.как, "ppp:mp": "короткие"}      # договорены короткие номера MP
+            self.mp_короткие_с = номер + 1
+
+    def пакет(self, п: Пакет, поля: dict[str, list[Any]] | None = None) -> tuple[dict[str, list[Any]], bool]:
+        """Поля фильтра пакета после сборки и был ли собран пакет (``поля`` — уже посчитанные поля пакета)."""
+        поля = п.поля_фильтра() if поля is None else поля
         был = False
         собрано = self.ip.добавить(п, поля)
         if собрано is not None:
-            собранный(self.папка, п, собрано, self.ip.последние_номера, self.как)
+            собранный(self.собранные, п, собрано, self.ip.последние_номера, self.как)
+            поля, был = п.поля_фильтра(), True
+        собрано = self.ip6.добавить(п, поля)
+        if собрано is not None:
+            собранный(self.собранные, п, собрано, self.ip6.последние_номера, self.как, канал="IPv6", имя="IPv6")
             поля, был = п.поля_фильтра(), True
         собрано = self.mp.добавить(п, поля)
         if собрано is not None:
-            собранный(self.папка, п, собрано, self.mp.последние_номера, self.как, канал="PPP", имя="PPP",
+            собранный(self.собранные, п, собрано, self.mp.последние_номера, self.как, канал="PPP", имя="PPP",
                       из="фрагментов MP")
             поля, был = п.поля_фильтра(), True
         собрано = self.sccp.добавить(п, поля)
         if собрано is not None:
-            собранный(self.папка, п, собрано, self.sccp.последние_номера, self.как, канал=self.sccp.канал,
+            собранный(self.собранные, п, собрано, self.sccp.последние_номера, self.как, канал=self.sccp.канал,
                       имя="TCAP", из="сегментов SCCP")
             поля, был = п.поля_фильтра(), True
-        if True in поля.get("lcp.opt.ssnh", []) and self.mp_короткие_с is None:
-            self.как = {**self.как, "ppp:mp": "короткие"}      # договорены короткие номера MP
-            self.mp_короткие_с = п.номер + 1
+        self.lcp(поля, п.номер)
         return поля, был

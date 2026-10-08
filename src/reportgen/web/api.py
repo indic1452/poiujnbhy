@@ -2155,22 +2155,29 @@ _PAKETY_LOCK = threading.Lock()
 КУСОК_ЗАГРУЗКИ = 8 << 20
 
 
-def _pakety(request: Request):
-    """Записи страницы «Анализ пакетов» — одно хранилище на приложение, папка pakety в data_dir."""
-    захваты = getattr(request.app.state, "pakety", None)
+def открыть_пакеты(app: Any):
+    """Записи страницы «Анализ пакетов» — одно хранилище на приложение, папка pakety в data_dir. Большие файлы
+    разбираются пачками в общем пуле разборов (тот же, что у анализа потоков: честная очередь на всех)."""
+    захваты = getattr(app.state, "pakety", None)
     if захваты is not None:
         return захваты
     with _PAKETY_LOCK:
-        захваты = getattr(request.app.state, "pakety", None)
+        захваты = getattr(app.state, "pakety", None)
         if захваты is None:
             from ..setevoy.zahvaty import Захваты  # noqa: PLC0415
-            settings = _settings(request)
+            settings = app.state.settings
             захваты = Захваты(Path(settings.data_dir) / "pakety", разборов=max(0, int(settings.pakety_workers)),
                               отборов=max(0, int(settings.pakety_filter_workers)),
                               процессы=bool(settings.pakety_worker_process),
-                              процессом_от=max(0, int(settings.pakety_process_from_mb)) << 20)
-            request.app.state.pakety = захваты
+                              процессом_от=max(0, int(settings.pakety_process_from_mb)) << 20,
+                              пул=lambda: открыть_задания(app).разборы,
+                              пачками=bool(getattr(settings, "pakety_pachkami", True)))
+            app.state.pakety = захваты
     return захваты
+
+
+def _pakety(request: Request):
+    return открыть_пакеты(request.app)
 
 
 def _захват_или_404(request: Request, user, ид: str) -> dict[str, Any]:
@@ -2434,9 +2441,28 @@ def pakety_from_potok(request: Request) -> dict[str, Any]:
     файл = _potok(request).файл_этапа(job_id, этап)
     if файл is None or файл.suffix not in (".pcap", ".sig"):
         raise ServiceError("у этого этапа нет пакетов или кадров", 400)
+    вход = _potok(request).папка / job_id / "вход.bin"
+    if _пакеты_самого_sig(состояние, этап) and вход.exists():
+        # Пакеты самого .sig (первый этап, ничего не снято): в анализ пакетов — весь файл, все кадры и протоколы
+        # (выгрузка этапа — лишь опознанные IP из первых кадров); разбирается пачками, как любой большой файл.
+        ид = _pakety(request).создать(владелец=user.id, имя=Path(состояние["имя"]).name, путь=вход,
+                                      от=f"{job_id}#{этап}")
+        return {"id": ид}
     имя = f"{Path(состояние['имя']).stem} — этап {этап}{файл.suffix}"
     ид = _pakety(request).создать(владелец=user.id, имя=имя, путь=файл, от=f"{job_id}#{этап}")
     return {"id": ид}
+
+
+def _пакеты_самого_sig(состояние: dict[str, Any], этап: int) -> bool:
+    """Этап — пакеты самого файла .sig/.dpo (первый, без снятых слоёв и ручных шагов)."""
+    from ..potok.chtenie import РАСШИРЕНИЯ_SIG  # noqa: PLC0415
+    этапы = состояние.get("этапы") or []
+    if этап != 1 or not этапы or Path(состояние.get("имя") or "").suffix.lower() not in РАСШИРЕНИЯ_SIG:
+        return False
+    if состояние.get("снять") or состояние.get("шаги"):
+        return False
+    первый = этапы[0]
+    return not первый.get("путь") and первый.get("уровень") == "сетевой"
 
 
 @router.get("/pakety/{cap_id}")
