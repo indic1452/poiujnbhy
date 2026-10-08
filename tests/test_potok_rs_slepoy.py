@@ -16,7 +16,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as синтез
-from reportgen.potok import razbor
+from reportgen.potok import razbor, rs_bch
 from reportgen.potok import rs_slepoy as R
 
 # -- эталонный кодер -------------------------------------------------------------------------------
@@ -169,6 +169,46 @@ class ПрефиксTests(unittest.TestCase):
             ожидается = {(t, s) for t in range(len(P)) for s in range(3 * I, 20 * I + 1, I)
                          if t + s < len(P) and P[t] == P[t + s]}
             self.assertEqual(найдено, ожидается, I)
+
+    def test_пары_и_префиксы_как_прямым_расчётом(self):
+        """Пары по сокращаемым местам — те же и в том же порядке, что полным проходом на каждом шаге;
+        P_j из общих логарифмов — как по формуле для каждого j (в т. ч. нулевые символы)."""
+        def пары_прямо(P, I, d_от, d_до, шагов=R.ПАР_ШАГОВ_ДО):
+            ключ = P * I + np.arange(len(P)) % I
+            порядок = np.argsort(ключ, kind="stable")
+            кс = ключ[порядок]
+            н, р = [], []
+            for k in range(1, min(шагов, len(P) - 1) + 1):
+                d = порядок[k:] - порядок[:-k]
+                ок = (кс[k:] == кс[:-k]) & (d <= d_до)
+                if not ок.any():
+                    break
+                ок &= d >= d_от
+                н.append(порядок[:-k][ок])
+                р.append(d[ок])
+            return (np.concatenate(н), np.concatenate(р)) if н else (np.zeros(0), np.zeros(0))
+
+        степень, логарифм, _ = rs_bch.поле(0x11D)
+        г = np.random.default_rng(11)
+        for I in (1, 3):
+            с = г.integers(0, 256, 30_000)
+            с[г.integers(0, len(с), 500)] = 0
+            префиксы = R._Префиксы(с, I, 0x11D)
+            for j in (0, 1, 8, 200):
+                T = len(с) // I * I
+                строка = np.arange(T) // I
+                v = np.where(с[:T] == 0, 0, степень[(логарифм[с[:T]] - j * строка) % 255]) if j else с[:T]
+                P = np.zeros((T // I + 1, I), dtype=np.int64)
+                P[1:] = np.bitwise_xor.accumulate(v.reshape(-1, I), axis=0)
+                self.assertTrue(np.array_equal(префиксы(j), P.ravel()), (I, j))
+                self.assertTrue(np.array_equal(R.префикс(с, I, j, 0x11D), P.ravel()), (I, j))
+                for d_от, d_до in ((6 * I, 255 * I), (I, 40 * I)):
+                    for а, б in zip(R.пары(P.ravel(), I, d_от, d_до), пары_прямо(P.ravel(), I, d_от, d_до)):
+                        self.assertTrue(np.array_equal(а, б), (I, j, d_от))
+        c, λ = г.uniform(0, 10, 1000), г.uniform(0, 10, 1000)
+        прямо = np.where(c > λ, c * np.log(np.maximum(c, 1e-300) / λ) - c + λ, 0.0)
+        self.assertTrue(np.allclose(R.мера(c, λ), прямо, rtol=0, atol=1e-12))
+        self.assertEqual(R.мера(np.array([3.0, 0.0]), 0.0).tolist()[1], 0.0)
 
     def test_пары_вырожденного_ряда_ограничены_шагами(self):
         н, d = R.пары(np.zeros(1000, dtype=np.int64), 1, 1, 10_000, шагов=5)

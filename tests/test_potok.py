@@ -578,6 +578,23 @@ class ЦепочкаTests(unittest.TestCase):
         self.assertIn("ПРОВЕРЕНО И НЕ НАЙДЕНО", отчёт)
         self.assertIn("младший бит первым", отчёт)
 
+    def test_запасной_проход_ступенью_ниже(self):
+        """Второй проход («младший бит первым») — сроки дорогих слепых поисков ступенью профиля ниже,
+        остальное (глубина, выколотые) — своего профиля; у «быстро» ниже нет."""
+        from reportgen.potok import razbor as р
+
+        об = р._запасной_профиль(р.ПРОФИЛИ["обычно"])
+        for ключ in р.ЗАПАСНОЙ_ПРОХОД:
+            self.assertEqual(об[ключ], р.ПРОФИЛИ["быстро"][ключ], ключ)
+        self.assertIsNone(об["форни"])
+        self.assertEqual((об["глубина"], об["время"]), (р.ПРОФИЛИ["обычно"]["глубина"], р.ПРОФИЛИ["обычно"]["время"]))
+        гл = р._запасной_профиль(р.ПРОФИЛИ["глубоко"])
+        self.assertEqual((гл["рс"], гл["длинные"]), (р.ПРОФИЛИ["обычно"]["рс"], р.ПРОФИЛИ["обычно"]["длинные"]))
+        self.assertTrue(гл["выколотые"])
+        self.assertIs(р._запасной_профиль(р.ПРОФИЛИ["быстро"]), р.ПРОФИЛИ["быстро"])
+        свой = {**р.ПРОФИЛИ["обычно"]}                   # не из ПРОФИЛИ — как есть
+        self.assertIs(р._запасной_профиль(свой), свой)
+
     def test_sig_с_ip_внутри(self):
         разбор = разобрать(данные=с.sig(с.пакеты_ip(100)), имя="сеть.sig")
         self.assertEqual("сетевой", разбор.находки[0].уровень)
@@ -665,7 +682,7 @@ class КомандаTests(unittest.TestCase):
             self.assertIn("E1 по G.704", итог.stdout)
             шум = Path(каталог) / "шум.bin"
             шум.write_bytes(np.random.default_rng(1).bytes(100_000))
-            итог = subprocess.run([sys.executable, "-m", "reportgen", "potok", str(шум)],
+            итог = subprocess.run([sys.executable, "-m", "reportgen", "potok", "--быстро", str(шум)],
                                   capture_output=True, text=True, encoding="utf-8",
                                   env={"PYTHONPATH": str(корень / "src"), "PATH": ""},
                                   timeout=300)

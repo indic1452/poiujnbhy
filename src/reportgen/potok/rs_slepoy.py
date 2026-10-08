@@ -146,18 +146,32 @@ def префикс(с: np.ndarray, I: int = 1, j: int = 0, p: int | None = None)
 
     P(t + N·I) = P(t) ⇔ слово полосы t из N символов с шагом I зануляется в α^j.
     """
-    T = len(с) // I * I
-    v = np.asarray(с[:T], dtype=np.int64)
-    if j:
-        степень, логарифм, _ = rs_bch.поле(p)
-        Q = len(логарифм) - 1
-        # Показатель α^(−j·строка) по модулю Q — периодичен по строке с периодом Q: таблица на Q строк.
-        строка = np.arange(T, dtype=np.int64) // I % Q
-        сдвиг = (-j * np.arange(Q, dtype=np.int64)) % Q
-        v = np.where(v == 0, 0, степень[логарифм[v] + сдвиг[строка]])
-    P = np.zeros((T // I + 1, I), dtype=np.int64)
-    P[1:] = np.bitwise_xor.accumulate(v.reshape(T // I, I), axis=0)
-    return P.ravel()
+    return _Префиксы(с, I, p if j else None)(j)
+
+
+class _Префиксы:
+    """P_j одних символов для многих j: логарифмы символов и номера строк — один раз."""
+
+    def __init__(self, с: np.ndarray, I: int, p: int | None) -> None:
+        self.I = I
+        self.T = len(с) // I * I
+        self.v = np.asarray(с[:self.T], dtype=np.int64)
+        if p is not None:
+            self.степень, логарифм, _ = rs_bch.поле(p)
+            self.Q = len(логарифм) - 1
+            self.ноль = self.v == 0
+            self.лог = логарифм[np.where(self.ноль, 1, self.v)]
+            # Показатель α^(−j·строка) по модулю Q периодичен по строке с периодом Q: таблица на Q строк.
+            self.строка = np.arange(self.T, dtype=np.int64) // I % self.Q
+
+    def __call__(self, j: int) -> np.ndarray:
+        v = self.v
+        if j:
+            сдвиг = (-j * np.arange(self.Q, dtype=np.int64)) % self.Q
+            v = np.where(self.ноль, 0, self.степень[self.лог + сдвиг[self.строка]])
+        P = np.zeros((self.T // self.I + 1, self.I), dtype=np.int64)
+        P[1:] = np.bitwise_xor.accumulate(v.reshape(self.T // self.I, self.I), axis=0)
+        return P.ravel()
 
 
 def пары(P: np.ndarray, I: int, d_от: int, d_до: int, шагов: int = ПАР_ШАГОВ_ДО
@@ -174,14 +188,32 @@ def пары(P: np.ndarray, I: int, d_от: int, d_до: int, шагов: int = 
     порядок = np.argsort(ключ, kind="stable")
     кс = ключ[порядок]
     начала, расстояния = [], []
+    # Если k-й следующий равный дальше d_до (или его нет), то и (k+1)-й — тоже. Пока годных мест
+    # много — сравниваются целые срезы; когда их меньше восьмой части — только прошедшие шаг k
+    # (порядок мест сохраняется, итог тот же).
+    места: np.ndarray | None = None
     for k in range(1, min(шагов, len(P) - 1) + 1):
-        d = порядок[k:] - порядок[:-k]
-        ок = (кс[k:] == кс[:-k]) & (d <= d_до)
+        if места is None:
+            d = порядок[k:] - порядок[:-k]
+            ок = (кс[k:] == кс[:-k]) & (d <= d_до)
+            if not ок.any():
+                break
+            годно = ок & (d >= d_от)
+            начала.append(порядок[:-k][годно])
+            расстояния.append(d[годно])
+            if np.count_nonzero(ок) * 8 < len(ок):
+                места = np.flatnonzero(ок)
+            continue
+        места = места[места + k < len(P)]
+        за = места + k
+        d = порядок[за] - порядок[места]
+        ок = (кс[за] == кс[места]) & (d <= d_до)
         if not ок.any():
             break
-        ок &= d >= d_от
-        начала.append(порядок[:-k][ок])
-        расстояния.append(d[ок])
+        места, d = места[ок], d[ок]
+        годно = d >= d_от
+        начала.append(порядок[места[годно]])
+        расстояния.append(d[годно])
     if not начала:
         return np.zeros(0, dtype=np.int64), np.zeros(0, dtype=np.int64)
     return np.concatenate(начала), np.concatenate(расстояния)
@@ -189,10 +221,12 @@ def пары(P: np.ndarray, I: int, d_от: int, d_до: int, шагов: int = 
 
 def мера(c: np.ndarray, λ: np.ndarray) -> np.ndarray:
     """Граница Чернова −ln P(X ≥ c) для X ~ Пуассон(λ): c·ln(c/λ) − c + λ при c > λ, иначе 0."""
-    c = np.asarray(c, dtype=np.float64)
-    λ = np.maximum(np.asarray(λ, dtype=np.float64), 1e-12)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        s = np.where(c > λ, c * np.log(np.maximum(c, 1e-300) / λ) - c + λ, 0.0)
+    c, λ = np.broadcast_arrays(np.asarray(c, dtype=np.float64),
+                               np.maximum(np.asarray(λ, dtype=np.float64), 1e-12))
+    s = np.zeros(c.shape)
+    выше = c > λ                                  # логарифм — только там, где мера не ноль
+    cв, λв = c[выше], λ[выше]
+    s[выше] = cв * np.log(cв / λв) - cв + λв
     return s
 
 
@@ -507,10 +541,11 @@ def _кандидаты(с: np.ndarray, конф: Конфигурация, фа
     кл: _Клетки | None = None
     сумма = сумма_N = лучшая_j_мера = лучший_j = лучшая_j_мера_N = лучший_j_N = None
     пары_по_j: dict[int, tuple[np.ndarray, np.ndarray]] = {}
+    префиксы = _Префиксы(с, I, конф.p if конф.ступень == 2 else None)
     for j in j_список:
         if стоп is not None and стоп():
             return []
-        P = префикс(с, I, j, конф.p if j else None)
+        P = префиксы(j)
         if кл is None:
             кл = _клетки(I, N_ОТ, N_до, len(P))
             сумма = np.zeros(len(кл.N))

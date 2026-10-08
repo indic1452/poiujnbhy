@@ -655,7 +655,8 @@ def cmd_potok(args: argparse.Namespace) -> int:
     from .potok import разобрать  # noqa: PLC0415 — numpy нужен только здесь
 
     try:
-        разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (), профиль="обычно",
+        разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (),
+                           профиль="быстро" if args.fast else "обычно",
                            символ=[k for k in (args.bits or ()) if k % 2 == 0],
                            фм=[k for k in (args.bits or ()) if k % 2])
     except ValueError as ошибка:
@@ -995,6 +996,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_potok.add_argument("--глубоко", "--deep", dest="deep", action="store_true",
                          help="глубокий разбор: длинные коды до 2048 бит, выколотые до 7/8, "
                               "до 20 минут")
+    p_potok.add_argument("--быстро", "--fast", dest="fast", action="store_true",
+                         help="быстрый разбор: короткие сроки слепых поисков, до полутора минут")
     p_potok.add_argument("--снять", "--strip", dest="strip", action="append", metavar="СЛОЙ",
                          help="сперва снять известный слой, дальше — вслепую; можно "
                               "несколько раз по порядку: «инверсия», «сдвиг 5», «nrzi», "
