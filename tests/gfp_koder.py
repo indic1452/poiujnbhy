@@ -119,7 +119,7 @@ class Stream:
         """Байты потока; и начало каждого кадра (байт)."""
         out = bytearray()
         starts = []
-        # x^43+1 самосинхронизирующийся: y[n] = x[n] ^ y[n-43]; начальное состояние случайное
+        # x^43+1 мультипликативный: y[n] = x[n] ^ y[n-43]; начальное состояние случайное
         rng = random.Random(self.x43_seed if self.x43_seed is not None else 1)
         state = [rng.randrange(2) for _ in range(43)]  # последние 43 выходных бита
         pos = 0

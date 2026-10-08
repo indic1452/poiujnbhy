@@ -155,7 +155,7 @@ class РучнойКакАвтомат(Стол):
             ждём = np.asarray(находка.дальше, dtype=np.uint8)
             self.assertTrue(np.array_equal(ждём, биты), находка.что)
 
-    def test_hdlc_самосинхронизирующийся(self):
+    def test_hdlc_мультипликативный(self):
         hdlc = hdlc_биты()
         поток = с.скремблировать(hdlc, (12, 17))
         ид = self.файл("h.bin", np.packbits(поток).tobytes(), "msb")
