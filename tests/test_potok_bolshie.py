@@ -124,7 +124,7 @@ class ПотоковыеШагиTests(unittest.TestCase):
         self.assertIn("кусками", о[-1])
         self.assertGreater(бит, 0)
         for слой in ("переворот", "свёрточный 171/133 k=7", "плоскость 4"):
-            with self.subTest(слой), self.assertRaisesRegex(ValueError, "нужен весь ряд"):
+            with self.subTest(слой), self.assertRaisesRegex(ValueError, "больше предела"):
                 potokovo.выполнить(ист, rastr.проверить_шаги([{"вид": "слой", "слой": слой}]),
                                    self.папка / "к3.bin", в_памяти_до=1000)
 
@@ -194,7 +194,7 @@ class ИсточникTests(unittest.TestCase):
         ист = Источник(путь, ссылка=ссылка, сверено=запомнено.append)
         self.assertEqual(1, len(запомнено))
         путь.write_bytes(self.данные[:-1] + b"\x00" if self.данные[-1] else self.данные[:-1] + b"\x01")
-        with self.assertRaisesRegex(ФайлИзменён, "переписан"):
+        with self.assertRaisesRegex(ФайлИзменён, "изменён"):
             ист.байты(0, 10)
         путь.write_bytes(self.данные + b"x")
         with self.assertRaisesRegex(ФайлИзменён, "изменён"):
@@ -226,12 +226,12 @@ class ИсточникTests(unittest.TestCase):
         self.assertIsNotNone(сверить(ссылка))
         данные[-1] ^= 1
         путь.write_bytes(bytes(данные))
-        with self.assertRaisesRegex(ФайлИзменён, "переписан"):
+        with self.assertRaisesRegex(ФайлИзменён, "изменён"):
             сверить(ссылка)
         данные[-1] ^= 1
         данные[5] ^= 1
         путь.write_bytes(bytes(данные))
-        with self.assertRaisesRegex(ФайлИзменён, "переписан"):
+        with self.assertRaisesRegex(ФайлИзменён, "изменён"):
             сверить(ссылка)
 
     def test_границы_окон(self):
@@ -726,7 +726,7 @@ class ЧерезСерверTests(unittest.TestCase):
         self.сеть.app.state.settings.potok_max_mb = 1
         о = self.к.post(f"/api/sessions/{self.сессия}/uploads", json={"name": "б.bin", "size": 2 << 20})
         self.assertEqual(413, о.status_code)
-        self.assertIn("по ссылке", о.json()["error"])
+        self.assertIn("с сервера", о.json()["error"])
         ид = self.к.post(f"/api/sessions/{self.сессия}/uploads", json={"name": "м.bin", "size": 100}).json()["id"]
         self.assertEqual(200, self.к.delete(f"/api/potok-uploads/{ид}").status_code)
         self.assertEqual(404, self.к.get(f"/api/potok-uploads/{ид}").status_code)

@@ -3923,7 +3923,7 @@ def _с_частью(request: Request, ответ: dict[str, Any]) -> dict[str, 
     часть = getattr(request.state, "potok_часть", None)
     if часть and isinstance(ответ, dict):
         ответ = {**ответ, "часть": {**часть, "текст": f"по первым {часть['бит'] // 8 >> 20} МБ из "
-                                                      f"{часть['всего'] // 8 >> 20} МБ массива"}}
+                                                      f"{часть['всего'] // 8 >> 20} МБ"}}
     return ответ
 
 
@@ -4872,8 +4872,7 @@ def sessions_add_file(request: Request, session_id: str, file: UploadFile = File
     путь = Path(врем.name)
     try:
         if принято > limit:
-            raise ServiceError(f"файл больше допустимых {settings.max_upload_mb} МБ одним запросом — большие "
-                               f"файлы страница отправляет кусками", 413)
+            raise ServiceError(f"Файл больше {settings.max_upload_mb} МБ", 413)
         return _файл_в_сессию(request, user, session_id, путь=путь, имя=name, свой=True, **параметры)
     finally:
         путь.unlink(missing_ok=True)
@@ -5048,14 +5047,12 @@ def sessions_upload_start(request: Request, session_id: str) -> dict[str, Any]:
         raise ServiceError("файл пуст", 400)
     предел = int(getattr(settings, "potok_max_mb", 0) or 0)
     if предел and размер > предел << 20:
-        raise ServiceError(f"файл {размер >> 20} МБ больше допустимых {предел} МБ (potok_max_mb) — положите его "
-                           f"в папку входных файлов сервера и добавьте по ссылке", 413)
+        raise ServiceError(f"Файл больше {предел} МБ. Добавьте его с сервера.", 413)
     папка = Path(settings.data_dir)
     папка.mkdir(parents=True, exist_ok=True)
     свободно = shutil.disk_usage(папка).free
     if размер + ЗАПАС_ДИСКА > свободно:
-        raise ServiceError(f"на диске сервера свободно {свободно >> 20} МБ — файл {размер >> 20} МБ не поместится "
-                           f"с запасом; добавьте его по ссылке из папки входных файлов", 507)
+        raise ServiceError(f"Мало места на сервере ({свободно >> 20} МБ). Добавьте файл с сервера.", 507)
     параметры = _параметры_добавления(тело.get("start"), тело.get("length"), тело.get("sliced"),
                                       тело.get("analyze"), тело.get("bit_order"))
     запись = _zagruzki(request).начать(владелец=user.id, имя=name, размер=размер,
