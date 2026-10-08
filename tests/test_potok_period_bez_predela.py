@@ -133,6 +133,7 @@ class ДлинныйЦиклTests(unittest.TestCase):
         self.assertEqual(1, len(подсказки))
         self.assertIn("похоже на цикл 150001 бит", подсказки[0])
         self.assertIn("лишь 10 циклов — мало периодов: цикл принимается от 16", подсказки[0])
+        self.assertIn("(постоянный участок 32 бит в каждом цикле)", подсказки[0])
         self.assertIsNone(cikl.найти(б))                          # без списка — просто нет
 
     def test_длинные_не_проверялись_подсказка(self):
@@ -195,6 +196,201 @@ class ДлинныйЦиклTests(unittest.TestCase):
         self.assertEqual(cikl.гребёнка(б), cikl.гребёнка(б, r))
         self.assertEqual(512, cikl.длина_цикла(б)[0])
         self.assertIsNone(cikl.длина_цикла(б[:1000]))                      # выборка мала
+
+
+def длина_цикла_прежде(r, наибольший, n):
+    """Эталон: прежний перебор вершин пика по одному периоду (до векторизации)."""
+    шум = 1.0 / np.sqrt(n)
+    лучший = int(np.argmax(r[cikl.ЦИКЛ_ОТ:])) + cikl.ЦИКЛ_ОТ
+    пик = float(r[лучший])
+    if пик < cikl.ПОРОГ_СИГМ * шум:
+        return None
+    for p in range(cikl.ЦИКЛ_ОТ, лучший + 1):
+        if r[p] < 0.6 * пик:
+            continue
+        if p + 1 < len(r) and r[p + 1] > r[p]:
+            continue
+        кратные = [r[k * p] for k in range(2, 5) if k * p <= наибольший]
+        if all(к >= 0.5 * пик for к in кратные):
+            return p, float(r[p]), шум
+    return лучший, пик, шум
+
+
+def гребёнка_прежде(r, наибольший, n):
+    """Эталон: прежняя гребёнка периодом за периодом."""
+    z = np.zeros(наибольший // 2 + 2)
+    for P in range(cikl.ЦИКЛ_ОТ, наибольший // 2 + 1):
+        кратные = np.arange(1, min(cikl.ГРЕБЁНКА_ДО, наибольший // P) + 1) * P
+        z[P] = float(r[кратные].sum()) / float(np.sqrt((1.0 / (n - кратные)).sum()))
+    лучший = int(np.argmax(z))
+    if z[лучший] < cikl.ПОРОГ_СИГМ:
+        return None
+    for P in range(cikl.ЦИКЛ_ОТ, лучший + 1):
+        if z[P] >= 0.6 * z[лучший] and z[P] >= z[P - 1] and z[P] >= z[P + 1]:
+            return P, float(r[P]), 1.0 / np.sqrt(n)
+    return лучший, float(r[лучший]), 1.0 / np.sqrt(n)
+
+
+def повторы_прямо(биты, от, до, *, ширина=24, соседей=3, повторов_от=2, запас=12.0):
+    """Эталон периоды_по_повторам: пары перебором по спискам мест каждого слова, серии — по соседству."""
+    from math import factorial, log2  # noqa: PLC0415
+    слова = cikl._окна(биты, ширина, 1).tolist()
+    n = len(слова)
+    места = {}
+    for i, w in enumerate(слова):
+        места.setdefault(w, []).append(i)
+    пары = set()
+    for сп in места.values():
+        for а in range(len(сп)):
+            for k in range(1, соседей + 1):
+                if а + k < len(сп) and от <= сп[а + k] - сп[а] <= до:
+                    пары.add((сп[а + k] - сп[а], сп[а]))
+    серии = {}
+    for d, i in sorted(пары):
+        if (d, i - 1) in пары:
+            серии[d][-1] += 1
+        else:
+            серии.setdefault(d, []).append(1)
+    итог = []
+    for d, длины in серии.items():
+        бит = sum(ширина + л - 1 - log2(n) for л in длины) - log2(factorial(len(длины))) - log2(до - от + 1)
+        if len(длины) >= повторов_от and бит >= запас:
+            итог.append((d, len(длины), sum(длины), бит))
+    return итог
+
+
+class ВекторизацияКакПреждеTests(unittest.TestCase):
+    """Пик, гребёнка и повторы без перебора в питоне — то же, что прямой перебор (эталоны выше)."""
+
+    def ряды(self, сид, наибольший=256):
+        """Ряды автокорреляции с пиками, плато, кратными на грани половины пика и пиком в самом конце."""
+        rng = np.random.default_rng(сид)
+        r = rng.integers(-40, 40, наибольший + 2) / 1024.0
+        r[0] = 1.0
+        for _ in range(int(rng.integers(0, 4))):
+            p = int(rng.integers(cikl.ЦИКЛ_ОТ - 2, наибольший + 2))
+            r[p] = int(rng.integers(100, 400)) / 1024.0
+            if rng.random() < 0.3 and p + 1 < len(r):
+                r[p + 1] = r[p]                                   # плато: вершина — правый край
+            for k in range(2, 5):
+                if k * p < len(r) and rng.random() < 0.7:
+                    r[k * p] = r[p] * float(rng.choice([0.49, 0.5, 0.51, 1.0]))
+            if rng.random() < 0.3:
+                r[p - 1] = r[p] * 0.6                              # склон ровно на 60 %
+        return r
+
+    def test_пик_как_прежде(self):
+        n, наибольший = 4096, 256
+        биты = np.zeros(n, np.uint8)
+        совпало = 0
+        for сид in range(600):
+            r = self.ряды(сид)
+            with self.subTest(сид=сид):
+                ждём = длина_цикла_прежде(r[:наибольший + 1], наибольший, n)
+                self.assertEqual(ждём, cikl.длина_цикла(биты, (r, наибольший)))
+                совпало += ждём is not None
+        self.assertGreater(совпало, 100)
+
+    def test_гребёнка_как_прежде(self):
+        n, наибольший = 4096, 256
+        биты = np.zeros(n, np.uint8)
+        найдено = 0
+        for сид in range(300):
+            r = self.ряды(сид) * 4
+            r[0] = 1.0
+            with self.subTest(сид=сид):
+                ждём = гребёнка_прежде(r[:наибольший + 1], наибольший, n)
+                итог = cikl.гребёнка(биты, (r, наибольший))
+                self.assertEqual(ждём is None, итог is None)
+                if ждём is not None:
+                    найдено += 1
+                    self.assertEqual(ждём[0], итог[0])
+                    self.assertAlmostEqual(ждём[1], итог[1])
+        self.assertGreater(найдено, 50)
+
+    def test_выборка_для_автокорреляции(self):
+        """Меньше 64 циклов наименьшей длины (2048 бит) — цикл не ищется; ровно 2048 — ищется."""
+        б, _ = кадры(64, 32, слово_бит=24, сдвиг=0)
+        self.assertEqual(2048, len(б))
+        self.assertEqual(64, cikl.длина_цикла(б)[0])
+        self.assertIsNone(cikl.длина_цикла(б[:2047]))
+        self.assertIsNone(cikl.гребёнка(б[:2047]))
+        self.assertIsNone(cikl._узкий_цикл(б[:2047]))
+        self.assertEqual(64, cikl._длинный_цикл(б)[0])
+        self.assertIsNone(cikl._длинный_цикл(б[:2047]))
+        self.assertIsNone(cikl._длинный_цикл(б[:2040]))
+
+    def случаи_повторов(self):
+        rng = np.random.default_rng(21)
+        б = rng.integers(0, 2, 20_011, dtype=np.uint8)
+        узор = rng.integers(0, 2, 40, dtype=np.uint8)
+        for к in range(500, 20_000 - 40, 3000):                 # цикл 3000: шесть вхождений
+            б[к:к + 40] = узор
+        другой = rng.integers(0, 2, 30, dtype=np.uint8)
+        for к in (1000, 1777, 9000, 9777):                      # два повтора на 777
+            б[к:к + 30] = другой
+        б[15_000:15_200] = 0                                     # нули: слово 0 повторяется через 1, 2, 3
+        б[17_000:17_030] = б[2_100:2_130]                        # один длинный повтор
+        return б
+
+    def test_повторы_как_прямой_перебор(self):
+        б = self.случаи_повторов()
+        for кусок in (cikl.КУСОК_ПОВТОРОВ, 7, 8, 1000):
+            for от, до, повторов_от, запас in ((1, len(б), 1, -1e9), (2, 2999, 1, -1e9), (3000, 3000, 2, -1e9),
+                                               (32, len(б), 2, 12.0), (777, 6000, 1, 0.0)):
+                with self.subTest(кусок=кусок, от=от, до=до):
+                    from unittest import mock  # noqa: PLC0415
+                    with mock.patch.object(cikl, "КУСОК_ПОВТОРОВ", кусок):
+                        итог = cikl.периоды_по_повторам(б, от, до, повторов_от=повторов_от, запас=запас, сколько=10 ** 6)
+                    ждём = повторы_прямо(б, от, до, повторов_от=повторов_от, запас=запас)
+                    self.assertEqual(sorted(т[:3] for т in ждём), sorted(т[:3] for т in итог))
+                    по = {т[0]: т[3] for т in ждём}
+                    for d, _, _, бит in итог:
+                        self.assertAlmostEqual(по[d], бит, delta=0.051)
+                        self.assertAlmostEqual(бит * 10, round(бит * 10), places=6)   # бит — с одним знаком
+                    self.assertEqual(sorted(итог, key=lambda т: -т[3]), итог)         # сильнейшие первыми
+        # По умолчанию — от двух повторов и 12 бит запаса: цикл 3000 есть, одиночный длинный повтор — нет.
+        итог = cikl.периоды_по_повторам(б, 32, len(б))
+        self.assertEqual(3000, итог[0][0])
+        self.assertNotIn(17_000 - 2_100, [т[0] for т in итог])
+        self.assertEqual(1, len(cikl.периоды_по_повторам(б, 32, len(б), сколько=1)))
+
+    def test_повторы_края(self):
+        нули = np.zeros(25, np.uint8)                           # два слова, одинаковых, через 1 бит
+        self.assertEqual([(1, 1, 1)], [т[:3] for т in cikl.периоды_по_повторам(нули, 1, 1, повторов_от=1, запас=-1e9)])
+        self.assertEqual([], cikl.периоды_по_повторам(нули, 2, 1, повторов_от=1, запас=-1e9))
+        self.assertEqual([], cikl.периоды_по_повторам(нули[:24], 1, 1, повторов_от=1, запас=-1e9))
+        self.assertEqual([(1, 1, 1)], [т[:3] for т in cikl.периоды_по_повторам(нули, 0, 1, повторов_от=1, запас=-1e9)])
+
+    def test_слова_и_типы(self):
+        б = np.random.default_rng(8).integers(0, 2, 300, dtype=np.uint8)
+        for ширина, тип in ((25, np.uint32), (26, np.uint32), (31, np.uint32), (32, np.uint32), (33, np.uint64)):
+            with self.subTest(ширина=ширина):
+                слова = cikl.слова_подряд(б, ширина)
+                self.assertEqual(cikl._окна(б, ширина, 1).tolist(), слова.tolist())
+                self.assertEqual(тип, слова.dtype)
+
+    def test_длинный_цикл_граница_и_одиночные_повторы(self):
+        """Ровно 16 циклов — цикл; повтор участка лишь в двух местах таблицы — не цикл (и не падает)."""
+        б, _ = кадры(100_003, 16)
+        self.assertEqual(100_003, cikl._длинный_цикл(б)[0])
+        rng = np.random.default_rng(30)
+        б = rng.integers(0, 2, 2_000_000, dtype=np.uint8)
+        узор = rng.integers(0, 2, 64, dtype=np.uint8)
+        for к in (5_000, 105_000, 205_000):
+            б[к:к + 64] = узор
+        self.assertIn(100_000, [т[0] for т in cikl.периоды_по_повторам(б, 32, len(б) // 3)])
+        подсказки = []
+        self.assertIsNone(cikl._длинный_цикл(б, подсказки))
+        self.assertEqual([], подсказки)
+
+    def test_короткая_выборка_подсказка(self):
+        """Выборка 520 бит: циклы длиннее 32 бит не проверялись — так и сказано."""
+        б = np.random.default_rng(5).integers(0, 2, 520, dtype=np.uint8)
+        подсказки = []
+        self.assertIsNone(cikl.найти(б, подсказки))
+        self.assertEqual(["циклы длиннее 32 бит не проверялись: их в выборке из 520 бит меньше 16 — мало периодов"],
+                         подсказки)
 
 
 class ПоискПериодаTests(unittest.TestCase):
