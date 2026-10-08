@@ -149,6 +149,63 @@ class МаскаКадра(unittest.TestCase):
         self.assertEqual([], кк)
 
 
+class PLFRAMEвРазметкеДанных(unittest.TestCase):
+    """Файлы «LDPC_65070» и «LDPC_16740»: демодулятор решил и заголовок, и пилоты по созвездию данных."""
+
+    def _снять(self, имя, вид, пилоты, поворот, отражение, *, кадров=6, сдвиг=1001, скремблер=True):
+        import time
+        from reportgen.potok import dvbs2_pl, razbor
+        б, c, u = лп.поток_dvbs2_разметка(имя, кадров, вид=вид, пилоты=пилоты, поворот=поворот, отражение=отражение,
+                                          скремблер_pl=скремблер)
+        б = лп.ошибки(лп.сдвинуть(б, сдвиг), 1e-3, сид=3)
+        з = dvbs2_pl.найти_с_кадрами(б)
+        self.assertIsNotNone(з)
+        н = razbor._ldpc_plframe(з, razbor.Бюджет(конец=time.monotonic() + 300, профиль=razbor.ПРОФИЛИ["обычно"]))
+        self.assertIsNotNone(н)
+        вышло = np.asarray(н.дальше).reshape(-1, u.shape[1])
+        self.assertEqual(кадров, len(вышло))
+        self.assertEqual(кадров, int((вышло == u).all(axis=1).sum()))
+        return б, з, н
+
+    def test_65070_8psk_со_скремблером_поворот_и_отражение(self):
+        б, з, н = self._снять("dvb-s2-64800-38880", "8PSK", False, 3, True)
+        self.assertEqual(65070, з.свойства["шаг"])
+        self.assertTrue(н.свойства["перед"][0].endswith("скремблер"))
+        слои = слои_находки(н)
+        ряд = б
+        for слой in слои:
+            ряд, _ = снять_вручную(ряд, слой)
+        np.testing.assert_array_equal(np.asarray(н.дальше), ряд)
+
+    def test_65070_без_скремблера(self):
+        _, з, н = self._снять("dvb-s2-64800-38880", "8PSK", False, 0, False, скремблер=False)
+        self.assertFalse(н.свойства["перед"][0].endswith("скремблер"))
+
+    def test_16740_qpsk_с_пилотами(self):
+        _, з, н = self._снять("dvb-s2-16200-7200", "", True, 2, False, кадров=8)
+        self.assertEqual(16740, з.свойства["шаг"])
+        self.assertIn("пилоты — 5 блоков по 72 бит", " ".join(з.подробно))
+
+    def test_8psk_с_пилотами(self):
+        _, з, _ = self._снять("dvb-s2-64800-38880", "8PSK", True, 5, False, кадров=4)
+        self.assertEqual(3 * (90 + 21600 + 14 * 36), з.свойства["шаг"])
+
+    def test_сбой_синхронизации_и_потерянный_заголовок(self):
+        from reportgen.potok import dvbs2_pl
+        б, c, u = лп.поток_dvbs2_разметка("dvb-s2-16200-7200", 10, пилоты=True, поворот=0)
+        б = б.copy()
+        б[16740 * 3:16740 * 3 + 180] ^= 1                         # заголовок четвёртого кадра испорчен
+        б = np.concatenate([б[:16740 * 6], б[16740 * 6 + 2:]])      # сбой: два бита (символ QPSK) потеряны
+        з = dvbs2_pl.найти_с_кадрами(б)
+        кадры = з.свойства["варианты_кадров"][0]["кадров"]
+        self.assertGreaterEqual(кадры, 9)                          # кадр со сбоем выпадает, остальные — на месте
+
+    def test_случайные_биты_не_заголовок(self):
+        from reportgen.potok import dvbs2_pl
+        б = np.random.default_rng(1).integers(0, 2, 1 << 22).astype(np.uint8)
+        self.assertIsNone(dvbs2_pl.найти_в_разметке(б))
+
+
 class Декодер(unittest.TestCase):
     """Декодер по рёбрам даёт то же, что прежняя запись по дополненным строкам."""
 
