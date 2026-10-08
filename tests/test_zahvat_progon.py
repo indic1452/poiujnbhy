@@ -539,7 +539,7 @@ class ПрогонTests(Папка):
         путь = self.файл(кадры)
         ход = прогнать(self.т, {"источник": {"вид": "файлы", "файлы": [str(путь)]}, "скорость": 0,
                                 "выход": {"порт": 5004, "срез": "rtp", "упорядочить": True}})
-        self.assertEqual(("готово", "захват пройден до конца", 21), (ход["состояние"], ход["причина"], ход["пакетов"]))
+        self.assertEqual(("готово", "запись пройдена до конца", 21), (ход["состояние"], ход["причина"], ход["пакетов"]))
         self.assertEqual(sum(len(к) for к in кадры), ход["байт"])
         корень = ход["дерево"][0]
         self.assertEqual(21, корень["пакетов"])
@@ -565,7 +565,7 @@ class ПрогонTests(Папка):
         (self.т / "мусор.bin").write_bytes(b"not a capture at all" * 5)
         ход = прогнать(self.т, {"источник": {"вид": "файлы", "файлы": [str(self.т / "мусор.bin")]}, "скорость": 0})
         self.assertEqual(0, ход["пакетов"])
-        self.assertTrue(any("мусор.bin" in з and "не похож на захват" in з for з in ход["заметки"]), ход["заметки"])
+        self.assertTrue(any("мусор.bin" in з and "не похож на сетевую запись" in з for з in ход["заметки"]), ход["заметки"])
 
     def test_скорость_как_записано_выдерживает_время(self):
         путь = self.файл([кадр_udp(b"a")] * 3, времена=[0.0, 0.3, 0.6])
@@ -629,10 +629,10 @@ class ПрогонTests(Папка):
                                 "скорость": 0})
         self.assertEqual(("готово", 2), (ход["состояние"], ход["пакетов"]))
         self.assertTrue(any("нет.pcap удалён" in з for з in ход["заметки"]), ход["заметки"])
-        self.assertTrue(any("плохой.pcap: файл не похож на захват" in з for з in ход["заметки"]), ход["заметки"])
+        self.assertTrue(any("плохой.pcap: файл не похож на сетевую запись" in з for з in ход["заметки"]), ход["заметки"])
 
     def test_следом_за_идущим_захватом(self):
-        """Папка захвата с сети: прогон ждёт новых кусков, пока захват идёт, и доходит до конца после."""
+        """Папка приёма с сети: прогон ждёт новых кусков, пока захват идёт, и доходит до конца после."""
         захват = self.т / "захват"
         захват.mkdir()
         состояние = захват / "состояние.json"
@@ -1685,7 +1685,7 @@ class СерверTests(unittest.TestCase):
 
     def test_многофайловый_захват_открывается_целиком(self):
         """«Открыть в анализаторе» у законченного многофайлового захвата — все куски одним захватом
-        «Пакетов» (склейка секций pcapng), а не только первый кусок; не помещается — 413 словами."""
+        «Анализа пакетов» (куски по порядку), а не только первый кусок; у идущего — вживую, следом за записью."""
         import socket  # noqa: PLC0415
 
         from test_zahvat_seti import свободный_порт  # noqa: PLC0415
@@ -1702,25 +1702,21 @@ class СерверTests(unittest.TestCase):
             if i % 200 == 0:
                 time.sleep(0.01)
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/zahvat/{ид}").json()["пакетов"] == 2500))
-        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
-        self.assertEqual(409, ответ.status_code, "идущий захват целиком не открыть — только закрытые куски")
-        self.к.post(f"/api/zahvat/{ид}/stop", json={})
-        self.assertEqual(3, self.к.get(f"/api/zahvat/{ид}/chunks").json()["total"])
-        self.settings.max_upload_mb = 0
-        ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
-        self.assertEqual(413, ответ.status_code)
-        self.assertIn("откройте его по кускам", ответ.json()["error"])
-        self.settings.max_upload_mb = 200
+        # Идущий приём целиком — анализ вживую: запись «Анализа пакетов» читает куски следом за записью.
         ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety", json={})
         self.assertEqual(200, ответ.status_code, ответ.text)
         пакеты = ответ.json()["id"]
+        self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["пакетов"] == 2500))
+        self.assertNotEqual("готово", self.к.get(f"/api/pakety/{пакеты}").json()["состояние"], "приём идёт — анализ ждёт")
+        self.к.post(f"/api/zahvat/{ид}/stop", json={})
+        self.assertEqual(3, self.к.get(f"/api/zahvat/{ид}/chunks").json()["total"])
         self.assertTrue(дождаться(lambda: self.к.get(f"/api/pakety/{пакеты}").json()["состояние"] == "готово"))
         с_ = self.к.get(f"/api/pakety/{пакеты}").json()
-        self.assertEqual((2500, "Стенд — весь, 3 куска.pcapng", f"zahvat:{ид}#весь"), (с_["пакетов"], с_["имя"], с_["от"]))
+        self.assertEqual((2500, "Стенд — вживую.pcapng", f"zahvat:{ид}#весь"), (с_["пакетов"], с_["имя"], с_["от"]))
         последний = self.к.get(f"/api/pakety/{пакеты}/packet/2500").json()
         self.assertEqual(["Ethernet", "IPv4", "UDP"], [у["протокол"] for у in последний["уровни"]][:3])
         self.assertEqual(пакеты, self.к.post(f"/api/zahvat/{ид}/to-pakety", json={}).json()["id"], "второй раз — тот же")
-        self.assertFalse(list((self.сеть.app.state.zahvat_seti.папка / ид).glob("*.tmp")), "склейка не остаётся на диске")
+        self.assertFalse(list((self.сеть.app.state.zahvat_seti.папка / ид).glob("*.tmp")), "склейки на диске нет")
         # Кусок по-прежнему открывается отдельно.
         ответ = self.к.post(f"/api/zahvat/{ид}/to-pakety?chunk=2", json={})
         self.assertEqual(200, ответ.status_code, ответ.text)
@@ -1870,19 +1866,19 @@ class СтраницаTests(unittest.TestCase):
         const сразу = узлы.map((у) => у && текст(у));
         setTimeout(async () => {
             const после = узлы.map((у) => у && текст(у));
-            await найти(узлы[3], 'следующий кусок →').attrs.onclick({ currentTarget: {} });
-            await найти(узлы[3], '← предыдущий кусок').attrs.onclick({ currentTarget: {} });
-            console.log(JSON.stringify({ сразу, после, журнал, ссылка: найти(узлы[2], 'К захвату').attrs.href }));
+            await найти(узлы[3], 'следующая часть →').attrs.onclick({ currentTarget: {} });
+            await найти(узлы[3], '← предыдущая часть').attrs.onclick({ currentTarget: {} });
+            console.log(JSON.stringify({ сразу, после, журнал, ссылка: найти(узлы[2], 'К приёму').attrs.href }));
         }, 20);"""
         итог = self.выполнить(код)
         ид = "20260930-104359-0b9c8e"
-        self.assertEqual("Кусок 1 захвата с сети следующий кусок → К захвату", итог["сразу"][0], "до ответа — без числа кусков")
+        self.assertEqual("Часть 1 приёма с сети следующая часть → К приёму", итог["сразу"][0], "до ответа — без числа частей")
         после = итог["после"]
-        self.assertEqual("Кусок 1 из 5 захвата с сети следующий кусок → К захвату", после[0])
-        self.assertEqual("Кусок 5 из 5 захвата с сети ← предыдущий кусок К захвату", после[1], "у последнего нет «следующего»")
-        self.assertEqual("Весь захват с сети, все куски подряд К захвату", после[2])
-        self.assertEqual("Кусок 2 из 5 захвата с сети ← предыдущий кусок следующий кусок → К захвату", после[3])
-        self.assertEqual("Кусок 4 из 5 захвата с сети ← предыдущий кусок следующий кусок → К захвату", после[4])
+        self.assertEqual("Часть 1 из 5 приёма с сети следующая часть → К приёму", после[0])
+        self.assertEqual("Часть 5 из 5 приёма с сети ← предыдущая часть К приёму", после[1], "у последнего нет «следующего»")
+        self.assertEqual("Весь приём с сети, все части подряд К приёму", после[2])
+        self.assertEqual("Часть 2 из 5 приёма с сети ← предыдущая часть следующая часть → К приёму", после[3])
+        self.assertEqual("Часть 4 из 5 приёма с сети ← предыдущая часть следующая часть → К приёму", после[4])
         self.assertEqual([None] * 5, после[5:])
         self.assertEqual(f"#/zahvat/{ид}", итог["ссылка"])
         self.assertEqual([f"get /api/zahvat/{ид}/chunks?offset=0&limit=1"] * 4, итог["журнал"][:4])
@@ -1895,7 +1891,7 @@ class СтраницаTests(unittest.TestCase):
         self.assertIn("закрытьМенюДК();", маршрут)
         пакеты = self.вырезать(self.js, "рисоватьЗахват")
         self.assertIn("панельПрогона({ вид: 'pakety', ид: capId }", пакеты)
-        self.assertIn("подключитьДК(page, разобратьЗаново);", пакеты)
+        self.assertIn("подключитьДК(page, разобратьЗаново, () => разбиратьКак());", пакеты)
         self.assertIn("await api.post(путь + '/decode-rules')", пакеты)
         self.assertIn("dataset: { dkProto: у.протокол }", пакеты, "уровень дерева полей знает свой протокол")
         self.assertIn("dataset: поле.ключ ? { dkKey: поле.ключ, dkValue: String(поле.текст) } : {}", пакеты)
