@@ -2440,9 +2440,28 @@ def pakety_from_potok(request: Request) -> dict[str, Any]:
     файл = _potok(request).файл_этапа(job_id, этап)
     if файл is None or файл.suffix not in (".pcap", ".sig"):
         raise ServiceError("у этого этапа нет пакетов или кадров", 400)
+    вход = _potok(request).папка / job_id / "вход.bin"
+    if _пакеты_самого_sig(состояние, этап) and вход.exists():
+        # Пакеты самого .sig (первый этап, ничего не снято): в анализ пакетов — весь файл, все кадры и протоколы
+        # (выгрузка этапа — лишь опознанные IP из первых кадров); разбирается пачками, как любой большой файл.
+        ид = _pakety(request).создать(владелец=user.id, имя=Path(состояние["имя"]).name, путь=вход,
+                                      от=f"{job_id}#{этап}")
+        return {"id": ид}
     имя = f"{Path(состояние['имя']).stem} — этап {этап}{файл.suffix}"
     ид = _pakety(request).создать(владелец=user.id, имя=имя, путь=файл, от=f"{job_id}#{этап}")
     return {"id": ид}
+
+
+def _пакеты_самого_sig(состояние: dict[str, Any], этап: int) -> bool:
+    """Этап — пакеты самого файла .sig/.dpo (первый, без снятых слоёв и ручных шагов)."""
+    from ..potok.chtenie import РАСШИРЕНИЯ_SIG  # noqa: PLC0415
+    этапы = состояние.get("этапы") or []
+    if этап != 1 or not этапы or Path(состояние.get("имя") or "").suffix.lower() not in РАСШИРЕНИЯ_SIG:
+        return False
+    if состояние.get("снять") or состояние.get("шаги"):
+        return False
+    первый = этапы[0]
+    return not первый.get("путь") and первый.get("уровень") == "сетевой"
 
 
 @router.get("/pakety/{cap_id}")

@@ -190,7 +190,7 @@ class РавенствоTests(ПачкиОбщее):
         for номер, (имя, номера) in собранные_из(self.sig).items():
             if пачка(min(номера)) != пачка(номер):
                 через[имя] = через.get(имя, 0) + 1
-        self.assertEqual({"IPv4", "PPP", "TCAP"}, set(через), через)
+        self.assertEqual({"IPv4", "IPv6", "PPP", "TCAP"}, set(через), через)
         # RTP по SDP, объявленному в прежней пачке.
         потоки = с["шаблоны"].get("sdp-потоки") or {}
         rtp = 0
@@ -412,6 +412,42 @@ class ПроцессыTests(ПачкиОбщее):
         self.сверить(self.подряд_sig, содержимое(папка, self.sig))
 
 
+class СборкаIPv6Tests(unittest.TestCase):
+    def test_фрагменты_с_заголовком_расширения(self):
+        """RFC 8200, 4.5: собранный пакет — нефрагментируемая часть первого фрагмента (с «переходами» перед
+        фрагментом), «следующий заголовок» перед фрагментом — из заголовка фрагмента, длина — по собранному; порядок
+        прихода фрагментов любой; чужой идентификатор не мешает; целый пакет с заголовком фрагмента — не фрагмент."""
+        import struct  # noqa: PLC0415
+
+        from reportgen.setevoy.razbor import разобрать_пакет  # noqa: PLC0415
+        from reportgen.setevoy.sborka import Сборка  # noqa: PLC0415
+        src, dst = смесь.a6(1), смесь.a6(2)
+        udp = смесь.udp6(bytes(range(256)) * 9, 5000, 6000, src, dst)              # 2312 байт
+        переходы = bytes([44, 0]) + bytes([1, 4, 0, 0, 0, 0])                    # Hop-by-Hop, PadN; дальше — фрагмент
+        целый = struct.pack(">IHBB16s16s", 6 << 28, 8 + len(udp), 0, 64, src, dst) + bytes([17, 0]) + переходы[2:] + udp
+
+        def фрагмент(смещение: int, кусок: bytes, m: int, ид: int = 77) -> bytes:
+            заг = struct.pack(">BBHI", 17, 0, (смещение // 8) << 3 | m, ид)
+            тело = переходы + заг + кусок
+            return struct.pack(">IHBB16s16s", 6 << 28, len(тело), 0, 64, src, dst) + тело
+        куски = [фрагмент(0, udp[:1000], 1), фрагмент(1000, udp[1000:2000], 1), фрагмент(2000, udp[2000:], 0)]
+        чужой = фрагмент(0, udp[:1000], 1, ид=78)
+        отдельный = struct.pack(">IHBB16s16s", 6 << 28, 8 + len(udp), 44, 64, src, dst) \
+            + struct.pack(">BBHI", 17, 0, 0, 5) + udp                                 # смещение 0, M = 0
+        with tempfile.TemporaryDirectory() as т:
+            сб = Сборка(Path(т), {})
+            итоги = []
+            for номер, кадр in enumerate([куски[2], чужой, куски[0], отдельный, куски[1]], 1):
+                п = разобрать_пакет(кадр, "IPv6", номер=номер)
+                _, собран = сб.пакет(п)
+                итоги.append(собран)
+            self.assertEqual([False, False, False, False, True], итоги)
+            self.assertEqual([1, 3, 5], сб.ip6.последние_номера)
+            self.assertEqual((целый, "IPv6"), Хранилище(Path(т)).собранный_с_каналом(5))
+            self.assertEqual(1, len(сб.ip6.куски), "чужая сборка ждёт своих")
+            сб.закрыть()
+
+
 class ЗахватыПачкамиTests(ПачкиОбщее):
     """Записи «Анализа пакетов» пачками: то же, что подряд, — список, отборы, объекты; команды, «разбирать как»,
     удаление и перезапуск сервера посреди разбора; загрузка кусками."""
@@ -505,6 +541,41 @@ class ЗахватыПачкамиTests(ПачкиОбщее):
         self.assertEqual(("готово", len(self.кадры)), (с["состояние"], с["разобрано"]))
         а = содержимое(з.папка / ид, з.папка / ид / "исходник")
         self.сверить(self.подряд_sig, а)
+
+
+class ИзРазбораПотокаTests(unittest.TestCase):
+    def test_пакеты_sig_в_анализ_пакетов_целиком(self):
+        """«Пакеты» первого этапа разбора .sig как потока — в анализ пакетов уходит весь файл: все кадры (и не IP —
+        ОКС-7, LAPD…), а не выгрузка этапа (опознанные IP из первых кадров)."""
+        from test_web import WebTestCase  # noqa: PLC0415
+
+        class Сеть(WebTestCase):
+            def runTest(себя):
+                pass
+        сеть = Сеть()
+        сеть.setUp()
+        self.addCleanup(сеть.tearDown)
+        к = сеть.client
+        сеть.login("engineer")
+        кадры = смесь.кадры(4, 400, шум=1 << 16)
+        ответ = к.post("/api/potok", data={"profile": "быстро"},
+                       files={"file": ("запись.sig", смесь.sig(кадры), "application/octet-stream")})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        job = ответ.json()["id"]
+        конец = time.monotonic() + 120
+        while (состояние := к.get(f"/api/potok/{job}").json())["состояние"] not in ("готово", "ошибка"):
+            self.assertLess(time.monotonic(), конец)
+            time.sleep(0.2)
+        этап = состояние["этапы"][0]
+        self.assertEqual(("пакеты IP", "pcap"), (этап["что"], этап.get("выгрузка")))
+        ид = к.post("/api/pakety/from-potok", json={"job": job, "stage": 1}).json()["id"]
+        конец = time.monotonic() + 120
+        while (з := к.get(f"/api/pakety/{ид}").json())["состояние"] not in pachki.КОНЕЦ:
+            self.assertLess(time.monotonic(), конец)
+            time.sleep(0.1)
+        self.assertEqual(("готово", len(кадры), "запись.sig", ".sig"), (з["состояние"], з["разобрано"], з["имя"], з["формат"]))
+        ip = sum(1 for вид, _ in кадры if вид in ("ip", "eth", "ppp", "chdlc", "fr"))
+        self.assertLess(ip, len(кадры), "в смеси есть и не IP")
 
 
 @unittest.skipUnless(os.environ.get("REPORTGEN_MEDLENNO"), "медленный (сотни мегабайт): REPORTGEN_MEDLENNO=1")
