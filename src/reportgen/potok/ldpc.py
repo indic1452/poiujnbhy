@@ -603,7 +603,7 @@ class Схема:
             if not np.array_equal(np.sort(порядок), self.переданы):
                 raise ValueError("порядок в потоке — не перестановка переданных позиций слова")
             self.переданы = порядок
-        if len(self.переданы) < self.матрица.m // 2:
+        if len(self.переданы) < self.матрица.m // 4:
             raise ValueError("передано слишком мало позиций слова")
 
     @property
