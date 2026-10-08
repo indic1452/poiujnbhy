@@ -316,20 +316,21 @@ class ВекторизацияКакПреждеTests(unittest.TestCase):
                 self.assertEqual(ждём, cikl.длина_цикла(биты, (r, наибольший))[0])
 
     def test_гребёнка_как_прежде(self):
-        n, наибольший = 4096, 256
-        биты = np.zeros(n, np.uint8)
+        """И при лагах, где у малых периодов больше восьми кратных (наибольший 1024 при выборке 4096)."""
         найдено = 0
-        for сид in range(300):
-            r = self.ряды(сид) * 4
-            r[0] = 1.0
-            with self.subTest(сид=сид):
-                ждём = гребёнка_прежде(r[:наибольший + 1], наибольший, n)
-                итог = cikl.гребёнка(биты, (r, наибольший))
-                self.assertEqual(ждём is None, итог is None)
-                if ждём is not None:
-                    найдено += 1
-                    self.assertEqual(ждём[0], итог[0])
-                    self.assertAlmostEqual(ждём[1], итог[1])
+        for n, наибольший, сидов in ((4096, 256, 300), (4096, 1024, 150)):
+            биты = np.zeros(n, np.uint8)
+            for сид in range(сидов):
+                r = self.ряды(сид, наибольший) * 4
+                r[0] = 1.0
+                with self.subTest(сид=сид, наибольший=наибольший):
+                    ждём = гребёнка_прежде(r[:наибольший + 1], наибольший, n)
+                    итог = cikl.гребёнка(биты, (r, наибольший))
+                    self.assertEqual(ждём is None, итог is None)
+                    if ждём is not None:
+                        найдено += 1
+                        self.assertEqual(ждём[0], итог[0])
+                        self.assertAlmostEqual(ждём[1], итог[1])
         self.assertGreater(найдено, 50)
 
     def test_выборка_для_автокорреляции(self):
