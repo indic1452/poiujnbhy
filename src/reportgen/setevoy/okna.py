@@ -31,9 +31,10 @@ _OPB = {порядок: struct.Struct(порядок + "HHIIII") for поряд�
 _IDB = {порядок: struct.Struct(порядок + "HHI") for порядок in "<>"}
 
 
-def начало_файла(путь: str | Path, *, готов: bool) -> tuple[dict[str, Any] | None, str, list[str]]:
+def начало_файла(путь: str | Path, *, готов: bool, целиком: bool = True) -> tuple[dict[str, Any] | None, str, list[str]]:
     """Вид файла и начало первой записи: (начало, формат, заметки). Начало None — байт пока мало
-    (файл ещё грузится); не захват — ValueError."""
+    (файл ещё грузится); не захват — ValueError. ``целиком=False`` — файл больше не растёт, но он не весь
+    (загрузка прервалась): небольшой .sig не проверяется целиком, разметка — по пробе, хвост — заметкой."""
     from .chtenie import PCAP_МАГИИ as МАГИИ  # noqa: PLC0415
     from .chtenie import PCAPNG_МАГИЯ, SIG_ПРОБА, SIG_ЦЕЛИКОМ_ДО, выбрать_разметку_sig  # noqa: PLC0415
     путь = Path(путь)
@@ -57,7 +58,7 @@ def начало_файла(путь: str | Path, *, готов: bool) -> tuple[
         return {"вид": "pcapng", "место": 0, "номер": 1, "порядок": "<", "интерфейсы": [], "время": 0.0}, "pcapng", []
     if not готов and len(проба) < SIG_ПРОБА:
         return None, "", []                      # .sig судим по пробе — ждём, пока наберётся
-    if готов and размер <= SIG_ЦЕЛИКОМ_ДО:
+    if готов and целиком and размер <= SIG_ЦЕЛИКОМ_ДО:
         from ..potok.chtenie import разметка_sig  # noqa: PLC0415
         разметка = разметка_sig(путь)
         if разметка is None:
