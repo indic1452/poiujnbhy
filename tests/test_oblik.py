@@ -310,6 +310,15 @@ class ШпаргалкаКлавишTests(unittest.TestCase):
             ("Shift", "Enter"): "Shift+Enter — новая строка",
             ("Ctrl", "S"): "event.code === 'KeyS'",
             ("Ctrl", "Enter"): "Ctrl+Enter",
+            # Стол анализа: битовый просмотр (клавиша(e)) и таблица массивов.
+            ("Shift", "F10"): "(e.shiftKey && e.key === 'F10')",
+            ("F3",): "else if (e.key === 'F3') окноПоискаПериода(у);",
+            ("F4",): "else if (e.key === 'F4') окноПоискаСкремблера(у);",
+            ("T",): "else if (код === 'KeyT') окноОбрезки(у);",
+            ("S",): "else if (код === 'KeyS') окноСведений(у);",
+            ("M",): "else if (код === 'KeyM') переключитьРежим();",
+            ("Delete",): "if (e.key === 'Delete') {",
+            ("F1",): "else if (e.key === 'F1') справкаПросмотра();",
         }
         for сочетание in сочетания:
             with self.subTest(сочетание="+".join(сочетание)):
@@ -321,7 +330,10 @@ class ШпаргалкаКлавишTests(unittest.TestCase):
         self.assertIn("вводТекста(event.target)", обработчик)
         # Поверх открытой палитры или окна второй лист не нужен.
         self.assertIn("cmd.open", обработчик)
-        self.assertIn(".modal-backdrop", обработчик)
+        # Открытое модальное окно (плавающие окна стола — не в счёт): верхнееМодальное() ищет .modal-backdrop.
+        self.assertIn("верхнееМодальное()", обработчик)
+        помощник = self.js.split("function верхнееМодальное()", 1)[1][:300]
+        self.assertIn(".modal-backdrop:not(.modal-backdrop--float)", помощник)
 
     def test_палитра_подсказывает_про_шпаргалку(self):
         self.assertIn("h('kbd', {}, '?'), ' все клавиши'", self.js)

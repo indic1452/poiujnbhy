@@ -368,5 +368,5 @@ def перечень(устройства_pcap: list[dict[str, Any]] | None = No
     else:
         карты = карты_из_pcap(устройства_pcap or [])
         if not карты:
-            заметки.append("перечень карт недоступен: нет /sys/class/net и библиотеки захвата")
+            заметки.append("перечень карт недоступен: нет /sys/class/net и библиотеки приёма (libpcap/Npcap)")
     return карты, заметки
