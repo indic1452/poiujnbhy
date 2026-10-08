@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from .. import prilozh
+from .. import obshee, prilozh
 from ..pole import ip4, ip6, mac, u16, u32, u64
 from ..razbor import IP_ПРОТОКОЛЫ, ДОП_УРОВНИ, Разбор
 
@@ -141,16 +141,12 @@ def _ключ(р: Разбор, версия: int, домен: int, номер: 
 
 
 def _запомнить(р: Разбор, ключ: str, поля: Шаблон) -> None:
-    версии = р.шаблоны.setdefault(ключ, [])
-    поля_ = [list(x) for x in поля]
-    if not версии or версии[-1][1] != поля_:
-        версии.append([р.п.номер, поля_])
+    obshee.сделать(р, "nf+", ключ, р.п.номер, [list(x) for x in поля])
 
 
 def _найти(р: Разбор, ключ: str) -> Шаблон | None:
     """Последнее определение, пришедшее не позже этого пакета."""
-    годные = [поля for номер, поля in р.шаблоны.get(ключ, []) if номер <= р.п.номер]
-    return [tuple(x) for x in годные[-1]] if годные else None
+    return obshee.сделать(р, "nf?", ключ, р.п.номер)
 
 
 def _поля_шаблона(д: bytes, место: int, конец: int, число: int, ipfix: bool) -> tuple[Шаблон, int]:

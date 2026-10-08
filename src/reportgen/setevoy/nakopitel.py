@@ -42,6 +42,13 @@ from .statistika import ОТКРЫТЫЕ, уровень_протокола
 
 РАЗДЕЛЫ = ("счёт", "иерархия", "диалоги", "узлы", "ошибки", "dns", "http", "tls", "обзор", "узлы_дерева",
            "неизвестные")
+#: Поля пакета, которые читает накопитель (всё остальное он берёт из сводки), и протоколы, у которых он их
+#: читает: разбор пачками передаёт сшивке только их (``поля_накопителя``), а не все поля каждого пакета.
+ПОЛЯ = ("dns.flags.response", "dns.qry.name", "dns.qry.type", "dns.a", "dns.aaaa", "dns.cname", "dns.flags.rcode",
+        "dns.id", "http.request.method", "http.host", "http.request.uri", "http.user_agent", "http.response.code",
+        "tls.handshake.type", "tls.handshake.extensions_server_name", "tls.handshake.extensions_alpn_str",
+        "tls.handshake.extensions.supported_version")
+ПОЛЯ_У = frozenset({"DNS", "mDNS", "LLMNR", "HTTP", "TLS"})
 _ПРИСТАВКА = re.compile(r"^(исходный|собранный) ")
 
 
@@ -494,6 +501,14 @@ class Накопитель:
         лучшие = sorted(self.неизвестные.items(), key=lambda г: -г[1]["пакетов"])[:12]
         return [{"группа": к, "пакетов": г["пакетов"], "первые": г["образцы"][:10], "длины": f"{г['мин']}–{г['макс']}",
                  "образцы": list(г["образцы"])} for к, г in лучшие]
+
+
+def поля_накопителя(стек: list[str], поля: dict[str, list[Any]]) -> dict[str, list[Any]] | None:
+    """Те поля пакета, что нужны накопителю (``ПОЛЯ``), или None — у пакета их нет (нет DNS, HTTP, TLS):
+    ``добавить(сводка, поля_накопителя(…) or {})`` даёт ту же статистику, что и со всеми полями."""
+    if ПОЛЯ_У.isdisjoint(стек):
+        return None
+    return {к: поля[к] for к in ПОЛЯ if к in поля}
 
 
 def узел_из_снимка(узлы_дерева: dict[str, Any], путь: list[str]) -> dict[str, Any]:
