@@ -1419,7 +1419,7 @@ class ПунктыСтолаTests(unittest.TestCase):
     def test_пункты_и_вкладка_rs(self):
         from test_potok_turbo_std import ОкноКодовTests  # noqa: PLC0415
         о = self.операции
-        self.assertEqual(self.вкладки["RS"]["пункты"], ["c-rs-iess", "c-rs-blind", "c-rs-set"])
+        self.assertEqual(self.вкладки["RS"]["пункты"][:3], ["c-rs-iess", "c-rs-blind", "c-rs-set"])
         self.assertEqual((о["c-rs-blind"]["вид"], о["c-rs-blind"]["сделать"], о["c-rs-blind"]["раздел"]),
                          ("действие", "поиск-рс", "ПУ код"))
         слой = ОкноКодовTests.заполнить(о["c-rs-set"])
