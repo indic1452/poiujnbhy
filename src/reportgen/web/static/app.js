@@ -18099,9 +18099,9 @@
             title: 'Добавить файл',
             body: h('div', { class: 'stol-dialog' },
                 h('div', { class: 'session-file-name' }, h('b', {}, ф.имя), h('span', { class: 'muted small' }, ' · ' + fmtBytes(ф.размер))),
-                h('label', { class: 'small' }, часть, ' взять часть', детали),
-                h('label', { class: 'small' }, 'Порядок бит в байте ', порядок),
-                h('label', { class: 'small' }, авто, ' автоанализ')),
+                h('div', {}, h('label', { class: 'small' }, часть, ' взять часть'), детали),
+                h('div', {}, h('label', { class: 'small' }, 'Порядок бит в байте ', порядок)),
+                h('div', {}, h('label', { class: 'small' }, авто, ' автоанализ'))),
             footer: [
                 h('button', { class: 'btn btn--ghost', onclick: () => окно.close() }, 'Отмена'),
                 h('button', { class: 'btn btn--primary', onclick: () => добавить() }, 'Добавить'),
