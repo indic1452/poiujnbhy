@@ -1,5 +1,0 @@
-crc/crcany_LICENSE 924 ASCII_text https://raw.githubusercontent.com/madler/crcany/master/LICENSE
-crc/crcany_allcrcs.txt 14013 ASCII_text https://raw.githubusercontent.com/madler/crcany/master/allcrcs.txt
-crc/koopman_crc/index.html 29577 HTML_document,_ASCII_text https://users.ece.cmu.edu/~koopman/crc/index.html
-crc/reveng_crc_catalogue_all_archive.htm 298872 HTML https://web.archive.org/web/20260906112152/https://reveng.sourceforge.io/crc-catalogue/all.htm
-crc/reveng-3.0.6.tar.gz 376980 gzip https://downloads.sourceforge.net/project/reveng/3.0.6/reveng-3.0.6.tar.gz

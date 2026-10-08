@@ -1,823 +1,0 @@
-
-=====PAGE 1=====
-	  
-	  
-	  	  	  	  	  	  	  	  	  	  	  HARRIS	  DCN	  -­‐7038312	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  
-Responsible	  Organization:	  	  GOES-­‐R	  
-	  
-Revision-­‐C,	  June	  14,	  2012	  
-	  
- 
-GOES REBROADCAST (GRB) 
-DOWNLINK SPECIFICATIONS FOR 
-USERS 
-August 6, 2012 
- 
- 
- 
- 
- 
- 
-	  
-	  
-	  
-U.S. Department of Commerce (DOC) 
-National Oceanic and Atmospheric Administration (NOAA) 
-NOAA Satellite and Information Service (NESDIS) 
-National Aeronautics and Space Administration (NASA) 
-	  
-	  
-
-=====PAGE 2=====
-	  
-	  
-	  	  	  	  	  	  	  	  	  	  	  HARRIS	  DCN	  -­‐7038312	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  
-Responsible	  Organization:	  	  GOES-­‐R	  
-	  
-Revision-­‐C,	  June	  14,	  2012	  
-	  
-	  
-ii	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-This	  page	  intentionally	  left	  blank.	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-
-=====PAGE 3=====
-
-=====PAGE 4=====
-	  
-	  
-	  	  	  	  	  	  	  	  	  	  	  HARRIS	  DCN	  -­‐7038312	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  	  
-Responsible	  Organization:	  	  GOES-­‐R	  
-	  
-Revision-­‐C,	  June	  14,	  2012	  
-	  
-	  
-iv	  
-ISSUE	  
-CCR	  #	  
-DATE	  
-PAGES	  AFFECTED	  
-DESCRIPTION	  
-Original	  
-N/A	  
-08/06/2012	  
-All	  
-GSP	  is	  providing	  this	  document	  to	  
-the	  public	  for	  information	  
-purposes.	  	  CDRL	  SE-­‐16	  was	  
-formally	  accepted	  by	  the	  GSP	  in	  a	  
-letter	  dated	  July	  27,	  2012.	  	  	  The	  GSP	  
-subsequently	  found	  and	  corrected	  
-one	  typo	  on	  Page-­‐6,	  Paragraph	  4.1,	  
-changing	  the	  text	  from	  “Table	  3.1”	  
-to	  	  “Table	  4.1,”	  found	  and	  corrected	  
-incorrect	  header	  dates	  on	  pages	  1	  
-through	  9,	  and	  then	  labeled	  the	  file	  
-…RevC-­‐b.	  	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-	  
-
-=====PAGE 5=====
- 
- 
-GOES REBROADCAST (GRB) DOWNLINK 
-SPECIFICATION FOR USERS 
- 
-FOR 
-GEOSTATIONARY OPERATIONAL ENVIRONMENTAL 
-SATELLITE 
-R SERIES (GOES-R) GROUND SEGMENT PROJECT  
-ANTENNA SYSTEM DEVELOPMENT CONTRACT 
-CONTRACT NO:  DG133E-10-CN-0229 
-DOCUMENT CONTROL NUMBER:  7038312 
-CDRL SE-16 
-REVISION C 
-14 JUNE 2012 
- 
-PREPARED FOR 
-NATIONAL OCEANIC AND ATMOSPHERIC ADMINISTRATION 
-NOAA LIAISON OFFICE/NASA GSFC 
-GOES-R SERIES CODE 417 
-BLDG. 6, RM. C100 
-GREENBELT, MD  20771 
- 
- 
-PREPARED BY: 
-HARRIS CORPORATION 
-GOVERNMENT COMMUNICATIONS SYSTEMS DIVISION 
-P.O. BOX 9800 
-MELBOURNE, FLORIDA  32902-9800 
-CAGE NUMBER:  91417 
- 
- 
- 
- 
- 
- 
-NON-EXPORT CONTROLLED 
- 
-THESE ITEM(S) / DATA HAVE BEEN REVIEWED IN ACCORDANCE 
-WITH THE INTERNATIONAL TRAFFIC IN ARMS REGULATIONS 
-(ITAR), 22 CFR PART 120.11, AND THE EXPORT ADMINISTRATION 
-REGULATIONS (EAR), 15 CFR 734(3)(b)(3), AND MAY BE 
-RELEASED WITHOUT EXPORT RESTRICTIONS. 
-
-=====PAGE 6=====
- 
- 
-
-=====PAGE 7=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-i 
-NON-Export-Controlled-Information 
-GRB DOWNLINK SPECIFICATION FOR USERS 
- 
-FOR 
-GEOSTATIONARY OPERATIONAL ENVIRONMENTAL 
-SATELLITE 
-R SERIES (GOES-R) GROUND SEGMENT PROJECT 
-ANTENNA SYSTEM DEVELOPMENT CONTRACT 
- 
- 
- 
- 
-Prepared By: 
-_______________________________ 
-Richard L. Abrahams  
-GOES-R GS Antenna System 
-RF/Microwave Engineering 
- 
-Reviewed By: _______________________________ 
- 
- 
-Dan Davidson 
-Miranda Cooter 
-GOES-R GS Antenna System 
-GOES-R GS Antenna System 
-Chief Systems Engineer 
-Mission Assurance 
- 
- 
-_______________________________ 
- 
- 
-Ken Lamm 
-Mary Austin 
-GOES-R GS Antenna System 
-GOES-R GS Antenna System 
-Security Manager 
-Configuration Management 
- 
-Approved By: _______________________________ 
-Don Myers 
-GOES-R GS Antenna System  
-Project Manager 
- 
- 
- 
-
-=====PAGE 8=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-ii 
-NON-Export-Controlled-Information 
-RECORD OF CHANGE 
-REVISION 
-DATE 
-DESCRIPTION 
-- 
-29 March 2011 
-Initial Release 
-A 
-14 July 2011 
-Revised per Government comments.  
-Updated Table 3.1  
-B 
-26 March 2012 
-PTR-298: Revised per Government comments. 
-C 
-14 June 2012 
- 
- 
- 
- 
- 
-
-=====PAGE 9=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-iii 
-NON-Export-Controlled-Information 
-ITEMS TO BE RESOLVED 
-The following TBx terminology is used in this document: 
-1. TBD:  the item is To Be Determined.  There is missing information where the TBD is 
-placed.  The missing information is unknown at this time. 
-2. TBR:  the item is To Be Resolved or To Be Reviewed.  The item is subject to review for 
-appropriateness and/or subject to revision.  The TBR immediately follows the item To Be 
-Resolved or Reviewed. 
-3. TBS:  the item is To Be Supplied.  There is missing information where the TBS is placed 
-TBS/TBD/TBR 
-ITEM # 
-LOCATION 
-DESCRIPTION OF ITEM 
-none 
- 
- 
- 
- 
- 
- 
-
-=====PAGE 10=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-iv 
-NON-Export-Controlled-Information 
-TABLE OF CONTENTS 
-Paragraph 
-Title 
-Page 
-1.0	  
-INTRODUCTION .............................................................................................................1	  
-1.1	  
-Scope ....................................................................................................................................1	  
-2.0	  
-SYSTEM DESCRIPTION ................................................................................................1	  
-2.1	  
-GOES Mission .....................................................................................................................1	  
-2.2	  
-GOES-R Mission Overview ................................................................................................1	  
-2.3	  
-GOES-R Ground Segment ...................................................................................................2	  
-2.3.1	  
-GOES-R GS Antenna System ..............................................................................................2	  
-2.3.1.1	  
-NSOF ...................................................................................................................................5	  
-2.3.1.2	  
-WCDAS ...............................................................................................................................5	  
-2.3.1.3	  
-RBU .....................................................................................................................................5	  
-2.4	  
-Document Description .........................................................................................................5	  
-3.0	  
-REFERENCED DOCUMENTS .......................................................................................6	  
-4.0	  
-RECEIVER SPECIFICATIONS .....................................................................................6	  
-4.1	  
-Simultaneous Links ..............................................................................................................6	  
-4.2	  
-Required Receive System Performance ...............................................................................7	  
-4.3	  
-Additional GRB Downlink Characteristics .........................................................................7	  
-5.0	  
-ACRONYM LIST ..............................................................................................................9	  
- 
- 
- 
- 
- 
-
-=====PAGE 11=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-v 
-NON-Export-Controlled-Information 
-LIST OF FIGURES 
-Figure 
-Title 
-Page 
-Figure 2.3	  
-GOES-R Ground Segment Overview ...........................................................................2	  
-Figure 2.3.1-1	  
-Antenna Station .............................................................................................................3	  
-Figure 2.3.1-2	  
-GOES-R GS Antenna System Architecture ..................................................................4	  
- 
- 
- 
- 
-LIST OF TABLES 
-Table 
-Title 
-Page 
-Table 3.1	  
-Reference Documents ...................................................................................................6	  
-Table 4.1	  
-L Band Downlink Signals Relative Levels ...................................................................6	  
-Table 4.2	  
-Required GRB Receive System Performance ...............................................................7	  
-Table 4.3	  
-GRB Downlink Signal Characteristics .........................................................................7	  
- 
- 
- 
- 
- 
-
-=====PAGE 12=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-1 
-NON-Export-Controlled-Information 
-1.0 
-INTRODUCTION 
-1.1 
-Scope 
-This CDRL provides GOES Rebroadcast (GRB) radio frequency downlink characteristics, to enable the 
-user community to develop GRB receivers. The interfaces addressed in this document support the flow of 
-data between the Wallops Command and Data Acquisition Station/Remote Backup facility 
-(WCDAS/RBU), space segment (SS), and the GRB ground segments. This document establishes 
-functional and performance requirements related to these links. 
-2.0 
-SYSTEM DESCRIPTION 
-2.1 
-GOES Mission 
-The National Oceanic and Atmospheric Administration (NOAA) operates a system of Geostationary 
-Operational Environmental Satellites (GOES) to provide continuous weather imagery and monitoring of 
-meteorological and space environment data to protect life and property across the United States. Two 
-GOES satellites remain operational at all times providing coverage for the eastern United States and most 
-of the Atlantic Ocean and the western United States and Pacific Ocean basin. An on-orbit spare satellite is 
-maintained to permit rapid recovery from a failure of either of the operational satellites. GOES satellites 
-provide critical atmospheric, oceanic, climatic and space weather products supporting weather forecasting 
-and warnings, climatologic analysis and prediction, ecosystems management, and safe and efficient 
-public and private transportation. The GOES satellites also provide a platform for solar and space 
-environmental observations. Auxiliary communications services are provided for the rebroadcast of 
-GOES full resolution imagery, data collection platform relay, low resolution imagery, emergency weather 
-communications, and satellite-aided search and rescue  
-The GOES program will consist of three series of satellites; GOES-I/M, GOES-N/O/P and GOES-R. Four 
-satellites make up the present GOES satellite constellation.  The operational satellites include one GOES-
-I/M series (GOES-12) and three GOES-N/O/P series (13-15) satellites.  GOES-15 is operational in the 
-west operational position, at 135 degrees West longitude, and GOES-12 is in an operational position for 
-South America at 60 degrees West longitude.  The first GOES-N/O/P series satellite to become 
-operational is GOES-13, which is in the east position at 75 degrees West longitude.  GOES-14 is in  
-on-orbit storage at 105 degrees West longitude.  The GOES-I/M and -N/O/P series share the same 
-generation primary instrument payload. The GOES-R series represents a generational change in both 
-spacecraft and instrument capability, with initial launch capability in 2015. GOES-R is a collaborative 
-development and acquisition effort between NOAA and the National Aeronautics and Space 
-Administration (NASA). The acquisition of the end-to-end GOES-R system includes spacecraft, 
-instruments, launch services, and all associated Ground Segment (GS) elements, including ground station 
-equipment.  
-2.2 
-GOES-R Mission Overview  
-GOES-R series satellites will have two operational locations: 75 degrees West and 137 degrees West 
-longitude. Any GOES-R series satellite stored on-orbit will be located at 105 degrees West longitude. The 
-primary instrument is the Advanced Baseline Imager (ABI) that will provide hemispheric, synoptic, and 
-mesoscale imagery for global and CONUS forecasting and severe weather warning. Secondary 
-instruments include the Extreme ultraviolet and X-ray Irradiance Sensor (EXIS), Solar Ultraviolet Imager 
-(SUVI), Space Environment In-Situ Suite (SEISS), Magnetometer (MAG), and Geostationary Lightning 
-Mapper (GLM). Additionally, GOES-R will provide a set of communications services (Unique Payload 
-Services) comprising the Data Collection System (DCS), Search-and-Rescue Satellite Aided Tracking 
-
-=====PAGE 13=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-2 
-NON-Export-Controlled-Information 
-(SARSAT), High-Rate Information Transmission (HRIT), and Emergency Managers Weather 
-Information Network (EMWIN, which is integrated with the HRIT data stream). 
-2.3 
-GOES-R Ground Segment  
-The GOES-R Ground Segment (GS) will operate from three sites. The NOAA Satellite Operations 
-Facility (NSOF) in Suitland, MD will house the primary Mission Management (MM), Product Generation 
-(PG), and Product Distribution (PD) functions. The Wallops Command and Data Acquisition Station 
-(WCDAS) in Wallops, VA will provide space communications services and selected Ground Segment 
-functions. The third site is a geographically isolated Remote Backup (RBU) facility located at Fairmont, 
-WV. It will function as a completely independent backup for designated MM, PG and PD functions for 
-the production and delivery of critical cloud and moisture imagery products, and GOES Rebroadcast  
-(GRB) data, and will be capable of remote operation from the NSOF and WCDAS. The RBU station will 
-have visibility to all operational and on-orbit spare satellites. The Enterprise Management (EM) function 
-supports GS components across all locations. 
-For GOES-R operations, the NSOF and WCDAS together comprise the “primary” sites and may be 
-considered in certain respects as a single system. WCDAS provides the Earth-space communications 
-functions, while primary console operations and higher-level product data functions are provided by 
-NSOF. The RBU consolidates the mission-critical functionality of the NSOF and WCDAS into a single 
-“backup” site that can operate completely independently. Figure 2.3 provides an overview of the Ground 
-Segment within the GOES-R System.  
- 
-Figure 2.3 
-GOES-R Ground Segment Overview 
- 
- 
-2.3.1 
-GOES-R GS Antenna System 
-The Antenna System is part of the comprehensive GOES-R Ground Segment and supports the Mission 
-Management Element.  The Antenna System includes all components across all three sites required to 
-
-=====PAGE 14=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-3 
-NON-Export-Controlled-Information 
-receive or transmit RF signals to/from the satellites through the Intermediate Frequency Distribution 
-System (IFDS) interface demarcation point with the GS. The Ground Station resources consist of three 
-new 16.4m hurricane-rated (HR) antenna stations at WCDAS, three new 16.4m HR antenna stations at 
-RBU, and upgrades to four existing 9.1m GOES Variable (GVAR) receive-only systems at NSOF. Figure 
-2.3.1-1 provides a notional view of a 16.4m Antenna Station at site. 
- 
-Figure 2.3.1-1 
-Antenna Station 
- 
-The architecture is divided into three major functional subsystems:  the Antenna Subsystem, the Monitor 
-and Control (M&C) Subsystem and the Site Preparation and Construction Subsystem. The Antenna 
-Subsystem consists of the components for the 16.4m Antenna (including Antenna Control, Tri-band feed 
-design, reflectors, trusses, drive trains, and pedestal bases), the RF Uplink and Downlink functionality, 
-Data Collection System (DCS), Intermediate Frequency Distribution Switch (IFDS) and Timing and 
-Frequency Reference System (TFRS). The Antenna Subsystem also upgrades existing 9.1m antenna feed 
-assemblies. The M&C Subsystem includes the functionality for Antenna Station Control, Link 
-Monitoring, Built-In-Test/ Built-In-Test-Equipment (BIT/BITE), and Antenna System Interface 
-Simulators (ASIS). The Site Preparation and Construction Subsystem consists of the foundation design, 
-power interfaces, HVAC, physical security and safety components.  
-The integration of new GOES-R ground station resources into the GOES operational environment has the 
-potential to conflict with ongoing operations. It is NOAA’s overarching operational philosophy that the 
-health & safety of on-orbit assets is paramount and national-critical meteorological data must not be 
-interrupted. Therefore, no reduction in availability or gap in ground resources needed to ensure on-orbit 
-spacecraft health & safety and data continuity is acceptable during the delivery, integration, test, and 
-transition to operations of the GOES-R Antenna System. Figure 2.3.1-2 shows the Antenna System 
-architecture components at each facility. 
-ANT_SEIT-005-MSCSTN-R1.vsd
-S-band
-SSPA
-X-band
-SSPA
-Down
-Link
-NetMAC, BITE, Link 
-Monitoring
-IFDS
-Up
-Link
-
-=====PAGE 15=====
-	  
-	  
-	  
-GRB	  Downlink	  Specification	  for	  Users	  
-14	  June	  2012	  
-	  
-	  
-DCN	  7038312,	  Revision	  C	  
-	  
-4	  
-NON-­‐Export-­‐Controlled-­‐Information	  
-	  
-
-=====PAGE 16=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-5 
-NON-Export-Controlled-Information 
-2.3.1.1 
-NSOF  
-The NSOF will be the primary operations site housing the GOES-R constellation mission operations, PG, 
-EM, and PD functions and will house the majority of operations and product staff. All GOES-R series 
-mission operations, from pre-launch testing through sustaining operations, will be performed from NSOF. 
-The NSOF will also house the product distribution interface to the GOES-R point(s) of presence for 
-network distribution of products to users. GOES rebroadcast data is received directly at the NSOF via 
-four 9.1m receive-only antennas located on the roof of the NSOF facility. These antennas will be 
-upgraded to receive GRB from GOES-R in addition to GVAR data.  
-2.3.1.2 
-WCDAS  
-The WCDAS will be the primary site for GOES-R Space/Ground RF communications. WCDAS will 
-house the antenna suite required for dedicated links to each operational and stored spacecraft, the front-
-end equipment to acquire data and to uplink commands and data services, and the associated network 
-interfaces to provide data to the GOES-R system. WCDAS will also process data through Level 1b to 
-produce GRB for uplink to the satellite. In this way, WCDAS will be able to maintain the GRB 
-generation and rebroadcast service in case communications to NSOF are interrupted. WCDAS will 
-interface with and provide uplinks to the Unique Payload Services for broadcast. Also, the NSOF will 
-have capabilities to perform remote operation of WCDAS functions.  
-WCDAS currently provides all primary space-ground communication functions and sensor data 
-processing for the on-orbit GOES constellation.  
-2.3.1.3 
-RBU  
-Continuity of Operations (COOP) requirements drive the GOES-R to include a remote site that provides 
-the critical functions of WCDAS and NSOF through the production and distribution of GRB and key 
-product data.  Operation of the RBU is the primary contributor to fulfilling COOP requirements and may 
-also be used to enhance system availability.  Although the new GOES-R antennas at RBU will be 
-compatible with GOES-N/O/P (i.e. their feed design will support GOES-N/O/P RF characteristics), the 
-RBU build-out will not initially include the ground processing equipment to provide backup for the 
-GOES-N/O/P satellites. 
-2.4 
-Document Description 
-This document specifies required GOES Rebroadcast radio frequency downlink characteristics to enable 
-the user community to design and develop compliant GRB receivers.  
- 
- 
-
-=====PAGE 17=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-6 
-NON-Export-Controlled-Information 
-3.0 
-REFERENCED DOCUMENTS 
-Table 3.1 
-Reference Documents 
-Document 
-Number 
-Title  
-NTIA Redbook 
-Manual of Regulations and Procedures for Federal Radio Frequency Management, 
-Jan 2008 ed, Sept 2009 rev. 
-ETSI EN 302 307, 
-ver 1.2.1 (2009-08) 
-Digital Video Broadcasting (DVB); Second generation framing structure, channel 
-coding and modulation systems for Broadcasting, Interactive Services, News 
-Gathering and other broadband satellite applications (DVB-S2) 
-417-R-IRD-0002 
-Version 2.4 
-August 05, 2011 
-Interface Requirements Document (IRD) for the Geostationary Operational 
-Environmental Satellite Series R (GOES-R) System, 
-Space Segment (SS) to GOES Rebroadcast (GRB) Service (NASA document)  
- 
- 
-4.0 
-RECEIVER SPECIFICATIONS 
-4.1 
-Simultaneous Links 
-The GRB service should meet all of its performance requirements simultaneously with all the other 
-GOES-R services operating under normal conditions. GRB data on the downlink is split approximately 
-equally between two circular polarized signals, Right Hand Circular Polarized (RHCP) and Left Hand 
-Circular Polarized (LHCP). In addition, other GOES-R downlink signals are located nearby in frequency 
-as shown in Table 4.1. The GRB receiver must therefore contain adequate filtering to decode the GRB 
-signals in the presence of these other signals. 
-Table 4.1 
-L Band Downlink Signals Relative Levels 
-Signal Name 
-Center Frequency 
-(MHz) 
-Approximate 
-Bandwidth 
-Maximum Signal 
-Level at the 
-Antenna Relative 
-to the GRB Signal 
-(dB) 
-Notes 
-GRB (for 
-reference) 
-1686.6 
-9.8 or 10.9 
-MHz 
-0.0 
-Reference 
-DCS (DCPR) 
-1679.9 (domestic)  
-or  
-1680.2 (international) 
-400 kHz 
--7.4 
-Aggregate  
-(250 carriers) 
-CDA TLM 
-1693.0 
-80 kHz 
--17.0 
- 
-HRIT/EMWIN 
-1694.1 
-1.2 MHz 
--2.3 
- 
- 
- 
- 
-
-=====PAGE 18=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-7 
-NON-Export-Controlled-Information 
-4.2 
-Required Receive System Performance  
-The signals provided by the space segment are NTIA compliant.  Minimum GRB receiver performance 
-shall comply with the Table 4.2 and Table 4.3: 
-Table 4.2 
-Required GRB Receive System Performance 
-Parameter 
-Value 
-Input Center Frequency 
-1686.6 MHz 
-Polarization 
-Dual Circular: RHCP & LHCP 
-Polarization Isolation 
-≥ 27 dB 
-Phase Noise (integrated from 1 kHz to 12 MHz) 
-< 2o rms Double Sideband (DSB) 
-Bit Error Rate (BER) at Minimum Receive Flux 
-Density in Table 4.3 
-≤ 1 x 10-10 
-Minimum Antenna System G/T  
-15.2 dB/K (at 5o elevation) 
-Long Term Frequency Accuracy 
-< 1 x 10-7 
-Short Term Frequency Stability (1 sec) 
-< 1 x 10-9 
- 
- 
-4.3 
-Additional GRB Downlink Characteristics 
-Table 4.3 
-GRB Downlink Signal Characteristics 
-Parameter 
-Description 
-Minimum Satellite EIRP at edge-of-coverage and  
-end-of-life 
-60.5 dBmi 
-Primary Modulation* 
-8PSK 
-Alternate Modulation* 
-QPSK 
-Signal Format 
-DVB-S2 
-Output of the DVB-S2 Demodulator/Decoder 
-15.5 Mbps 
-Symbol  rate  
- for Primary Modulation and Coding, (each polarization),   
-7.825768 Mbps 
-Symbol rate for Alternate Modulation and Coding, (each 
-polarization)  
-8.665938 Mbps 
-Necessary bandwidth per polarization, Primary 
-Modulation and Coding 
-9.8 MHz 
-                                               
-* Operational modulation will be selected between Primary and Secondary during spacrcraft Post-Launch checkout 
-and test 
- 
-
-=====PAGE 19=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-8 
-NON-Export-Controlled-Information 
-Parameter 
-Description 
-Necessary bandwidth per polarization, Alternate 
-Modulation and Coding 
-10.9 MHz 
-Theoretical Eb/No for 1 x 10-10 BER, 8 PSK modulation 
-3.7 dB 
-Theoretical Eb/No for 1 x 10-10 BER, QPSK modulation 
-3.9 dB 
-Coding: Primary Modulation 
-2/3 rate + BCH Outer Code 
-Coding: Alternate Modulation 
-9/10 rate + BCH Outer Code 
-Block Length 
-64800 bits 
-Pilot Blocks  
-Not Used 
-Randomization 
-Per ETSI EN 302 307, sect.5.2.2 
-Transmit Data Filtering 
-Square Root Raised Cosine (SRRC) 
-with α = 0.25 
-Data Encoding 
-NRZ-L 
- 
- 
- 
- 
- 
-
-=====PAGE 20=====
- 
-GRB Downlink Specification for Users 
-14 June 2012 
-DCN 7038312, Revision C 
-9 
-NON-Export-Controlled-Information 
-5.0 
-ACRONYM LIST 
-The following acronyms are used throughout this document and are applicable to this user guide. 
- 
-8PSK 
-8 Phase Shift Keying 
-BER 
-Bit Error Rate 
-bps 
-Bits per second 
-CCSDS 
-Consultive Committee for Space Data Systems 
-CDA TLM 
-Command Data Telemetry 
-dB 
-Decibel 
-DCPR 
-Data Collection Platform Reports 
-DCS  
-Data Collection System  
-DSB 
-Double Sideband 
-Eb/No 
-The energy per bit to noise power spectral density ratio 
-EMWIN 
-Emergency Managers Weather Information Network 
-ETSI 
-European Telecommunication Standards Institute 
-FEC 
-Forward Error Correction 
-G/T 
-Gain-to-Noise Temperature Ratio 
-HRIT 
-High Rate Information Transmission 
-IFDS 
-IF Data Switch 
-LDPC 
-Low Density Parity Check 
-Mbps 
-Megabits per second 
-MHz 
-Megahertz 
-NOAA 
-National Oceanic and Atmospheric Administration 
-NSOF 
-NOAA Satellite Operations Facility 
-NTIA 
-National Telecommunications and Information Administration 
-QPSK 
-Quadrature Phase Shift Keying 
-RBU 
-Remote Backup (facility) 
-SRRC 
-Square Root Raised Cosine 
-WCDAS 
-Wallops Command and Data Acquisition Station 
- 
- 
- 
- 

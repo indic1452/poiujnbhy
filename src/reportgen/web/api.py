@@ -4083,7 +4083,7 @@ def _сведения_узла(задания, состояние: dict[str, Any
 
 @router.post("/potok/{job_id}/as-auto")
 def potok_as_auto(request: Request, job_id: str) -> dict[str, Any]:
-    """«Как в автомате»: шаг разбора (цикл, плоскость, ткб, код, скремблер) на этом массиве так, как его
+    """«Как в автомате»: шаг разбора (цикл, плоскость, ткб, рс, код, скремблер) на этом массиве так, как его
     делает автомат, — те же данные (начало массива), те же функции и параметры по умолчанию.
 
     Параметры по умолчанию берутся из узла: блок данных — из свойств ТКБ/РС, модуляция — из имени
@@ -4114,12 +4114,14 @@ def potok_as_auto(request: Request, job_id: str) -> dict[str, Any]:
     if кадр is not None and not 16 <= кадр <= 1 << 20:
         raise ServiceError("кадр — от 16 бит", 400)
     from ..potok import stol_raschety  # noqa: PLC0415
-    параметры = {"шаг": шаг, "блок": блок, "кадр": кадр, "фм": фм}
+    профиль = str(состояние.get("профиль") or "обычно")
+    профиль = профиль if профиль in ПРОФИЛИ_РАЗБОРА else "обычно"
+    параметры = {"шаг": шаг, "блок": блок, "кадр": кадр, "фм": фм, **({"профиль": профиль} if шаг == "рс" else {})}
     источник = _источник(request, job_id, этап)
     # Тяжёлый расчёт (подбор плоскости — до минуты) — в исполнителе, как прочие расчёты стола.
     итог = задания.запомнить(
         job_id, этап, "как-автомат:" + json.dumps(параметры, sort_keys=True, ensure_ascii=False),
-        lambda: _посчитать(request, user, stol_raschety.как_автомат, источник, шаг, блок, кадр, list(фм)))
+        lambda: _посчитать(request, user, stol_raschety.как_автомат, источник, шаг, блок, кадр, list(фм), профиль))
     return итог | {"параметры": параметры}
 
 
@@ -5316,6 +5318,39 @@ def potok_tkb_save(request: Request, job_id: str) -> Response:
     return Response(итог["данные"], media_type="application/octet-stream",
                     headers={"Content-Disposition": _disposition(f"{имя}.rec"), "X-Content-Type-Options": "nosniff",
                              "X-Bits": str(итог["бит"])})
+
+
+# -- код Рида — Соломона вслепую: поиск частями (окно стола «РС: поиск вслепую») ------------------
+
+#: Поиск РС вслепую: секунд на часть перебора конфигураций; бит массива для поиска — не больше.
+РС_СРОК = 2.0
+РС_БИТ_ДО = 1 << 23
+
+
+@router.post("/potok/{job_id}/rs/search")
+def potok_rs_search(request: Request, job_id: str) -> dict[str, Any]:
+    """Поиск кода РС вслепую: конфигурации плана с номера ``с`` (часть — не дольше ``РС_СРОК``).
+
+    ``профиль`` — «быстро», «обычно», «глубоко». Возвращает {найдено: [варианты со слоем
+    «рс N K …»], по, всего, ход}; окно просит части подряд, пока ``по`` < ``всего``. Расчёт — в
+    исполнителе (stol_raschety.рс_поиск), как у других поисков стола.
+    """
+    from ..potok import rs_slepoy, stol_raschety  # noqa: PLC0415
+    user = require_user(request)
+    тело = _body(request)
+    try:
+        этап = int(тело.get("stage") or 0)
+        с = int(тело.get("с") or 0)
+    except (TypeError, ValueError, OverflowError):
+        raise ServiceError("stage, с — целые числа", 400) from None
+    профиль = str(тело.get("профиль") or "обычно")
+    if профиль not in ("быстро", "обычно", "глубоко"):
+        raise ServiceError("профиль — «быстро», «обычно» или «глубоко»", 400)
+    _файл_бит_или_400(request, user, job_id, этап)
+    if not 0 <= с <= len(rs_slepoy.план(профиль)):
+        raise ServiceError(f"с — от 0 до {len(rs_slepoy.план(профиль))}", 400)
+    return _посчитать(request, user, stol_raschety.рс_поиск, _источник(request, job_id, этап), профиль, с,
+                      РС_БИТ_ДО, РС_СРОК)
 
 
 # -- разметка вслепую, синхрослово, своя разметка, вход I/Q ----------------------------------
