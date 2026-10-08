@@ -237,6 +237,98 @@ class Автомат(unittest.TestCase):
                 ldpc.КАТАЛОГ = None
 
 
+class ЧерезСервер(unittest.TestCase):
+    """Окно LDPC: «Восстановить матрицу» в фоне (ход, итог), «Стоп», «Сохранить матрицу», просмотр по ней."""
+
+    def setUp(self):
+        from test_web import WebTestCase  # noqa: PLC0415 — общая заготовка веб-тестов
+
+        class Сеть(WebTestCase):
+            def runTest(себя):
+                pass
+
+        self.старый = ldpc.КАТАЛОГ
+        self.addCleanup(setattr, ldpc, "КАТАЛОГ", self.старый)
+        self.сеть = Сеть()
+        self.сеть.setUp()
+        self.addCleanup(self.сеть.tearDown)
+        self.сеть.login("engineer")
+        self.к = self.сеть.client
+        self.assertEqual(200, self.к.get("/api/potok-ldpc-types").status_code)
+
+    def задание(self, поток: np.ndarray) -> str:
+        з = self.сеть.app.state.potok
+        ид = з.создать(владелец=self.сеть.repos.users.by_login("engineer").id, имя="ldpc.bin",
+                       данные=np.packbits(поток).tobytes(), разбирать=False, бит=len(поток))
+        for _ in range(200):
+            if з.прочитать(ид)["состояние"] == "готово":
+                break
+            time.sleep(0.05)
+        return ид
+
+    def дождаться(self, поиск: str) -> dict:
+        for _ in range(1200):
+            с_ = self.к.get(f"/api/potok-ldpc-recover/{поиск}").json()
+            if с_["готово"]:
+                return с_
+            time.sleep(0.1)
+        self.fail("восстановление не закончилось")
+
+    def test_восстановить_сохранить_и_снять(self):
+        м = свой_qc()
+        c = лп.кодовые(м, 300, сид=3)
+        поток = лп.ошибки(c.reshape(-1), 1e-3, сид=5)
+        ид = self.задание(поток)
+        о = self.к.post(f"/api/potok/{ид}/ldpc/recover", json={"stage": 0, "n": м.n, "срок": 40})
+        self.assertEqual(200, о.status_code, о.text)
+        с_ = self.дождаться(о.json()["поиск"])
+        self.assertEqual("", с_["ошибка"])
+        итог = с_["итог"]
+        self.assertEqual((gf2.ранг(_плотная(м)), Z, 0), (итог["ранг"], итог["Z"], итог["начало"]))
+        сохр = self.к.post(f"/api/potok-ldpc-recover/{о.json()['поиск']}/save", json={"имя": "мой-восст"})
+        self.assertEqual(200, сохр.status_code, сохр.text)
+        self.assertEqual(("мой-восст", "ldpc мой-восст начало 0"), (сохр.json()["имя"], сохр.json()["слой"]))
+        self.assertTrue((self.сеть.tmp / "ldpc" / "мой-восст.alist").is_file())
+        п = {"тип": "Нестандарт", "код": "мой-восст", "начало": "0"}
+        просмотр = self.к.post(f"/api/potok/{ид}/ldpc/preview", json={"stage": 0, "параметры": п})
+        self.assertEqual(200, просмотр.status_code, просмотр.text)
+        self.assertGreaterEqual(просмотр.json()["сошлось"], 95)
+        # Ошибки запроса.
+        for тело, ждём in (({"n": 8}, "n — от 16 до 131072"), ({"n": м.n, "шаг": 10}, "шаг — не меньше длины слова"),
+                           ({"n": м.n, "срок": 1}, "срок — от 5 до 7200 с")):
+            with self.subTest(тело):
+                о_ = self.к.post(f"/api/potok/{ид}/ldpc/recover", json={"stage": 0, **тело})
+                self.assertEqual((400, ждём), (о_.status_code, о_.json()["error"]))
+        self.assertEqual(404, self.к.get("/api/potok-ldpc-recover/нет").status_code)
+        self.assertEqual(404, self.к.post("/api/potok-ldpc-recover/нет/stop", json={}).status_code)
+        # Чужое — не видно.
+        self.сеть.login("admin")
+        self.assertEqual(404, self.к.get(f"/api/potok-ldpc-recover/{о.json()['поиск']}").status_code)
+
+    def test_стоп_оставляет_найденное(self):
+        м = свой_qc()
+        c = лп.кодовые(м, 300, сид=3)
+        поток = лп.ошибки(c.reshape(-1), 3e-3, сид=5)     # шум побольше — дольше
+        ид = self.задание(поток)
+        поиск = self.к.post(f"/api/potok/{ид}/ldpc/recover", json={"stage": 0, "n": м.n, "срок": 600}).json()["поиск"]
+        for _ in range(300):
+            if "раунд" in self.к.get(f"/api/potok-ldpc-recover/{поиск}").json()["ход"]:
+                break
+            time.sleep(0.1)
+        time.sleep(4)                       # снимок пишется не чаще раза в 3 с
+        self.assertEqual({"ok": True}, self.к.post(f"/api/potok-ldpc-recover/{поиск}/stop", json={}).json())
+        с_ = self.дождаться(поиск)
+        # Остановлено (найденное — из снимка) или успело кончиться само раньше «Стоп».
+        if с_["итог"]["ранг"] == 0:
+            self.assertIn(с_["итог"]["почему"], ("остановлено", "остановлено до первого раунда"))
+        if с_["итог"]["ранг"]:
+            сохр = self.к.post(f"/api/potok-ldpc-recover/{поиск}/save", json={})
+            self.assertEqual(200, сохр.status_code, сохр.text)
+            self.assertTrue((self.сеть.tmp / "ldpc" / f"{сохр.json()['имя']}.alist").is_file())
+            файл = ldpc.прочитать(сохр.json()["имя"])
+            self.assertTrue(all(_ортогональна(c, np.asarray(h)) for h in файл.строки))
+
+
 class СдвинутыеОкна(unittest.TestCase):
     @медленно
     def test_начало_слова_находится(self):

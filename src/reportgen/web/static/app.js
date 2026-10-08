@@ -14810,6 +14810,22 @@
             const входРеверс = h('input', { type: 'checkbox' });
             const plframe = h('select', { 'aria-label': 'PLFRAME DVB-S2' }, [['', 'нет'], ['да', 'снять заголовки'],
                 ['скремблер', '+ скремблер PL']].map(([v, т]) => h('option', { value: v }, т)));
+            // Заголовок PLFRAME в разметке данных (8PSK/QPSK): метки точек — как в «метки ТАБЛИЦА» слоя.
+            const метки = h('input', { type: 'text', value: '', placeholder: 'нет', class: 'stol-md-table', 'aria-label': 'Метки разметки PLHEADER' });
+            const маска = h('input', { type: 'number', min: 0, value: '', placeholder: 'нет', class: 'stol-md-num', 'aria-label': 'Маска на словах: повтор через слов' });
+            const вывод = h('select', { 'aria-label': 'Вывод' }, [['данные', 'данные'], ['слова', 'слова целиком'], ['ошибки', 'ошибки']]
+                .map(([v, т]) => h('option', { value: v, selected: v === (з.вывод || 'данные') }, т)));
+            const порядокВых = h('select', { 'aria-label': 'Порядок бит в байте на выходе' }, [['', 'сам'], ['старший', 'старший первым'],
+                ['младший', 'младший первым']].map(([v, т]) => h('option', { value: v, selected: v === (з.порядок || '') }, т)));
+            // Восстановление матрицы (слов меньше длины): длина слова, срок; ход, «Стоп», сохранить, декодировать.
+            const длинаВосст = h('input', { type: 'number', min: 16, value: з.восст_n || '', placeholder: 'бит', class: 'stol-md-num', 'aria-label': 'Длина слова' });
+            const срокВосст = h('input', { type: 'number', min: 5, max: 7200, value: з.восст_срок || 300, class: 'stol-md-num', 'aria-label': 'Срок восстановления, с' });
+            const кнВосст = h('button', { class: 'btn btn--sm', onclick: () => восстановить() }, 'Восстановить матрицу');
+            const кнСохр = h('button', { class: 'btn btn--sm', disabled: true, onclick: () => сохранитьМатрицу() }, 'Сохранить матрицу');
+            const кнДекВосст = h('button', { class: 'btn btn--sm', disabled: true, onclick: () => декодировать() }, 'Декодировать → новый массив');
+            const ходВосст = h('progress', { max: 1, value: 0, hidden: true, class: 'stol-ldpc-progress' });
+            const строкаВосст = h('div', { class: 'small muted', 'aria-live': 'polite' });
+            let поискВосст = '', идётВосст = false;
             const кандидатыБлок = h('div', { class: 'small stol-ldpc-cands' });
             const автоИтог = h('div', { class: 'small stol-auto-result', hidden: true });
             const безСинхро = радио('нет', з.синхро === 'нет', 'Нет');
@@ -14838,6 +14854,9 @@
                 h('p', {}, 'Автомат с кадрами: если ни одна матрица не подошла (или у типа их нет — Comtech, Versa FEC, Paradise без файла), ' +
                     'код ищется вслепую ранговым методом по нагрузке кадров — длина слова n = нагрузка / m, до 2048 бит; найденная H ' +
                     'кладётся в папку ldpc файлом «вслепую-n-k.alist» и дальше снимается как файл отдела.'),
+                h('p', {}, '«Восстановить матрицу» — проверки нестандартного кода по словам массива, даже когда слов меньше длины: ' +
+                    'частичный Гаусс с коллизиями, квазициклическая структура, достройка по исправленным словам. Начало слова находится само. ' +
+                    '«Стоп» оставляет найденное; «Сохранить матрицу» — файл alist в папку ldpc; «Декодировать → новый массив» — по ней.'),
                 h('p', {}, 'Постобработка — по порядку: мультипликативный (самосинхронизирующийся) дескремблер с отводами, аддитивный DVB ' +
                     '1+x¹⁴+x¹⁵ с начальным 100101010000000 заново в каждом блоке выхода (EN 302 307-1, 5.2.2), инверсия выхода.'));
             const кнАвтомат = h('button', { class: 'btn', onclick: () => автомат() }, 'Автомат');
@@ -14867,7 +14886,11 @@
                             h('label', { class: 'stol-md-opt' }, рандомизатор, ' Рандомизатор CCSDS'),
                             h('label', { class: 'stol-md-opt' }, входИнверсия, ' Инверсия входа'),
                             h('label', { class: 'stol-md-opt' }, входРеверс, ' Младший бит первым'),
-                            h('label', { class: 'stol-md-row' }, h('span', {}, 'PLFRAME DVB-S2'), plframe)),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'PLFRAME DVB-S2'), plframe),
+                            h('label', { class: 'stol-md-row', title: 'Заголовок в разметке данных: метки точек (из «Найти по встроенным»)' },
+                                h('span', {}, 'Метки PLHEADER'), метки),
+                            h('label', { class: 'stol-md-row', title: 'Слова под одной маской скремблера: повтор через столько слов' },
+                                h('span', {}, 'Маска, слов'), маска)),
                         h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Кадровая синхронизация'),
                             h('div', { class: 'stol-md-row', role: 'radiogroup', 'aria-label': 'Синхрослово' }, безСинхро.узел, сосредоточенное.узел, распределённое.узел),
                             h('label', { class: 'stol-md-row' }, h('span', {}, 'Длина кадра'), длинаКадра),
@@ -14877,7 +14900,16 @@
                         h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Постобработка'),
                             h('div', { class: 'stol-md-row' }, h('label', { class: 'stol-md-opt' }, мульт, ' Мультипликативный дескремблер'), отводы),
                             h('label', { class: 'stol-md-opt' }, dvb, ' Аддитивный дескремблер DVB (14,15)'),
-                            h('label', { class: 'stol-md-opt' }, инверсия, ' Инверсия выхода')),
+                            h('label', { class: 'stol-md-opt' }, инверсия, ' Инверсия выхода'),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Вывод'), вывод),
+                            h('label', { class: 'stol-md-row', title: '«сам» — по признакам следующего уровня (BBHEADER, MPEG-TS, ASM, текст)' },
+                                h('span', {}, 'Байты на выходе'), порядокВых)),
+                        h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Восстановить матрицу'),
+                            h('label', { class: 'stol-md-row', title: 'Длина слова кода в потоке; начало и шаг — из «Схемы передачи» (пусто — само)' },
+                                h('span', {}, 'Длина слова'), длинаВосст),
+                            h('label', { class: 'stol-md-row' }, h('span', {}, 'Срок, с'), срокВосст),
+                            h('div', { class: 'stol-md-row' }, кнВосст, кнСохр, кнДекВосст),
+                            ходВосст, строкаВосст),
                         h('fieldset', { class: 'stol-md-box' }, h('legend', {}, 'Нестандарт: папка ldpc'),
                             списокФайлов,
                             h('div', { class: 'stol-md-row' }, h('button', { class: 'btn btn--sm', onclick: () => загрузка.click(),
@@ -14955,12 +14987,19 @@
                         (ф.выколоты ? ', выколоты ' + ф.выколоты : '') + (ф.перемежение ? ', перемежение ' + ф.перемежение : '')))));
             }
             function синхроВид() { return распределённое.r.checked ? 'распределённое' : сосредоточенное.r.checked ? 'сосредоточенное' : 'нет'; }
+            /** PLFRAME слоя: «да», «скремблер» или с метками разметки — «метки ТАБЛИЦА [скремблер]». */
+            function строкаPLFRAME() {
+                const т = метки.value.replace(/\D/g, '');
+                if (!т) return plframe.value;
+                return 'метки ' + т + (plframe.value === 'скремблер' ? ' скремблер' : '');
+            }
             function параметры() {
                 const с_ = скоростиТипа()[Number(скорость.value) || 0];
                 return { тип: тип.value, блок: блок.hidden ? '' : блок.value, скорость: с_ ? с_.подпись : '', код: код.value,
                     выколоты: выколоты.value.trim(), укорочены: укорочены.value.trim(), перемежение: перемежение.value,
                     начало: начало.value.trim(), шаг: шаг.value.trim(), смещения: смещения.value.trim(), рандомизатор: рандомизатор.checked,
-                    вход_инверсия: входИнверсия.checked, вход_реверс: входРеверс.checked, plframe: plframe.value,
+                    вход_инверсия: входИнверсия.checked, вход_реверс: входРеверс.checked, plframe: строкаPLFRAME(),
+                    маска: маска.value.trim(), вывод: вывод.value,
                     синхро: { вид: синхроВид(), слово: слово.value.trim(), длина: Number(длинаКадра.value) || 0,
                         длина_слова: Number(длинаСлова.value) || 0, выводить: выводить.checked },
                     мультипликативный: мульт.checked ? отводы.value.trim() : '', аддитивный_dvb: dvb.checked, инверсия: инверсия.checked };
@@ -14970,7 +15009,7 @@
                 сохранитьСтола('stol-ldpc', { тип: п.тип, блок: п.блок, скорость: п.скорость, код: п.код, выколоты: п.выколоты, укорочены: п.укорочены,
                     перемежение: п.перемежение, синхро: п.синхро.вид, слово: п.синхро.слово, длина: длинаКадра.value, длина_слова: длинаСлова.value,
                     выводить: п.синхро.выводить, мульт: мульт.checked, отводы: отводы.value.trim(), dvb: п.аддитивный_dvb, инверсия: п.инверсия,
-                    закрытые: закрытые.checked });
+                    закрытые: закрытые.checked, вывод: вывод.value, порядок: порядокВых.value, восст_n: длинаВосст.value, восст_срок: срокВосст.value });
             }
             /** Проверка полей до запроса: код, синхрослово и его длина, отводы. */
             function проверить() {
@@ -15014,7 +15053,9 @@
                     отчёт.appendChild(h('div', {}, h('b', {}, d.сошлось === null ? 'синдром не считан' : 'синдром обнулился у ' + String(d.сошлось).replace('.', ',') + ' % слов'),
                         ' · код (' + d.n + ', ' + d.k + '), в потоке слово ' + d.в_потоке + ' бит · на выходе ' + d.бит.toLocaleString('ru-RU') + ' бит'));
                     d.подробно.forEach((т) => отчёт.appendChild(h('div', { class: 'muted' }, т)));
-                    отчёт.appendChild(h('div', { class: 'mono' }, d.слои.join(' → ')));
+                    if (d.порядок) отчёт.appendChild(h('div', {}, 'Байты на выходе: ' + (порядокВых.value || d.порядок.порядок) + ' бит первым' +
+                        (порядокВых.value ? ' (задано)' : ' — ' + d.порядок.почему)));
+                    отчёт.appendChild(h('div', { class: 'mono' }, слоиВыхода(d).join(' → ')));
                     сказать(d.сошлось !== null && d.сошлось < 50 ? 'меньше половины слов сошлось — не тот код, схема или начало' : 'просмотр готов', d.сошлось !== null && d.сошлось < 50);
                     return d;
                 } catch (error) {
@@ -15022,13 +15063,19 @@
                     return null;
                 }
             }
+            /** Слои декодирования и, если байты на выходе — младшим битом первым, «реверс 8» в конце. */
+            function слоиВыхода(d) {
+                const порядок_ = порядокВых.value || (d.порядок && d.порядок.порядок) || 'старший';
+                return d.слои.concat(порядок_ === 'младший' ? ['реверс 8'] : []);
+            }
             async function декодировать() {
                 const d = await посмотреть();
                 if (!d) return;
                 try {
+                    const слои = слоиВыхода(d);
                     const новый_ = await api.post('/api/potok/' + encodeURIComponent(у.job) + '/derive',
-                        { stage: у.stage, steps: d.слои.map((сл) => ({ вид: 'слой', слой: сл, вкл: true })), analyze: false });
-                    await вЖурнал(у, 'LDPC', d.подробно.join('\n'), d.слои.join(' → '));
+                        { stage: у.stage, steps: слои.map((сл) => ({ вид: 'слой', слой: сл, вкл: true })), analyze: false });
+                    await вЖурнал(у, 'LDPC', d.подробно.join('\n'), слои.join(' → '));
                     await загрузитьДерево(у.ключ);
                     const новый = с.массивы && с.массивы.поКлючу[новый_.id + ':0'];
                     toast('LDPC → новый массив' + (новый ? ' ' + новый.номер : '') + '. Этот массив остался', 'ok', 5000);
@@ -15062,7 +15109,7 @@
                     выколоты.value = н.выколоты; укорочены.value = н.укорочены;
                     перемежение.value = (н.перемежение || '').split(' ')[0];
                     начало.value = н.начало === undefined || н.начало === null ? '' : String(н.начало); шаг.value = ''; смещения.value = '';
-                    рандомизатор.checked = false; входИнверсия.checked = false; входРеверс.checked = false; plframe.value = '';
+                    рандомизатор.checked = false; входИнверсия.checked = false; входРеверс.checked = false; plframe.value = ''; метки.value = ''; маска.value = '';
                     сказать('найдено: ' + н.что + ' — ' + н.мера, false);
                     await посмотреть();
                 } catch (error) {
@@ -15102,9 +15149,64 @@
                 шаг.value = п.шаг ? String(п.шаг) : '';
                 смещения.value = п.смещения || '';
                 рандомизатор.checked = !!п.рандомизатор; входИнверсия.checked = !!п.вход_инверсия; входРеверс.checked = !!п.вход_реверс;
-                plframe.value = п.plframe || '';
+                const пл = String(п.plframe || '');
+                const м_ = /^метки\s+(\d+)/.exec(пл);
+                метки.value = м_ ? м_[1] : '';
+                plframe.value = м_ ? (/скремблер/.test(пл) ? 'скремблер' : 'да') : пл;
+                маска.value = п.маска ? String(п.маска) : '';
                 проверить();
                 if (смотреть) await посмотреть();
+            }
+            function строкаИтогаВосст(и) {
+                if (!и) return '';
+                if (!и.ранг) return и.почему || 'проверок не найдено';
+                return 'длина ' + и.n + (и.Z ? ' · Z ' + и.Z : '') + ' · проверок ' + и.ранг + (и.размерность ? ' из ' + и.размерность : '') +
+                    ' · k ' + и.k + ', скорость ' + String(и.скорость).replace('.', ',') +
+                    (и.доля ? ' · выполнены ' + (100 * и.доля).toFixed(1).replace('.', ',') + ' %' : '') +
+                    (и.сошлось ? ' · сошлось ' + Math.round(100 * и.сошлось) + ' %' : '') + ' · начало ' + и.начало + ' — ' + (и.почему || '');
+            }
+            async function восстановить() {
+                if (идётВосст) {
+                    if (поискВосст) { try { await api.post('/api/potok-ldpc-recover/' + encodeURIComponent(поискВосст) + '/stop', {}); } catch (error) { /* уже всё */ } }
+                    return;
+                }
+                const n = Number(длинаВосст.value);
+                if (!(n >= 16)) { строкаВосст.textContent = 'длина слова — бит, не меньше 16'; строкаВосст.className = 'small stol-bad'; return; }
+                запомнить();
+                идётВосст = true; кнВосст.textContent = 'Стоп'; кнСохр.disabled = true; кнДекВосст.disabled = true;
+                ходВосст.hidden = false; ходВосст.value = 0; строкаВосст.className = 'small muted'; строкаВосст.textContent = 'начато…';
+                try {
+                    const d = await api.post(путь + 'recover', { stage: у.stage, n, начало: Number(начало.value) || 0, шаг: Number(шаг.value) || 0,
+                        срок: Number(срокВосст.value) || 300 });
+                    поискВосст = d.поиск;
+                    for (;;) {
+                        await new Promise((r) => setTimeout(r, 1000));
+                        const с_ = await api.get('/api/potok-ldpc-recover/' + encodeURIComponent(поискВосст));
+                        ходВосст.value = с_.доля;
+                        if (с_.готово) {
+                            if (с_.ошибка && !с_.итог) throw new Error(с_.ошибка);
+                            строкаВосст.textContent = строкаИтогаВосст(с_.итог) + ' · ' + с_.прошло.toFixed(0) + ' с';
+                            кнСохр.disabled = !(с_.итог && с_.итог.ранг);
+                            break;
+                        }
+                        строкаВосст.textContent = с_.ход + ' · ' + с_.прошло.toFixed(0) + ' с' + (с_.осталось != null ? ', осталось ≈ ' + с_.осталось.toFixed(0) + ' с' : '');
+                    }
+                } catch (error) {
+                    строкаВосст.textContent = errorText(error); строкаВосст.className = 'small stol-bad';
+                } finally {
+                    идётВосст = false; кнВосст.textContent = 'Восстановить матрицу'; ходВосст.hidden = true;
+                }
+            }
+            async function сохранитьМатрицу() {
+                if (!поискВосст) return;
+                try {
+                    const d = await api.post('/api/potok-ldpc-recover/' + encodeURIComponent(поискВосст) + '/save', {});
+                    await загрузитьТипы();
+                    // Сохранённая матрица — тип «Нестандарт»: в поля окна, с найденным началом и шагом.
+                    await взятьКандидата({ поля: { код: d.имя, начало: d.начало, шаг: d.шаг !== d.n ? d.шаг : '' } }, false);
+                    кнДекВосст.disabled = false;
+                    toast('Матрица «' + d.имя + '» в папке ldpc: n = ' + d.n + ', k = ' + d.k, 'ok', 5000);
+                } catch (error) { toastError(error); }
             }
             async function найтиВстроенные() {
                 кнНайти.disabled = true;
@@ -15130,7 +15232,8 @@
             тип.addEventListener('change', заполнитьБлоки);
             блок.addEventListener('change', заполнитьСкорости);
             скорость.addEventListener('change', заполнитьКоды);
-            [код, перемежение, выводить, мульт, dvb, инверсия, рандомизатор, входИнверсия, входРеверс, plframe].forEach((п) => п.addEventListener('change', проверить));
+            [код, перемежение, выводить, мульт, dvb, инверсия, рандомизатор, входИнверсия, входРеверс, plframe, вывод, порядокВых].forEach((п) => п.addEventListener('change', проверить));
+            [метки, маска].forEach((п) => п.addEventListener('input', проверить));
             [начало, шаг, смещения].forEach((п) => п.addEventListener('input', проверить));
             [безСинхро, сосредоточенное, распределённое].forEach((о) => о.r.addEventListener('change', проверить));
             [выколоты, укорочены, длинаКадра, длинаСлова, слово, отводы].forEach((п) => п.addEventListener('input', проверить));
