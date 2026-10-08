@@ -76,6 +76,15 @@ class НастройкаTests(unittest.TestCase):
         (папка / "n" / "7.json").write_text("{испорчено", encoding="utf-8")
         self.assertEqual(1_000_000, н.период_до(7))
 
+    def test_предел_анализа_символов(self):
+        """Анализ символов (разметка) ищет период в символах по k бит: предел — из той же настройки."""
+        from reportgen.potok import razmetka  # noqa: PLC0415
+        self.assertEqual({}, razmetka.предел_периода(None, 3))
+        self.assertEqual({"период_до": 66_666}, razmetka.предел_периода(200_000, 3))
+        self.assertEqual({"период_до": razmetka.ПЕРИОД_ОТ}, razmetka.предел_периода(64, 100))
+        self.assertEqual({"период_до": 1 << 62}, razmetka.предел_периода(0, 3))
+        self.assertEqual({"период_до": 64}, razmetka.предел_периода(64, 0))
+
     def test_предел_разбора(self):
         self.assertEqual(nastroyki.ПЕРИОД_ДО, nastroyki.период_до())
         with nastroyki.с_пределом(4096):
