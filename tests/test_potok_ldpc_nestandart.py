@@ -206,6 +206,105 @@ class PLFRAMEвРазметкеДанных(unittest.TestCase):
         self.assertIsNone(dvbs2_pl.найти_в_разметке(б))
 
 
+class ВыводВсехСлов(unittest.TestCase):
+    """Новый массив — все слова записи (не первые 4000), исправленные слова и ошибки, большие массивы кусками."""
+
+    def test_все_слова_и_виды_вывода(self):
+        c = лп.кодовые("wifi-648-324", 4500, сид=21)
+        принято = лп.ошибки(c.reshape(-1), 2e-3, сид=22)
+        ряд, н = снять_вручную(принято, "ldpc wifi-648-324 начало 0")
+        self.assertEqual(4500 * 324, len(ряд))
+        np.testing.assert_array_equal(c[:, :324].reshape(-1), ряд)
+        слова, _ = снять_вручную(принято, "ldpc wifi-648-324 начало 0 вывод слова")
+        np.testing.assert_array_equal(c.reshape(-1), слова)
+        ошибки, н = снять_вручную(принято, "ldpc wifi-648-324 начало 0 вывод ошибки")
+        np.testing.assert_array_equal(принято ^ c.reshape(-1), ошибки)
+        self.assertIn("ошибки линии", " ".join(н.подробно))
+
+    def test_ход_слоя(self):
+        from reportgen.potok import potokovo, rastr
+        from reportgen.potok.hranenie import Источник, Приёмник
+        import tempfile
+        from pathlib import Path
+        c = лп.кодовые("wifi-648-324", 400, сид=23)
+        with tempfile.TemporaryDirectory() as папка:
+            путь = Path(папка) / "в.bin"
+            with Приёмник(путь) as п:
+                п.записать(c.reshape(-1))
+                п.закрыть()
+            ход = []
+            шаги = rastr.проверить_шаги([{"вид": "слой", "слой": "ldpc wifi-648-324 начало 0"}])
+            with mock_время():
+                potokovo.выполнить(Источник(путь, бит=c.size), шаги, Path(папка) / "вых.bin",
+                                   ход=lambda д, т: ход.append((д, т)))
+            self.assertTrue(any("LDPC: слов" in т for _, т in ход))
+
+    def _кусками(self, поток, слои, в_памяти_до):
+        from reportgen.potok import potokovo, rastr
+        from reportgen.potok.hranenie import Источник, Приёмник
+        import tempfile
+        from pathlib import Path
+        шаги = rastr.проверить_шаги([{"вид": "слой", "слой": с} for с in слои])
+        эталон, _ = rastr.применить(поток.copy(), шаги)
+        with tempfile.TemporaryDirectory() as папка:
+            путь = Path(папка) / "в.bin"
+            with Приёмник(путь) as п:
+                п.записать(поток)
+                п.закрыть()
+            бит, описание = potokovo.выполнить(Источник(путь, бит=len(поток)), шаги, Path(папка) / "вых.bin",
+                                               в_памяти_до=в_памяти_до)
+            вышло = Источник(Path(папка) / "вых.bin", бит=бит).все()
+        return эталон, вышло, описание
+
+    def test_кусками_по_сетке_слов(self):
+        c = лп.кодовые("wifi-1944-972", 60, сид=24)
+        поток = лп.ошибки(лп.сдвинуть(c.reshape(-1), 300), 1e-3, сид=25)
+        эталон, вышло, описание = self._кусками(поток, ["ldpc wifi-1944-972 начало 300"], 1944 * 7 + 500)
+        np.testing.assert_array_equal(эталон, вышло)
+        self.assertEqual(60 * 972, len(вышло))
+        self.assertIn("по сетке слов", описание[-1])
+
+    def test_кусками_plframe_в_разметке_данных(self):
+        from reportgen.potok import dvbs2_pl, razbor
+        import time
+        б, c, u = лп.поток_dvbs2_разметка("dvb-s2-16200-7200", 12, пилоты=True, поворот=2)
+        б = лп.ошибки(лп.сдвинуть(б, 777), 1e-3, сид=26)
+        з = dvbs2_pl.найти_с_кадрами(б)
+        н = razbor._ldpc_plframe(з, razbor.Бюджет(конец=time.monotonic() + 300, профиль=razbor.ПРОФИЛИ["обычно"]))
+        слои = слои_находки(н)
+        эталон, вышло, описание = self._кусками(б, слои, 16740 * 3 + 1000)
+        np.testing.assert_array_equal(эталон, вышло)
+        self.assertEqual(12 * 7200, len(вышло))
+        np.testing.assert_array_equal(u.reshape(-1), вышло)
+
+
+class ПорядокБайт(unittest.TestCase):
+    """Байтовый вид нового массива: порядок бит в байте — по маркерам следующего уровня."""
+
+    def test_маркеры(self):
+        from reportgen.potok import ldpc_okno
+        _, u = лп.fecframes("dvb-s2-16200-7200", 6, бчх=True)
+        bb = u.reshape(-1)                                    # данные LDPC — слова БЧХ с BBFRAME
+        self.assertEqual({"порядок": "старший", "почему": "BBHEADER DVB-S2 с верной CRC-8"}, ldpc_okno.порядок_байт(bb))
+        self.assertEqual("младший", ldpc_okno.порядок_байт(ldpc_okno._в_младший(bb))["порядок"])
+        пакеты = np.random.default_rng(1).integers(0, 256, (60, 188)).astype(np.uint8)
+        пакеты[:, 0] = 0x47
+        ts = np.unpackbits(пакеты.reshape(-1))
+        self.assertEqual("младший", ldpc_okno.порядок_байт(ldpc_okno._в_младший(лп.сдвинуть(ts, 8)))["порядок"])
+        текст = np.unpackbits(np.frombuffer(b"LDPC decoded text, line by line.\n" * 200, dtype=np.uint8))
+        self.assertEqual("младший", ldpc_okno.порядок_байт(ldpc_okno._в_младший(текст))["порядок"])
+        случайные = np.random.default_rng(2).integers(0, 2, 1 << 16).astype(np.uint8)
+        self.assertEqual("старший", ldpc_okno.порядок_байт(случайные)["порядок"])
+        self.assertIn("нет", ldpc_okno.порядок_байт(случайные)["почему"])
+
+
+def mock_время():
+    """Ход слоя передаётся не чаще раза в 0,5 с — в тесте каждый."""
+    from unittest import mock
+    from reportgen.potok import potokovo
+    return mock.patch.object(potokovo, "ХОД_СЛОЯ_КАЖДЫЕ", 0.0)
+
+
 class Декодер(unittest.TestCase):
     """Декодер по рёбрам даёт то же, что прежняя запись по дополненным строкам."""
 
