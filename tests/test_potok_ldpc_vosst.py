@@ -70,6 +70,13 @@ class Части(unittest.TestCase):
         перебор = {(x, y) for x in range(len(а)) for y in range(len(б)) if а[x] == б[y]}
         self.assertEqual(перебор, найдено)
 
+    def test_совпадения_вырожденных_ключей(self):
+        """Все ключи равны (у C мало строк, слова зависимы): пар — до предела, без развёртки всех пар в памяти."""
+        а = np.zeros(300_000, dtype=np.uint64)
+        i, j = лв._совпадения(а, а, до=1000)
+        self.assertEqual(1000, len(i))
+        self.assertTrue((а[i] == а[j]).all())
+
     def test_частичный_гаусс_опорные(self):
         rng = np.random.default_rng(5)
         n, r, t = 200, 60, 40
