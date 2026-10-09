@@ -15,7 +15,8 @@
 * «gfp маска M скремблер да|нет|инверсия порядок … [многочлен авто] канал L [upi u]» — кадры
   клиентов GFP окнами с перекрытием (``gfp.разобрать``);
 * «bbframe nbch n kbch k t t короткий|нормальный выход ts|gse» — DVB-S2 после LDPC (``dvbs2``);
-* «ip» — пакеты IP в кадрах прежнего этапа (.sig или .pcap), «pcap» — пакеты IP захвата pcap (вход).
+* «ip» — пакеты IP в кадрах прежнего этапа (.sig или .pcap), «pcap» — пакеты IP захвата pcap (вход),
+  «ip-поток начало b» — пакеты IPv4 подряд в сплошном потоке байт (``pakety.цепочка``).
 """
 
 from __future__ import annotations
@@ -335,6 +336,43 @@ class _Bbframe:
         return []
 
 
+class _ЦепочкаIP:
+    """Пакеты IPv4 подряд в потоке байт с байта ``начало`` — как ``pakety.цепочка``: заголовок с верной суммой →
+    прыжок на полную длину → следующий; первый негодный — конец. Решение о пакете — когда он весь в буфере."""
+
+    ЗАПАС = 0xFFFF + 64
+
+    def __init__(self, п: dict[str, Any]):
+        from . import pakety  # noqa: PLC0415
+        self.pakety = pakety
+        self.пропустить = int(п.get("начало") or 0)
+        self.биты = _пусто()
+        self.байты = b""
+        self.конец = False
+
+    def подать(self, биты: np.ndarray, последний: bool = False) -> list[bytes]:
+        ряд = np.concatenate([self.биты, биты]) if len(self.биты) else np.asarray(биты, dtype=np.uint8)
+        целых = len(ряд) // 8 * 8
+        self.биты = ряд[целых:].copy()
+        данные = self.байты + в_байты(ряд[:целых])
+        if self.пропустить:
+            k = min(self.пропустить, len(данные))
+            данные, self.пропустить = данные[k:], self.пропустить - k
+        место, итог = 0, []
+        while not self.конец and (последний or len(данные) - место >= self.ЗАПАС):
+            пакет = self.pakety.ipv4(данные, место) if self.pakety.место_годно(данные, место) else None
+            if пакет is None:
+                self.конец = True
+                break
+            итог.append(пакет.сырые)
+            место += пакет.длина
+        self.байты = b"" if self.конец else данные[место:]
+        return итог
+
+    def закончить(self) -> list[bytes]:
+        return self.подать(_пусто(), последний=True)
+
+
 class _Pcap:
     """Записи классического pcap кусками байт — как ``karta.pcap``: запись длиннее 256 КБ — конец разбора."""
 
@@ -410,7 +448,7 @@ def _ip(кадры: Sequence[bytes]) -> list[bytes]:
 def _что_выходит(п: dict[str, Any]) -> tuple[str, str]:
     """(расширение выгрузки, слово для счёта)."""
     вид = п["вид"]
-    if вид in ("ip", "pcap"):
+    if вид in ("ip", "pcap", "ip-поток"):
         return "pcap", "пакетов"
     if вид == "gfp":
         return "pcap", "кадров"
@@ -480,6 +518,8 @@ def _разборщик(п: dict[str, Any]):
         return _Atm(п)
     if вид == "bbframe":
         return _Bbframe(п)
+    if вид == "ip-поток":
+        return _ЦепочкаIP(п)
     raise ValueError(f"разборщик кадров «{вид}» не известен")
 
 

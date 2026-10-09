@@ -634,6 +634,16 @@ class КадрыПоВсемуTests(unittest.TestCase):
         kadry_ves.кадры_по_всему(Источник(захват), "pcap", self.папка / "ip3.pcap")
         self.assertEqual(выгрузка(ip.дальше, "пакеты")[0], (self.папка / "ip3.pcap").read_bytes())
 
+    def test_ip_подряд_в_потоке_байт(self):
+        from reportgen.potok import pakety  # noqa: PLC0415
+        пакеты = с.пакеты_ip(400, сид=11)
+        данные = b"\x13" * 7 + b"".join(пакеты) + b"\x00" * 50
+        находка = pakety.найти_в_потоке(данные)
+        self.assertEqual("ip-поток начало 7", находка.свойства["кадры_слой"])
+        with mock.patch("reportgen.potok.kadry_ves._ЦепочкаIP.ЗАПАС", 300):
+            итог = self.по_всему(в_биты(данные), находка)
+        self.assertEqual(len(пакеты), итог["кадров"])
+
     def test_пункты_плана(self):
         from reportgen.potok.kadry_ves import пункты_плана  # noqa: PLC0415
         from reportgen.potok.nahodka import Находка  # noqa: PLC0415
