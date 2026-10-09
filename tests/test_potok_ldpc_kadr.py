@@ -75,6 +75,37 @@ class ПорядокДанныхTests(unittest.TestCase):
         self.assertGreater(ldpc_kadr.окна_лрп(лрп), 200)
 
 
+class КоВсемуФайлуTests(unittest.TestCase):
+    def test_все_кадры_и_слой(self):
+        """Проверки восстанавливаются по первым КАДРОВ_ДО кадрам, снимаются все кадры; матрица сохранена — слой
+        «ldpc ИМЯ начало … шаг кадр»: пересчёт по всему файлу начинается с выхода этапа."""
+        import tempfile  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+        from unittest import mock  # noqa: PLC0415
+
+        from reportgen.potok import ldpc  # noqa: PLC0415
+        from test_potok_bolshie import сверить_этапы  # noqa: PLC0415
+        H = с.qc_ldpc(12, 24, 27, 4, сид=3)
+        n = H.shape[1]
+        D = ldpc_vosst.позиции_данных([np.flatnonzero(h) for h in H], n)
+        кадров = 600
+        данные = np.random.default_rng(6).integers(0, 2, (кадров, len(D))).astype(np.uint8)
+        слова = (данные.astype(np.int64) @ систематический_по(H, D)) % 2
+        синхро = np.unpackbits(np.array([0x1A, 0xCF, 0xFC, 0x1D], dtype=np.uint8))
+        поток = np.concatenate([np.concatenate([синхро, w.astype(np.uint8)]) for w in слова])[100:]
+        with tempfile.TemporaryDirectory() as папка, mock.patch.object(ldpc, "КАТАЛОГ", Path(папка)), \
+                mock.patch.object(ldpc_kadr, "КАДРОВ_ДО", 200):
+            найдено, почему = ldpc_kadr.найти(поток[:len(поток) // 2], 32 + n, срок=90)
+            self.assertIsNotNone(найдено, почему)
+            вых = np.asarray(найдено.дальше).reshape(-1, len(D))
+            self.assertEqual(кадров // 2 - 1, len(вых))                       # все кадры выборки, не 200
+            self.assertTrue(np.array_equal(данные[1:1 + len(вых)], вых))
+            слой = найдено.свойства["слой"]
+            self.assertTrue(слой.startswith(f"ldpc {найдено.свойства['матрица_файл']} начало ") and
+                            слой.endswith(f" шаг {32 + n}"), слой)
+            сверить_этапы(self, поток, [найдено], 1)
+
+
 class НагрузкаЦиклаTests(unittest.TestCase):
     def test_нагрузка_в_порядке_скремблера(self):
         """Кадр 4096 бит (синхрослово ASM и V.35 над данными), младшим битом байта вперёд: цикл виден в обоих
