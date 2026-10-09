@@ -194,6 +194,17 @@ class СтраницаTests(unittest.TestCase):
         for умение in ("окноНагрузкиВСессию(capId, с)", "путь + '/file'", "'/stop'", "'/chunks?offset='", "удалить()"):
             self.assertIn(умение, захват, умение)
 
+    def test_удаление_записей_и_сеансов(self):
+        """Записи анализа и сеансы приёма удаляются из списков (✕ и «Удалить выбранные», с подтверждением)
+        и из открытой записи."""
+        помощник = вырезать(JS, "списокСУдалением")
+        self.assertIn("confirmDialog({ title: заголовок, danger: true, confirmText: 'Удалить', message: слова.пояснение })", помощник)
+        self.assertIn("'Удалить выбранные'", помощник)
+        self.assertIn("onclick: () => удалитьЗаписи([з]) }, '✕')", помощник)
+        self.assertIn("api.del('/api/pakety/' + encodeURIComponent(з.ид))", вырезать(JS, "renderPakety"))
+        self.assertIn("api.del('/api/zahvat/' + encodeURIComponent(з.ид))", вырезать(JS, "формаЗахватаСети"))
+        self.assertIn("await api.del(путь); toast('Удалено', 'ok'); navigate('#/pakety');", вырезать(JS, "рисоватьЗахват"))
+
     def test_отбор_только_явно(self):
         запись = вырезать(JS, "рисоватьЗахват")
         self.assertIn("if (event.key === 'Enter') { event.preventDefault(); применить(); }", запись)

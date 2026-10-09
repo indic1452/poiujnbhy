@@ -9826,3 +9826,10 @@ div.stol-decoder-op { border: 0; padding: 0; }
 .stol-md-auto { overflow-wrap: anywhere; }
 /* Выбранная строка под указателем остаётся выбранной (иначе фон наведения и светлый текст выбора — нечитаемо). */
 .stol-results tbody tr.is-selected:hover { background: var(--accent); }
+
+/* «Анализ пакетов»: списки записей и сеансов приёма с удалением */
+.pk-del-bar { gap: 12px; align-items: center; margin: 4px 0 8px; }
+.pk-row { display: flex; align-items: center; gap: 8px; }
+.pk-row > .potok-item { flex: 1; min-width: 0; }
+.pk-row > input[type="checkbox"] { flex: none; }
+.pk-del { flex: none; min-width: 32px; }
