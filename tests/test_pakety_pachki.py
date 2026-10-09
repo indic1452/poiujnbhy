@@ -596,6 +596,55 @@ class ИзРазбораПотокаTests(unittest.TestCase):
         ip = sum(1 for вид, _ in кадры if вид in ("ip", "eth", "ppp", "chdlc", "fr"))
         self.assertLess(ip, len(кадры), "в смеси есть и не IP")
 
+    def test_пакеты_pcap_целиком_и_этап_по_началу_файла(self):
+        """«Пакеты» первого этапа захвата pcap — весь захват (все записи, не только IP в выгрузке этапа); выгрузка
+        этапа, ещё не пересчитанного по всему файлу, — с пометкой «по началу файла» в имени."""
+        import struct  # noqa: PLC0415
+
+        import potok_sintez as с  # noqa: PLC0415
+        from test_web import WebTestCase  # noqa: PLC0415
+
+        class Сеть(WebTestCase):
+            def runTest(себя):
+                pass
+        сеть = Сеть()
+        сеть.setUp()
+        self.addCleanup(сеть.tearDown)
+        к = сеть.client
+        сеть.login("engineer")
+
+        def дождаться(job):
+            конец = time.monotonic() + 120
+            while (состояние := к.get(f"/api/potok/{job}").json())["состояние"] not in ("готово", "ошибка"):
+                self.assertLess(time.monotonic(), конец)
+                time.sleep(0.2)
+            return состояние
+
+        def пакеты(ид):
+            конец = time.monotonic() + 120
+            while (з := к.get(f"/api/pakety/{ид}").json())["состояние"] not in pachki.КОНЕЦ:
+                self.assertLess(time.monotonic(), конец)
+                time.sleep(0.1)
+            return з
+        кадры = [с.ethernet(п) for п in с.пакеты_ip(60)] + [bytes.fromhex("ffffffffffff001122334455" "0806") + bytes(28)] * 7
+        захват = struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 1) + b"".join(
+            struct.pack("<IIII", 0, 0, len(к_), len(к_)) + к_ for к_ in кадры)
+        job = к.post("/api/potok", data={"profile": "быстро"},
+                     files={"file": ("захват.pcap", захват, "application/octet-stream")}).json()["id"]
+        self.assertEqual("сетевой", дождаться(job)["этапы"][0]["уровень"])
+        з = пакеты(к.post("/api/pakety/from-potok", json={"job": job, "stage": 1}).json()["id"])
+        self.assertEqual(("готово", len(кадры), "захват.pcap"), (з["состояние"], з["разобрано"], з["имя"]))
+        # Этап 2 (IP в кадрах HDLC) по выборке — имя говорит, что это начало файла.
+        job = к.post("/api/potok", data={"profile": "быстро"},
+                     files={"file": ("поток.bin", с.hdlc(с.пакеты_ip(40)), "application/octet-stream")}).json()["id"]
+        self.assertEqual(["sig", "pcap"], [э.get("выгрузка") for э in дождаться(job)["этапы"]])
+        задания = сеть.app.state.potok
+        состояние = задания._прочитать_файл(job)
+        состояние["этапы"][1]["по_выборке"] = True
+        задания._записать(job, состояние)
+        з = пакеты(к.post("/api/pakety/from-potok", json={"job": job, "stage": 2}).json()["id"])
+        self.assertEqual("поток — этап 2 — по началу файла.pcap", з["имя"])
+
 
 @unittest.skipUnless(os.environ.get("REPORTGEN_MEDLENNO"), "медленный (сотни мегабайт): REPORTGEN_MEDLENNO=1")
 class БольшойФайлTests(unittest.TestCase):

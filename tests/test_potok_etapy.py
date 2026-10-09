@@ -19,6 +19,11 @@ from reportgen.potok.zadaniya import Задания, выгрузка
 КОРЕНЬ = Path(__file__).resolve().parents[1]
 
 
+def razbor_выборка() -> int:
+    from reportgen.potok.razbor import ВЫБОРКА_БИТ  # noqa: PLC0415
+    return ВЫБОРКА_БИТ
+
+
 def цепочка(доля_ошибок=0.005):
     """IP → HDLC → скремблер V.35 → свёрточный 171/133 → ошибки линии."""
     x = в_биты(с.hdlc(с.пакеты_ip(160), флагов_между=4))
@@ -140,6 +145,37 @@ class КартаTests(unittest.TestCase):
         self.assertEqual("сетевой", разбор.находки[0].уровень)
         self.assertIn("30 из 30", разбор.находки[0].мера)
 
+    def test_pcap_и_sig_без_предела_пакетов(self):
+        # Все записи захвата и все пакеты .Sig — не первые 200 000 / 20 000; этап — по всему файлу.
+        from unittest import mock  # noqa: PLC0415
+
+        from reportgen.potok import razbor  # noqa: PLC0415
+        from reportgen.potok.hranenie import Источник  # noqa: PLC0415
+        пакет = с.udp("10.0.0.1", "10.0.0.2", 1, 2, b"")
+        записей = 200_005
+        данные = struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 101) + (
+            struct.pack("<IIII", 0, 0, len(пакет), len(пакет)) + пакет) * записей
+        self.assertEqual(записей, len(karta.pcap(данные)[1]))
+        пакеты = [с.udp("10.0.0.1", "10.0.0.2", н % 900, 53, bytes([н % 251])) for н in range(25_000)]
+        р = разобрать(данные=с.sig(пакеты), имя="захват.sig")
+        ip = р.находки[0]
+        self.assertEqual(пакеты, [п.сырые for п in ip.дальше])
+        self.assertTrue(ip.свойства["весь_файл"])
+        self.assertIn("все пакеты IP файла: 25000 из 25000", " ".join(ip.подробно))
+        # Захват целиком в памяти — весь файл; большой (с диска, в память — начало) — пакеты начала,
+        # разборщик «pcap» — для пересчёта этапа по всему файлу, и об этом — в ограничениях.
+        малый = данные[:24 + 44 * 3000]
+        self.assertEqual({"кадры_слой": "pcap", "весь_файл": True},
+                         разобрать(данные=малый, имя="захват.pcap").находки[0].свойства)
+        with tempfile.TemporaryDirectory() as tmp:
+            путь = Path(tmp) / "захват.pcap"
+            путь.write_bytes(малый)
+            with mock.patch.object(razbor, "НАЧАЛО_БАЙТ", 24 + 44 * 1000 + 10):
+                р = разобрать(источник=Источник(путь), имя="захват.pcap")
+        self.assertEqual(1000, len(р.находки[0].дальше))
+        self.assertEqual({"кадры_слой": "pcap", "весь_файл": False}, р.находки[0].свойства)
+        self.assertIn("захват pcap: пакеты — из первых", " ".join(р.ограничения))
+
 
 class ЗаданияTests(unittest.TestCase):
     def setUp(self):
@@ -176,6 +212,19 @@ class ЗаданияTests(unittest.TestCase):
         self.assertEqual(["вручную", "канальный", "сетевой"],
                          [э["уровень"] for э in продолжение["этапы"]])
         self.assertEqual(f"{ид}#1", продолжение["от"])
+
+    def test_sig_длиннее_выборки_весь_файл(self):
+        # .Sig длиннее выборки автомата: пакеты IP — все, этап не «по началу файла», пересчитывать нечего.
+        пакеты = [с.udp("10.0.0.1", "10.0.0.2", н % 900, 53, bytes([н % 251])) for н in range(40_000)]
+        данные = с.sig(пакеты)
+        self.assertGreater(len(данные) * 8, razbor_выборка())
+        ид = self.задания.создать(владелец=1, имя="захват.sig", данные=данные, профиль="быстро")
+        состояние = self.дождаться(ид)
+        этап = состояние["этапы"][0]
+        self.assertEqual(("40000 пакетов", None), (этап["выход"], этап.get("по_выборке")))
+        self.assertNotIn("весь_файл", состояние)
+        канал, записи = karta.pcap(self.задания.файл_этапа(ид, 1).read_bytes())
+        self.assertEqual(пакеты, записи)
 
     def test_продолжать_не_с_чего(self):
         ид = self.задания.создать(владелец=1, имя="захват.sig", данные=с.sig(с.пакеты_ip(20)),
