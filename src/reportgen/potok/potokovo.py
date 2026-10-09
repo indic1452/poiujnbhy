@@ -416,6 +416,63 @@ class _Относительный(_ПоГруппам):
         return ряд
 
 
+class _Pdh(_Шаг):
+    """«pdh E2|E3|E4 приток N»: начало цикла — по первым ``pdh.ВЫБОРКА`` битам (как в памяти), дальше
+    приток из целых циклов кусок за куском: Cj и возможность стаффинга у каждого цикла — свои."""
+
+    def __init__(self, указание: str):
+        from . import pdh  # noqa: PLC0415
+        self.указание = указание
+        self.иерархия, self.t = pdh.слой(указание)
+        self._буфер: list[np.ndarray] = []
+        self._в_буфере = 0
+        self._найдено: tuple[int, float] | None = None
+        self._сдвиг: _Сдвиг | None = None
+        self._хвост = _пусто()
+        self.пустых = self.циклов = 0
+
+    def _циклы(self, биты: np.ndarray) -> np.ndarray:
+        from . import pdh  # noqa: PLC0415
+        биты = self._сдвиг.подать(биты)
+        if len(self._хвост):
+            биты = np.concatenate([self._хвост, биты])
+        L = self.иерархия.цикл
+        целых = len(биты) // L * L
+        self._хвост = биты[целых:].copy()
+        ряд, пустых, циклов = pdh.приток(биты[:целых], self.иерархия, 0, self.t)
+        self.пустых += пустых
+        self.циклов += циклов
+        return ряд
+
+    def _найти(self) -> np.ndarray:
+        from . import pdh  # noqa: PLC0415
+        ряд = np.concatenate(self._буфер) if self._буфер else _пусто()
+        self._буфер, self._в_буфере = [], 0
+        self._найдено = pdh._начало_цикла(ряд[:pdh.ВЫБОРКА], self.иерархия)
+        if self._найдено is None:
+            raise ValueError(f"цикл {self.иерархия.имя} не найден")
+        self._сдвиг = _Сдвиг(self._найдено[0])
+        return self._циклы(ряд)
+
+    def подать(self, биты: np.ndarray) -> np.ndarray:
+        from . import pdh  # noqa: PLC0415
+        if self._найдено is not None:
+            return self._циклы(биты)
+        self._буфер.append(биты)
+        self._в_буфере += len(биты)
+        return self._найти() if self._в_буфере >= pdh.ВЫБОРКА else _пусто()
+
+    def закончить(self) -> np.ndarray:
+        return self._найти() if self._найдено is None else _пусто()
+
+    def описание(self) -> str:
+        from . import pdh  # noqa: PLC0415
+        from .razbor import _кратко  # noqa: PLC0415
+        начало, совпало = self._найдено or (0, 0.0)
+        return (f"снято по указанию: {_кратко(self.указание.strip())}: "
+                + pdh.описать_слой(self.иерархия, начало, совпало, self.t, self.пустых, self.циклов))
+
+
 class _Выбросить(_Шаг):
     def __init__(self, указание: str, k: int, фаза: int):
         self.указание, self.k, self.фаза = указание, k, фаза
@@ -676,6 +733,8 @@ def потоковый(шаг: dict[str, Any], окно_синхро: int = ОК
         return _Пилоты(указание)               # вырезать вставку — как снять_вручную (не «вставить»)
     if вид == "пары":
         return _Пары(указание)
+    if вид == "pdh":
+        return _Pdh(указание)
     if вид.startswith("встав") and числа and числа[0] >= 2:
         k = числа[0]
         бит = 1 if re.search(r"(?<!\w)бит\w*\s+1", слова) else 0
