@@ -3888,7 +3888,7 @@ def potok_cancel(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     состояние = _задание_или_404(request, user, job_id)
     _вправе_удалить(request, user, состояние)
-    весь = bool(_body(request).get("whole"))
+    весь = bool((getattr(request.state, "json_body", None) or {}).get("whole"))   # тело не обязательно
     итог = _potok(request).отменить(job_id, весь=весь)
     if not итог:
         raise ServiceError("пересчёт не идёт" if весь else "задание не ждёт и не идёт — отменять нечего", 409)
