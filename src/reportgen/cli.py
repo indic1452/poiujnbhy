@@ -658,7 +658,7 @@ def cmd_potok(args: argparse.Namespace) -> int:
         разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (),
                            профиль="быстро" if args.fast else "обычно",
                            символ=[k for k in (args.bits or ()) if k % 2 == 0],
-                           фм=[k for k in (args.bits or ()) if k % 2])
+                           фм=[k for k in (args.bits or ()) if k % 2], с_уровня=args.level)
     except ValueError as ошибка:
         print(f"Указание не выполнено: {ошибка}")
         return 2
@@ -1008,6 +1008,10 @@ def build_parser() -> argparse.ArgumentParser:
                          metavar="K", help="бит на символ, если поток — метки демодулятора: "
                                            "чётное — КАМ (4, 6, 8…), нечётное — ФМ (1, 3 — 8PSK); "
                                            "без указания — по имени файла («…_8PSK_…»)")
+    p_potok.add_argument("--с-уровня", "--level", dest="level", default="неизвестно",
+                         choices=("неизвестно", "плоскость", "кадр", "код", "скремблер", "кадры данных", "пакеты"),
+                         help="с какого уровня начать: поиски уровней раньше него на самом потоке не "
+                              "проводятся (быстрее); ниже найденного — как обычно. По умолчанию — неизвестно")
     p_potok.set_defaults(func=cmd_potok)
 
     p_parts = sub.add_parser("parts", help="проверить справочник состава")
