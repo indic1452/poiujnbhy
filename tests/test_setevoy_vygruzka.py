@@ -204,6 +204,25 @@ class ВыгрузкиЧерезСервер(unittest.TestCase):
             with self.subTest(параметры):
                 self.assertEqual(400, self.к.get(self.путь + "/fields", params=параметры).status_code)
 
+    def test_поля_всех_пакетов_узла(self):
+        # Поля узла — все его пакеты, потоком (без предела РАЗБОР_ДО полного разбора в архиве выгрузки).
+        from unittest import mock  # noqa: PLC0415
+        все = json.loads(self.get("/export", format="json", path="Ethernet/IPv4").content)
+        with mock.patch.object(vygruzka, "РАЗБОР_ДО", 3):
+            json_ = json.loads(self.get("/fields", path="Ethernet/IPv4", format="json").content)
+            строки = таблица_csv(self.get("/fields", path="Ethernet/IPv4", format="csv").content)
+        self.assertGreater(len(все), 3)
+        self.assertEqual([п["номер"] for п in все], [р["номер"] for р in json_])
+        self.assertEqual([str(п["номер"]) for п in все], [с_["номер"] for с_ in строки])
+
+    def test_csv_кусками_как_целиком(self):
+        строки = [{"номер": н, "время": н * 0.25, **({f"поле{н % 7}": f"з;{н}"} if н % 3 else {"список": [н, "x"]})}
+                  for н in range(500)]
+        for кусок in (1, 100, 1 << 16):
+            with self.subTest(кусок=кусок):
+                self.assertEqual(vygruzka.csv_байты(строки), b"".join(vygruzka.csv_кусками(iter(строки), кусок)))
+        self.assertEqual(vygruzka.csv_байты([]), b"".join(vygruzka.csv_кусками([])))
+
     def test_сырые_потоки_и_отчёт(self):
         z = zipfile.ZipFile(io.BytesIO(self.get("/streams.zip").content))
         опись = таблица_csv(z.read("опись.csv"))

@@ -2847,14 +2847,20 @@ def pakety_fields(request: Request, cap_id: str, path: str, format: str = "csv",
     if not стек or format not in ("csv", "json"):
         raise ServiceError("нужен путь узла и формат csv или json", 400)
     отбор = _отбор(request, cap_id, filter)
-    свои = vydacha.номера_узла(отбор, стек, vygruzka.РАЗБОР_ДО)
+    # Все пакеты узла — потоком: разбираются пачками по мере выдачи, память не растёт с их числом.
+    свои = vydacha.номера_узла(отбор, стек)
     захваты = _pakety(request)
-    строки = vygruzka.поля_по_протоколам((захваты.пакет(cap_id, н + 1) for н in свои.tolist()), стек).get(стек[-1], [])
+
+    def строки() -> Iterable[dict[str, Any]]:
+        for от in range(0, len(свои), 512):
+            yield from vygruzka.поля_по_протоколам((захваты.пакет(cap_id, н + 1) for н in свои[от:от + 512].tolist()),
+                                                    стек).get(стек[-1], [])
     настройки = _настройки_выдачи(request)
     имя = f"{Path(состояние['имя']).stem}-поля-{vygruzka.безопасно(стек[-1])}.{format}"
-    данные = vygruzka.csv_байты(строки) if format == "csv" else vygruzka.json_байты(строки, настройки.json_отступ)
-    return Response(данные, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
-                    headers={"Content-Disposition": _имя_в_заголовке(имя, f"fields.{format}")})
+    куски = vygruzka.csv_кусками(строки()) if format == "csv" else vygruzka.json_список_кусками(
+        строки(), настройки.json_отступ)
+    return StreamingResponse(куски, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
+                             headers={"Content-Disposition": _имя_в_заголовке(имя, f"fields.{format}")})
 
 
 @router.get("/pakety/{cap_id}/streams.zip")
