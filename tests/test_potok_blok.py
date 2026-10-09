@@ -156,6 +156,16 @@ class МаскаБлока(unittest.TestCase):
         self.assertEqual(skrembler.по_блоку(поток, БЛОК).что, найдено.что)
         self.assertGreaterEqual(hdlc.найти(найдено.дальше).уверенность, 0.99)
 
+    def test_повтор_содержимого_не_маска(self):
+        """Блоки повторяют прежний в 90 % случаев: «маска» из копий одного блока — само содержимое, не скремблер."""
+        г = np.random.default_rng(2)
+        блоки, прежний = [], г.integers(0, 2, БЛОК, dtype=np.uint8)
+        for _ in range(40):
+            if г.random() < 0.1:
+                прежний = г.integers(0, 2, БЛОК, dtype=np.uint8)
+            блоки.append(прежний)
+        self.assertIsNone(skrembler.маска_блока(np.concatenate(блоки), БЛОК))
+
     def test_маска_лрп_называется_полиномом(self):
         данные = hdlc_с_паузами(сид=3)
         поток = по_блокам(данные, лрп(ОТВОДЫ, НАЧАЛЬНОЕ, БЛОК))
