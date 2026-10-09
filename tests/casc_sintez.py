@@ -156,3 +156,119 @@ def поток(кадров: int = 700, *, слов_в_кадре: int = 4, си
 def в_байты(биты: np.ndarray) -> bytes:
     целых = len(биты) // 8 * 8
     return np.packbits(биты[:целых]).tobytes()
+
+
+# -- поток «как запись модема CASC» с кодом casc-8064-6048 -------------------------------------------
+#
+# Код — базовая матрица 6 × 24 из data/ldpc_vosstanovlennye.json (данные, а не код анализатора); кодер — свой:
+# проверочная часть — блочные столбцы 0…5 (столбец 0 — веса 3 со сдвигами 1, 0, 1; дальше — двойная
+# диагональ), как у 802.11n: p0 — сумма синдромов данных всех блочных строк, остальные — подстановкой.
+# Сдвиг s блока (i, j): в строке i·Z + r единица в столбце j·Z + (r + s) mod Z.
+#
+# Линия: кадр — синхрослово 504 бит и два слова по 8064 бит; через каждые 126 бит линии — пилот-символ
+# (2 бита «11» на местах 32, 33 периода 128); символы ФМ-4 (пары бит, выровненные по пилоту) приёмник
+# отдаёт повёрнутыми (``приёмник``: обмен I/Q, инверсия первого, второго бита); шум — BER; в файл биты
+# пишутся младшим битом байта вперёд (как у записей отдела).
+# Данные: поток циклов по 8192 бит (синхрослово 140 бит и нагрузка — заполнение 0xFF и записи случайных
+# байт), нарезанный по 6048 бит на слово; аддитивная ПСП 1 + x² + x³ + x⁹ + x¹² со сбросом на каждое слово.
+
+import json
+from pathlib import Path
+
+CASC_ДАННЫЕ = Path(__file__).resolve().parents[1] / "src" / "reportgen" / "potok" / "data" / "ldpc_vosstanovlennye.json"
+
+
+def _сдвиг(x: np.ndarray, s: int) -> np.ndarray:
+    """Блок со сдвигом s как сомножитель: (P^s · x)[r] = x[(r + s) mod Z] — по последней оси."""
+    return np.roll(x, -s, axis=-1)
+
+
+def база_casc() -> tuple[np.ndarray, int, int]:
+    к = json.loads(CASC_ДАННЫЕ.read_text(encoding="utf-8"))["casc-8064-6048"]
+    return np.array(к["база"], dtype=np.int64), int(к["Z"]), int(к["данные_с"])
+
+
+def закодировать_casc(u: np.ndarray) -> np.ndarray:
+    """Данные (слов × 6048) → слова casc-8064-6048 [проверки 2016 | данные 6048]."""
+    база, Z, данные_с = база_casc()
+    mb, nb = база.shape
+    u = np.asarray(u, dtype=np.uint8).reshape(len(u), nb - mb, Z)
+    s = np.zeros((len(u), mb, Z), dtype=np.uint8)
+    for i in range(mb):
+        for j in range(mb, nb):
+            if база[i, j] >= 0:
+                s[:, i] ^= _сдвиг(u[:, j - mb], int(база[i, j]))
+    p = np.zeros_like(s)
+    p[:, 0] = np.bitwise_xor.reduce(s, axis=1)
+    p[:, 1] = s[:, 0] ^ _сдвиг(p[:, 0], int(база[0, 0]))
+    p[:, 2] = s[:, 1] ^ p[:, 1]
+    p[:, 3] = s[:, 2] ^ p[:, 0] ^ p[:, 2]
+    p[:, 4] = s[:, 3] ^ p[:, 3]
+    p[:, 5] = s[:, 4] ^ p[:, 4]
+    слова = np.concatenate([p.reshape(len(u), -1), u.reshape(len(u), -1)], axis=1)
+    assert слова.shape[1] - данные_с == u.shape[1] * Z
+    return слова
+
+
+def синдром_casc(слова: np.ndarray) -> np.ndarray:
+    """Синдром по базовой матрице (слов × 2016) — проверка кодера."""
+    база, Z, _ = база_casc()
+    mb, nb = база.shape
+    x = np.asarray(слова, dtype=np.uint8).reshape(len(слова), nb, Z)
+    s = np.zeros((len(слова), mb, Z), dtype=np.uint8)
+    for i in range(mb):
+        for j in range(nb):
+            if база[i, j] >= 0:
+                s[:, i] ^= _сдвиг(x[:, j], int(база[i, j]))
+    return s.reshape(len(слова), -1)
+
+
+def пары(биты: np.ndarray, обмен: bool, инв1: bool, инв2: bool, фаза: int = 0) -> np.ndarray:
+    """Символы ФМ-4 — пары (фаза + 2j, фаза + 2j + 1): (a, b) → (b, a) при обмене, затем инверсии."""
+    x = np.asarray(биты, dtype=np.uint8).copy()
+    a = np.arange(фаза, len(x) - 1, 2)
+    первый, второй = x[a].copy(), x[a + 1].copy()
+    if обмен:
+        первый, второй = второй, первый
+    x[a], x[a + 1] = первый ^ np.uint8(инв1), второй ^ np.uint8(инв2)
+    return x
+
+
+@dataclass
+class ПотокCASC:
+    байты: bytes                # файл: биты младшим вперёд
+    линия: np.ndarray           # биты линии после приёмника и шума (в порядке линии)
+    слова: np.ndarray           # кодовые слова (кадр за кадром)
+    данные: np.ndarray          # поток данных до ПСП (циклы 8192), нарезанный по словам: слов × 6048
+    синхро: np.ndarray          # синхрослово кадра 504 бит
+    синхро_цикла: np.ndarray    # синхрослово цикла данных 140 бит
+
+
+def поток_casc(кадров: int = 200, *, ber: float = 1e-2, приёмник: tuple[bool, bool, bool] = (False, True, True),
+               пилот: str = "11", места: tuple[int, int] = (32, 33), сид: int = 11) -> ПотокCASC:
+    rng = np.random.default_rng(сид)
+    слов = 2 * кадров
+    k = 6048
+    # Поток данных: циклы 8192 бит — синхрослово 140 бит и нагрузка байтами (заполнение 0xFF с записями).
+    циклов = -(-слов * k // 8192)
+    синхро_цикла = rng.integers(0, 2, 140, dtype=np.uint8)
+    нагрузка = np.unpackbits(данные(циклов, (8192 - 140 + 7) // 8, сид=сид + 1), axis=1)[:, :8192 - 140]
+    поток = np.concatenate([np.tile(синхро_цикла, (циклов, 1)), нагрузка], axis=1).reshape(-1)[:слов * k]
+    д = поток.reshape(слов, k)
+    u = д ^ псп(k)[None, :]
+    W = закодировать_casc(u)
+    синхро = rng.integers(0, 2, 504, dtype=np.uint8)
+    ряд = np.concatenate([np.tile(синхро, (кадров, 1)), W.reshape(кадров, -1)], axis=1).reshape(-1)
+    период = 128
+    маска = np.ones(период, dtype=bool)
+    маска[list(места)] = False
+    периодов = -(-len(ряд) // (период - 2))
+    линия = np.zeros(периодов * период, dtype=np.uint8)
+    линия.reshape(периодов, период)[:, list(места)] = np.array([int(ч) for ч in пилот], dtype=np.uint8)
+    куда = np.flatnonzero(np.tile(маска, периодов))[:len(ряд)]
+    линия[куда] = ряд
+    линия = линия[:периодов * период]
+    линия = пары(линия, *приёмник, фаза=места[0] % 2)
+    линия ^= (rng.random(len(линия)) < ber).astype(np.uint8)
+    байты = np.packbits(линия[:len(линия) // 8 * 8], bitorder="little").tobytes()
+    return ПотокCASC(байты, линия, W, д, синхро, синхро_цикла)
