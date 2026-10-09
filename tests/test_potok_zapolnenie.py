@@ -17,6 +17,7 @@ import _bootstrap  # noqa: F401
 import potok_sintez as с
 from reportgen.potok import (
     bity,
+    cikl,
     dlinnye,
     kod,
     rs_bch,
@@ -166,6 +167,24 @@ class АвтоматTests(unittest.TestCase):
         б = Бюджет(конец=time.monotonic() + 25, профиль={**ПРОФИЛИ["быстро"], "глубина": 1})
         ветвь = _ступень(ряд, 0, "", б)
         self.assertEqual([], [н.что for н in ветвь.находки])
+
+
+class ПовторыTests(unittest.TestCase):
+    def test_короткое_синхрослово_в_повторах_не_цикл(self):
+        """Кадры с синхрословом 16 бит, нагрузка в 90 % кадров повторяет прежнюю: цикл кадра есть, а в нагрузке
+        «цикл» с синхрословом в бит-два — только повтор содержимого (постоянный столбец там не случаен)."""
+        г = np.random.default_rng(4)
+        синхро = np.unpackbits(np.array([0x1A, 0xCF], dtype=np.uint8))
+        нагрузка, прежняя = [], г.integers(0, 2, 5000, dtype=np.uint8)
+        for _ in range(120):
+            if г.random() < 0.1:
+                прежняя = г.integers(0, 2, 5000, dtype=np.uint8)
+            нагрузка.append(прежняя)
+        поток = np.concatenate([np.concatenate([синхро, н]) for н in нагрузка])
+        цикл = cikl.найти(поток)
+        self.assertIsNotNone(цикл)
+        self.assertEqual("цикл 5016 бит, синхрослово 16 бит", цикл.что)
+        self.assertIsNone(cikl.найти(np.concatenate(нагрузка)))
 
 
 if __name__ == "__main__":
