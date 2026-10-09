@@ -662,6 +662,32 @@ class ВходIQTests(unittest.TestCase):
         riff = b"WAVE" + b"fmt " + struct.pack("<I", len(fmt)) + fmt + b"data" + struct.pack("<I", len(данные)) + данные
         np.testing.assert_allclose(z, iq.прочитать(b"RIFF" + struct.pack("<I", len(riff)) + riff)[0])
 
+    def test_куски_отсчётов_как_целиком(self):
+        # Решения по всей записи читают отсчёты кусками — те же, что ``прочитать`` над всеми байтами.
+        rng = np.random.default_rng(4)
+        x = np.round(rng.standard_normal(2 * 1001) * 3000)
+        y = x.astype("<f4")
+        y[7] = np.nan
+        буфер = io.BytesIO()
+        with wave.open(буфер, "wb") as w:
+            w.setnchannels(2)
+            w.setsampwidth(3)
+            w.setframerate(8000)
+            w.writeframes(b"".join(int(v).to_bytes(3, "little", signed=True) for v in x))
+        for байты, параметры in ((x.astype(">i2").tobytes() + b"\x01", {"формат": "int16", "порядок": "старший"}),
+                                 (b"\x00\x01\x02" + (np.clip(x // 64, -127, 127) + 127.5).astype("u1").tobytes(),
+                                  {"формат": "uint8", "пропуск": 3, "каналы": "QI"}),
+                                 (y.tobytes(), {"формат": "float32"}), (буфер.getvalue(), {"формат": "авто"})):
+            with self.subTest(**параметры):
+                ждём, _ = iq.прочитать(байты, **параметры)
+                куски = list(iq.куски_отсчётов(lambda от, сколько, б=байты: б[от:от + сколько], len(байты),
+                                               кусок=97, **параметры))
+                self.assertGreater(len(куски), 5)
+                np.testing.assert_array_equal(ждём, np.concatenate(куски))
+        with self.assertRaises(ValueError) as о:
+            list(iq.куски_отсчётов(lambda от, сколько: b"\x00" * сколько, 64, "авто"))
+        self.assertIn("формат отсчётов не определить", str(о.exception))
+
     def test_облако_поворот_и_решения(self):
         for имя, поворот, инверсия, шум in (("DVB-S2 8PSK", 17.0, False, 0.07), ("КАМ16 Грей", 33.0, True, 0.05),
                                              ("DVB-S2 16APSK (γ 3,15)", 5.0, False, 0.03), ("ФМ4 Грей", 71.0, True, 0.1)):
@@ -1108,6 +1134,19 @@ class РазметкаЧерезСерверTests(unittest.TestCase):
         р_ = self.к.post(f"/api/potok/{ид}/moddecoder/iq/decide", json={"stage": 0, "формат": "int16", "точек": 8})
         self.assertEqual(200, р_.status_code)
         self.assertTrue(any("номера кластеров" in с_ for с_ in р_.json()["описание"]))
+        # Облако — по началу массива, решения — по всей записи (не по первым IQ_БАЙТ_ДО байт).
+        from unittest import mock  # noqa: PLC0415
+
+        from reportgen.web import api as web_api  # noqa: PLC0415
+        with mock.patch.object(web_api, "IQ_БАЙТ_ДО", 4 * 1500):
+            р_ = self.к.post(f"/api/potok/{ид}/moddecoder/iq/decide", json={
+                "stage": 0, "формат": "int16", "точек": 8, "поворот": лучшая["поворот"], "плоскость": "DVB-S2 8PSK"})
+        self.assertEqual(200, р_.status_code, р_.text)
+        self.assertEqual(18000, р_.json()["бит"])
+        self.assertIn("отсчётов 6000 (облако — по первым 1500)", р_.json()["описание"][0])
+        весь = self.к.get(f"/api/potok/{новый}/bits", params={"stage": 0, "start": 0, "count": 18000}).json()
+        часть = self.к.get(f"/api/potok/{р_.json()['id']}/bits", params={"stage": 0, "start": 0, "count": 18000}).json()
+        self.assertEqual(весь, часть)
         for путь, тело, ждём in (("iq", {"формат": "int12"}, "формат отсчётов: int8, uint8, int16, float32 или WAV"),
                                  ("iq", {"формат": "int16", "точек": 3}, "число точек — степень двойки от 2 до 1024"),
                                  ("iq/decide", {"формат": "int16", "точек": 8, "плоскость": "КАМ16 Грей"},
