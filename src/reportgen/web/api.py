@@ -2441,6 +2441,7 @@ def pakety_from_potok(request: Request) -> dict[str, Any]:
     файл = _potok(request).файл_этапа(job_id, этап)
     if файл is None or файл.suffix not in (".pcap", ".sig"):
         raise ServiceError("у этого этапа нет пакетов или кадров", 400)
+    _этап_целый(request, job_id, этап)
     вход = _potok(request).папка / job_id / "вход.bin"
     if _пакеты_самого_sig(состояние, этап) and вход.exists():
         # Пакеты самого .sig (первый этап, ничего не снято): в анализ пакетов — весь файл, все кадры и протоколы
@@ -3835,7 +3836,7 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
         поток = прочитать_поток(данные=данные, имя=name)
         описание = [rastr.описать_шаг(ш) for ш in конфигурация["шаги"] if ш["вкл"]]
         ид = _potok(request).создать(владелец=user.id, имя=f"{name} → «{конфигурация['имя']}»"[:200],
-                                     данные=поток.данные, профиль=profile, с_уровня=уровень,
+                                     данные=поток.данные, бит=поток.бит or None, профиль=profile, с_уровня=уровень,
                                      шаги=конфигурация["шаги"],
                                      разбирать=True, происхождение=описание)
     else:
@@ -3863,6 +3864,7 @@ def potok_stage_file(request: Request, job_id: str, stage: int) -> FileResponse:
     """Поток после этапа: биты — .bin, кадры — .sig, пакеты IP — .pcap."""
     user = require_user(request)
     состояние = _задание_или_404(request, user, job_id)
+    _этап_целый(request, job_id, stage)
     основа = Path(состояние.get("имя") or "поток").stem
     if int(stage) == 0 and состояние.get("ссылка"):
         # Вход — файл сервера по ссылке: отдаётся кусками с диска (часть, разворот бит — как в узле).
@@ -3879,16 +3881,42 @@ def potok_stage_file(request: Request, job_id: str, stage: int) -> FileResponse:
 @router.post("/potok/{job_id}/cancel")
 def potok_cancel(request: Request, job_id: str) -> dict[str, Any]:
     """Отменить разбор (или шаги производного потока): ждущий снимается с очереди, идущий
-    останавливается за секунды. Вправе тот, кто запустил, и владелец сессии — как удалить."""
+    останавливается за секунды; ``whole`` — пересчёт этапов по всему файлу (этапы остаются по началу).
+    Вправе тот, кто запустил, и владелец сессии — как удалить."""
     user = require_user(request)
     состояние = _задание_или_404(request, user, job_id)
     _вправе_удалить(request, user, состояние)
-    итог = _potok(request).отменить(job_id)
+    весь = bool(_body(request).get("whole"))
+    итог = _potok(request).отменить(job_id, весь=весь)
     if not итог:
-        raise ServiceError("задание не ждёт и не идёт — отменять нечего", 409)
+        raise ServiceError("пересчёт не идёт" if весь else "задание не ждёт и не идёт — отменять нечего", 409)
     _repos(request).audit.log("potok.cancel", user=user, object_type="potok", object_id=job_id,
-                              details={"cancel": итог})
+                              details={"cancel": итог, **({"whole": True} if весь else {})})
     return {"cancel": итог}
+
+
+@router.post("/potok/{job_id}/whole")
+def potok_whole(request: Request, job_id: str) -> dict[str, Any]:
+    """Снова пересчитать этапы по всему файлу — после «Остановить» или ошибки пересчёта."""
+    user = require_user(request)
+    _задание_или_404(request, user, job_id)
+    try:
+        этапы = _potok(request).пересчитать_по_всему(job_id)
+    except ValueError as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
+    _repos(request).audit.log("potok.whole", user=user, object_type="potok", object_id=job_id,
+                              details={"stages": этапы})
+    return {"stages": этапы}
+
+
+def _этап_целый(request: Request, job_id: str, stage: int) -> None:
+    """Поток этапа берут целиком (скачать, продолжить, новый узел): пока этап пересчитывается по всему
+    файлу — 409 (после пересчёта всё берёт весь файл)."""
+    from ..potok.zadaniya import Пересчитывается  # noqa: PLC0415
+    try:
+        _potok(request).проверить_целый(job_id, int(stage))
+    except Пересчитывается as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
 
 
 @router.post("/potok/{job_id}/continue")
@@ -3900,10 +3928,13 @@ def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
     профиль = str(тело.get("profile") or "обычно")
     if профиль not in ПРОФИЛИ_РАЗБОРА:
         raise ServiceError("неизвестный профиль разбора", 400)
+    from ..potok.zadaniya import Пересчитывается  # noqa: PLC0415
     try:
         ид = _potok(request).продолжить(job_id, int(тело.get("stage") or 0), владелец=user.id,
                                         снять=_слои(str(тело.get("strip") or "")),
                                         профиль=профиль, с_уровня=_уровень_разбора(тело.get("level")))
+    except Пересчитывается as ошибка:
+        raise ServiceError(str(ошибка), 409) from None
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     return {"id": ид}
@@ -3911,12 +3942,16 @@ def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
 
 @router.post("/potok/{job_id}/stop")
 def potok_stop(request: Request, job_id: str) -> dict[str, Any]:
-    """Остановить автомат: разбор кончается с тем, что уже нашёл (этапы до остановки остаются в таблице)."""
+    """Остановить автомат: разбор кончается с тем, что уже нашёл (этапы до остановки остаются в таблице).
+    Разбор уже закончился — останавливать нечего, и это не ошибка: пересчёт этапов по всему файлу,
+    поставленный по концу автомата, не трогается (409 — только «автомат ещё не начал»: тогда отмена)."""
     user = require_user(request)
     состояние = _задание_или_404(request, user, job_id)
     if состояние.get("состояние") not in ("ждёт", "идёт"):
-        raise ServiceError("разбор уже закончен", 409)
+        return {"ok": True, "закончен": True}
     if not _potok(request).остановить(job_id):
+        if _potok(request).прочитать(job_id).get("состояние") not in ("ждёт", "идёт"):
+            return {"ok": True, "закончен": True}            # кончился между проверками
         raise ServiceError("автомат ещё не начал разбор — остановить нечего (отмена — «Отменить»)", 409)
     return {"ok": True}
 
@@ -4083,8 +4118,11 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     тело = _body(request)
     этап = int(тело.get("stage") or 0)
     # Поток родителя не распаковывается: узел получает его файл (жёсткой ссылкой, файл сервера —
-    # ссылкой), шаги идут в задании по кускам — массив любого размера.
+    # ссылкой), шаги идут в задании по кускам — массив любого размера. Этап, который ещё пересчитывается
+    # по всему файлу, — 409: ссылка на выборочный файл осталась бы у узла навсегда.
     источник = _файл_бит_или_400(request, user, job_id, этап)
+    _этап_целый(request, job_id, этап)
+    выборка = _potok(request).по_выборке(job_id, этап)
     профиль = str(тело.get("profile") or "обычно")
     if профиль not in ПРОФИЛИ_РАЗБОРА:
         raise ServiceError("неизвестный профиль разбора", 400)
@@ -4108,10 +4146,12 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     без_шагов = ("автомат" if тело.get("analyze") else "копия") + (f" этапа {этап}" if этап else "")
     имя = f"{состояние['имя']} → " + (f"«{конфигурация['имя']}»" if конфигурация
                                       else "; ".join(описание) or без_шагов)
+    if выборка:
+        имя = имя[:180] + " (по началу файла)"
     ид = _potok(request).создать(владелец=user.id, имя=имя[:200], источник=источник,
                                  профиль=профиль, с_уровня=уровень, от=f"{job_id}#{этап}", шаги=шаги,
                                  разбирать=bool(тело.get("analyze")), происхождение=описание,
-                                 сессия=состояние.get("сессия") or "")
+                                 сессия=состояние.get("сессия") or "", по_выборке=выборка)
     # Вид (период строки и первый бит) — от родителя, если строка та же (обрезка, инверсия,
     # моддекодер…); после кода, маски, вырезки — нет: длина строки у ребёнка другая.
     from ..potok.zadaniya import унаследованный_вид  # noqa: PLC0415
@@ -4673,10 +4713,23 @@ def potok_tributary_node(request: Request, job_id: str) -> dict[str, Any]:
         данные, имя = _potok(request).приток(job_id, этап, номер)
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 404) from None
-    ид = _potok(request).создать(владелец=user.id, имя=f"{состояние['имя']} → {имя}"[:200], данные=данные,
+    задания = _potok(request)
+    слой = задания.слой_притока(job_id, этап, номер)
+    if слой:
+        # Приток PDH этапа по началу файла — заново со всего входа: шаг «pdh E2 приток k» в задании.
+        ид = задания.создать(владелец=user.id, имя=f"{состояние['имя']} → {имя}"[:200],
+                             источник=_файл_бит_или_400(request, user, job_id, 0), шаги=[{"вид": "слой", "вкл": True, "слой": слой}],
+                             профиль=str(тело.get("profile") or "обычно"), от=f"{job_id}#{этап}",
+                             разбирать=bool(тело.get("analyze", True)), происхождение=[f"приток: {имя} — весь файл"],
+                             сессия=состояние.get("сессия") or "")
+        return {"id": ид}
+    # Приток этапа, найденного по началу файла, — тоже лишь начало: узел и его этапы помечены так же.
+    выборка = задания.по_выборке(job_id, этап)
+    пометка = " (по началу файла)" if выборка else ""
+    ид = _potok(request).создать(владелец=user.id, имя=f"{состояние['имя']} → {имя}"[:180] + пометка, данные=данные,
                                  профиль=str(тело.get("profile") or "обычно"), от=f"{job_id}#{этап}",
-                                 разбирать=bool(тело.get("analyze", True)), происхождение=[f"приток: {имя}"],
-                                 сессия=состояние.get("сессия") or "")
+                                 разбирать=bool(тело.get("analyze", True)), происхождение=[f"приток: {имя}{пометка}"],
+                                 сессия=состояние.get("сессия") or "", по_выборке=выборка)
     return {"id": ид}
 
 
@@ -4774,7 +4827,7 @@ def potok_rebuild(request: Request, job_id: str) -> dict[str, Any]:
             владелец=user.id, имя=(f"{основа} → " + ("; ".join(описание) or "копия"))[:200],
             источник=исходный, профиль=профиль, с_уровня=уровень,
             от=состояние.get("от") or "", шаги=шаги, разбирать=bool(тело.get("analyze")),
-            происхождение=описание, сессия=состояние.get("сессия") or "")
+            происхождение=описание, сессия=состояние.get("сессия") or "", по_выборке=bool(состояние.get("по_выборке")))
     else:
         if any(ш["вид"] != "слой" for ш in шаги):
             raise ServiceError("у разбора нет маски и разметки — они бывают у производного потока", 400)
@@ -4782,7 +4835,8 @@ def potok_rebuild(request: Request, job_id: str) -> dict[str, Any]:
             владелец=user.id, имя=состояние["имя"], источник=исходный,
             профиль=профиль, с_уровня=уровень, от=состояние.get("от") or "",
             снять=[ш["слой"] for ш in шаги if ш["вкл"]], символ=состояние.get("символ") or (),
-            фм=состояние.get("фм") or (), сессия=состояние.get("сессия") or "")
+            фм=состояние.get("фм") or (), сессия=состояние.get("сессия") or "",
+            по_выборке=bool(состояние.get("по_выборке")))
     if тело.get("replace"):
         _вправе_удалить(request, user, состояние)
         try:
