@@ -106,6 +106,17 @@ class РучноеСнятиеTests(unittest.TestCase):
             with self.subTest(вид=вид), self.assertRaisesRegex(ValueError, вид[:2].upper()):
                 снять_вручную(с.случайные_биты(50_000), вид)
 
+    def test_4b5b_и_8b10b_ко_всему_файлу(self):
+        """Код в линии, найденный по выборке, — со свойством «слой»: пересчёт по всему файлу им же начинается с
+        выхода этапа."""
+        from test_potok_bolshie import сверить_этапы  # noqa: PLC0415
+        rng = np.random.default_rng(6)
+        символы = [lineynye.ДАННЫЕ_4B5B[x] for x in rng.integers(0, 16, 40_000)]
+        поток = np.array([(v >> (4 - i)) & 1 for v in символы for i in range(5)], np.uint8)[3:]
+        self.assertEqual([["4b5b"]], сверить_этапы(self, поток, [lineynye.код_4b5b(поток[:len(поток) // 2])], 1))
+        поток = lineynye.закодировать_8b10b(bytes(rng.integers(0, 256, 20_000).tolist()))[7:]
+        self.assertEqual([["8b10b"]], сверить_этапы(self, поток, [lineynye.код_8b10b(поток[:len(поток) // 2])], 1))
+
     def test_непонятное_указание(self):
         with self.assertRaises(ValueError):
             снять_вручную(с.случайные_биты(1000), "расшифровать всё")

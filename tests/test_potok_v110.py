@@ -11,7 +11,7 @@ import numpy as np
 
 import _bootstrap  # noqa: F401
 import kanal_sintez as кс
-from reportgen.potok import hdlc, kanal, v110, разобрать
+from reportgen.potok import hdlc, kanal, trau, v110, разобрать
 
 F = 1   # как в libosmocore: «I actually couldn't find any reference as to the value of F(ill) bits»
 
@@ -186,6 +186,21 @@ class ВручнуюTests(unittest.TestCase):
         self.assertTrue(any("V.110: адаптация скорости, 14400 бит/с" in п for п in запись.подробно))
         with self.assertRaisesRegex(ValueError, "V.110: синхрокомбинация"):
             снять_вручную(np.random.default_rng(12).integers(0, 2, 80 * 300).astype(np.uint8), "V.110")
+
+
+class КоВсемуФайлуTests(unittest.TestCase):
+    def test_v110_и_trau_слоем(self):
+        """V.110 и TRAU, найденные по выборке (начало файла), — со свойством «слой»: по всему файлу им же,
+        выход этапа по выборке — начало пересчитанного."""
+        from test_potok_bolshie import сверить_этапы  # noqa: PLC0415
+        from test_potok_trau import кадры_данных  # noqa: PLC0415
+        rng = np.random.default_rng(14)
+        поток = osmo_поток(14400, rng.integers(0, 2, 36 * 2000).astype(np.uint8))[37:]
+        найдено = v110.найти(поток[:len(поток) // 2])
+        self.assertEqual([["v110"]], сверить_этапы(self, поток, [найдено], 1))
+        поток = кадры_данных(osmo_поток(9600, rng.integers(0, 2, 48 * 1000).astype(np.uint8)))
+        найдено = trau.найти(поток[:len(поток) // 2])
+        self.assertEqual([["trau"]], сверить_этапы(self, поток, [найдено], 1))
 
 
 class ИнструментTests(unittest.TestCase):

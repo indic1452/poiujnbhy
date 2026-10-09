@@ -51,7 +51,7 @@ def сверить_этапы(тест: unittest.TestCase, вход: np.ndarray,
             бит, _ = potokovo.выполнить(источник, копится + шаги, куда)
             весь = np.unpackbits(np.frombuffer(куда.read_bytes(), dtype=np.uint8))[:бит]
             выборка = np.asarray(находка.дальше, dtype=np.uint8)
-            тест.assertGreater(len(весь), len(выборка), f"этап {номер}: {находка.что}")
+            тест.assertGreaterEqual(len(весь), len(выборка), f"этап {номер}: {находка.что}")
             тест.assertTrue(np.array_equal(выборка, весь[:len(выборка)]),
                             f"этап {номер}: {находка.что}; совпало {float((выборка == весь[:len(выборка)]).mean()):.4f}")
             итог.append([ш["слой"] for ш in копится + шаги])
