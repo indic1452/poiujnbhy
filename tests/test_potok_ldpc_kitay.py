@@ -136,7 +136,8 @@ class Состав(unittest.TestCase):
         for к in коды:
             по.setdefault(к["семейство"], []).append(к["имя"])
         self.assertEqual({с: len(и) for с, и in по.items()},
-                         {"КНР: ABS-S": 10, "КНР: CMMB": 2, "КНР: BeiDou": 4})
+                         {"КНР: ABS-S": 10, "КНР: CMMB": 2, "КНР: BeiDou": 4,
+                          "КНР: модем «CASC» (восстановлен по записи)": 1})
         # DTMB из этого набора — те же коды dtmb-sdr, что во встроенных под именами dtmb-7488-*: не повторяются.
         self.assertEqual({"КНР: DTMB"}, {з["семейство"] for и, з in ldpc_kitay.записи().items() if и.startswith("dtmb-")})
         self.assertFalse(ldpc_std.есть("dtmb-7493-3048"))
