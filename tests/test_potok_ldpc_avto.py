@@ -251,7 +251,7 @@ class ЧерезСервер(unittest.TestCase):
                                                   "text": прототип(), "z": Z, "punctured": "0-9999"})
         self.assertEqual(400, плохо.status_code)
         встроенные = к.get("/api/potok-matrices").json()["builtin"]
-        self.assertEqual(486, len(встроенные))  # 470 + 16 кодов КНР (DTMB — те же, что dtmb-7488-*)
+        self.assertEqual(487, len(встроенные))  # 470 + 16 кодов КНР (DTMB — те же, что dtmb-7488-*) + «CASC»
         nr = next(к for к in встроенные if к["имя"] == "nr-bg1-z384")
         self.assertEqual((nr["n"], nr["k"], nr["выколоты"]), (26112, 8448, "0-767"))
 

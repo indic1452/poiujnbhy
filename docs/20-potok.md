@@ -714,7 +714,7 @@ Teledyne патентов на LDPC нет; у Datum — только демод
 матриц Comtech (LDPC 16k, VersaFEC, VersaFEC-2, EB1/EB2) и Paradise FastLink в
 открытом доступе нет — только файлом отдела.
 
-**Встроено: 486 кодов** (коды КНР — ABS-S 10, BeiDou 4, CMMB 2 — ниже, в «Коды КНР»; 5G NR 102, WiMAX 133, F-LDPC режимов Datum 78, DVB-S2X
+**Встроено: 487 кодов** (коды КНР — ABS-S 10, BeiDou 4, CMMB 2 — ниже, в «Коды КНР»; восстановленный по записи код модема «CASC» casc-8064-6048 — QC (8064, 6048), базовая 6 × 24, Z = 336, проверки вначале, данные с 2016; 5G NR 102, WiMAX 133, F-LDPC режимов Datum 78, DVB-S2X
 34 + VL-SNR 9, ATSC 3.0 24, DVB-S2 21, DVB-T2 15, Wi-Fi 12, G.hn 11, AR4JA 9,
 802.11ad 5, 802.11ay 5, DTMB 3, DOCSIS 3.1 3, C2 2, TC 2, 10GBASE-T 1, WRAN 1) и любой F-LDPC патента по имени
 (`fldpc-k1024-j6-p16`). Таблицы — не по памяти: каждая построена сценарием из
