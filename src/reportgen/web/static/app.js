@@ -678,6 +678,14 @@
     }
     window.addEventListener('resize', () => местоУведомлений());
 
+    /** Остановить задание потока без потерь: идущий автомат кончается с найденным; ждущее
+     *  или готовящееся шагами (автомат ещё не начал) — отменяется. */
+    async function остановитьИлиОтменить(job) {
+        const путь = '/api/potok/' + encodeURIComponent(job);
+        try { await api.post(путь + '/stop', {}); }
+        catch (error) { if (error && error.status === 409) await api.post(путь + '/cancel', {}); else throw error; }
+    }
+
     function toastError(error) {
         // Отвергнутый ответ прежнего раздела — не беда, о ней не кричим.
         if (error instanceof Устарело) return;
@@ -16251,7 +16259,7 @@
             const строка = h('div', { class: 'muted small' }, 'Массив ' + у.номер + ' готовится…');
             const стоп = h('button', { class: 'btn btn--sm btn--ghost', onclick: async () => {
                 стоп.disabled = true;
-                try { await api.post('/api/potok/' + encodeURIComponent(у.job) + '/cancel'); строка.textContent = 'Останавливаю…'; }
+                try { await остановитьИлиОтменить(у.job); строка.textContent = 'Останавливаю…'; }
                 catch (error) { toastError(error); стоп.disabled = false; }
             } }, 'Остановить');
             const узел = h('div', { class: 'empty empty--loading potok-hod-uzla' }, h('div', { class: 'spinner' }), строка, доля, стоп);
@@ -19278,9 +19286,9 @@
                         class: 'btn btn--primary', onclick: () => разобратьЭтот(),
                     }, 'Разобрать автоматом') : null,
                     data.состояние === 'ждёт' || data.состояние === 'идёт' ? h('button', {
-                        class: 'btn', title: 'Ждущий разбор снимается с очереди, идущий останавливается за секунды',
+                        class: 'btn', title: 'Найденное останется; ждущий — снимается с очереди',
                         onclick: () => отменитьЭтот(),
-                    }, 'Отменить') : null,
+                    }, 'Остановить') : null,
                     h('a', { class: 'btn', href: '#/potok' }, 'Все разборы')),
             ]);
         }
@@ -19621,7 +19629,7 @@
 
         async function отменитьЭтот() {
             try {
-                await api.post('/api/potok/' + encodeURIComponent(jobId) + '/cancel', {});
+                await остановитьИлиОтменить(jobId);
                 остановитьОпросПотока();
                 обновить();
             } catch (error) {

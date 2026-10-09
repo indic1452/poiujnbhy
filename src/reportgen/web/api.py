@@ -3917,7 +3917,7 @@ def potok_stop(request: Request, job_id: str) -> dict[str, Any]:
     if состояние.get("состояние") not in ("ждёт", "идёт"):
         raise ServiceError("разбор уже закончен", 409)
     if not _potok(request).остановить(job_id):
-        raise ServiceError("разбор ещё в очереди — остановить нечего; чтобы он не начался, удалите этот узел", 409)
+        raise ServiceError("автомат ещё не начал разбор — остановить нечего (отмена — «Отменить»)", 409)
     return {"ok": True}
 
 
