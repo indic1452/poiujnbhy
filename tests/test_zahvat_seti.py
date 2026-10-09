@@ -2212,7 +2212,7 @@ class СтраницаTests(unittest.TestCase):
         self.assertEqual([нет, нет, да, да, да, да], self.выполнить(код))
         страница = self.вырезать(self.js, "рисоватьЗахватСети")
         ловушка = страница[страница.index("} catch (error) {"):страница.index("if (!page.isConnected) return;\n            clear(связь);")]
-        self.assertIn("захватСети.таймер = setTimeout(обновить, решение.через);", ловушка)
+        self.assertIn("следом(решение.через);", ловушка)
         self.assertIn("if (!решение.повторить)", ловушка)
         self.assertNotIn("clear(итог)", ловушка, "ошибка связи не стирает блок обработки")
 
@@ -2225,16 +2225,26 @@ class СтраницаTests(unittest.TestCase):
                           "", "", ""], self.выполнить(код))
         итог = self.вырезать(self.js, "рисоватьИтог")
         self.assertIn("чужой ? h('div', { class: 'muted' }, чужой) : h('div', { class: 'row' },", итог)
-        форма = self.вырезать(self.js, "renderZahvat")
+        форма = self.вырезать(self.js, "формаЗахватаСети")
         self.assertIn("к.недоступна ? h('div', { class: 'small faint' }, к.недоступна) : null", форма)
         self.assertIn("if (выбрана && выбрана.недоступна) { toast(выбрана.недоступна, 'error'); return; }", форма)
 
     def test_маршрут_и_остановка_опроса(self):
+        """Приём с сети — источник внутри «Анализа пакетов»: своего пункта меню нет, старые адреса ведут туда."""
         код = self.вырезать(self.js, "parseHash") + r"""
-        console.log(JSON.stringify(['#/zahvat', '#/zahvat/20260929-150737-3deda1', '#/zahvat/a%2Fb'].map(parseHash)));"""
-        self.assertEqual([{"name": "zahvat", "id": None}, {"name": "zahvat", "id": "20260929-150737-3deda1"},
-                          {"name": "zahvat", "id": "a/b"}], self.выполнить(код))
-        self.assertIn("route: 'zahvat', href: '#/zahvat', title: 'Приём с сети'", self.js, "свой пункт меню «Приём с сети»")
+        console.log(JSON.stringify(['#/zahvat', '#/zahvat/20260929-150737-3deda1', '#/zahvat/a%2Fb', '#/pakety/set',
+            '#/pakety/set/20260929-150737-3deda1', '#/pakety', '#/pakety/20260929-150737-3deda1'].map(parseHash)));"""
+        self.assertEqual([
+            {"name": "pakety", "id": None, "источник": "сеть", "замена": "#/pakety/set"},
+            {"name": "pakety", "id": None, "захват": "20260929-150737-3deda1", "замена": "#/pakety/set/20260929-150737-3deda1"},
+            {"name": "pakety", "id": None, "захват": "a/b", "замена": "#/pakety/set/a%2Fb"},
+            {"name": "pakety", "id": None, "источник": "сеть"},
+            {"name": "pakety", "id": None, "захват": "20260929-150737-3deda1"},
+            {"name": "pakety", "id": None},
+            {"name": "pakety", "id": "20260929-150737-3deda1"}], self.выполнить(код))
+        self.assertNotIn("route: 'zahvat'", self.js, "отдельного пункта меню «Приём с сети» нет")
+        self.assertNotIn("function renderZahvat", self.js)
+        self.assertIn("if (route.замена) заменитьАдрес(route.замена);", self.вырезать(self.js, "renderPakety"))
         # Группы и пункты меню — без повторов (слияние веток уже раз удвоило группу «Анализ»).
         import re  # noqa: PLC0415
         группы = self.js[self.js.index("const SECTION_GROUPS = ["):]
@@ -2245,9 +2255,10 @@ class СтраницаTests(unittest.TestCase):
         self.assertEqual(len(пункты), len(set(пункты)), пункты)
         self.assertIn("pakety", пункты)
         self.assertIn("остановитьОпросЗахватаСети();", self.вырезать(self.js, "renderRoute"))
-        self.assertIn("renderZahvat(view, route.id)", self.вырезать(self.js, "рисоватьРаздел"))
-        for страница in ("renderPakety", "renderSessions"):
-            self.assertIn("href: '#/zahvat'", self.вырезать(self.js, страница), страница)
+        self.assertIn("renderPakety(view, route.id, route)", self.вырезать(self.js, "рисоватьРаздел"))
+        self.assertIn("href: '#/pakety/set'", self.вырезать(self.js, "renderSessions"))
+        self.assertIn("формаЗахватаСети(панельСети)", self.вырезать(self.js, "renderPakety"))
+        self.assertNotIn("'#/zahvat", self.js, "ссылок на старый адрес не осталось")
         код = self.вырезать(self.js, "остановитьОпросЗахватаСети") + r"""
         const захватСети = { таймер: setTimeout(() => { console.log('"не снят"'); process.exit(1); }, 50) };
         остановитьОпросЗахватаСети();

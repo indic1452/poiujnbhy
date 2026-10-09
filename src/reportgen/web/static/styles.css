@@ -8597,6 +8597,30 @@ body.reading .msg .body {
 .pk-filter[aria-invalid="true"] { border-color: var(--danger, #c0392b); box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger, #c0392b) 25%, transparent); }
 .pk-filter-error { color: var(--danger, #c0392b); margin-top: 4px; min-height: 0; }
 .pk-filter-error:empty { display: none; }
+/* Отбор применяется только по Enter или кнопке: изменённое, но не применённое поле видно сразу. */
+.pk-filter.is-dirty { border-color: var(--warn); box-shadow: 0 0 0 2px var(--warn-soft); }
+.pk-dirty { display: inline-block; margin-top: 4px; color: var(--warn); }
+.pk-dirty[hidden] { display: none; }
+.pk-examples { position: relative; flex: 0 0 auto; }
+.pk-examples > summary { list-style: none; }
+.pk-examples > summary::-webkit-details-marker { display: none; }
+.pk-examples-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 40; display: grid; gap: 2px; min-width: 320px; padding: 4px;
+    background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: var(--shadow-lg, 0 6px 20px rgba(0,0,0,.15)); }
+.pk-example { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; text-align: left; font: inherit; color: inherit;
+    background: none; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+.pk-example:hover, .pk-example:focus-visible { background: var(--accent-soft); outline: none; }
+.pk-selection { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; min-height: 30px; }
+.pk-selection.is-on { padding: 6px 8px; border-radius: var(--radius); background: var(--accent-soft); border: 1px solid var(--accent-line); }
+.pk-selection.is-empty { background: var(--warn-soft); border-color: var(--warn); }
+.pk-sel-chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 2px 2px 2px 8px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--accent-line); font-size: var(--fs-sm); }
+.pk-sel-chip > .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46ch; }
+.pk-sel-x { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
+    background: none; color: var(--muted); font-size: 12px; cursor: pointer; }
+.pk-sel-x:hover, .pk-sel-x:focus-visible { background: var(--danger-soft); color: var(--danger); outline: none; }
+.pk-sel-reset { margin-left: auto; }
+.pk-sel-empty { color: var(--warn); font-weight: 500; }
+.pk-selection .pk-count { font-variant-numeric: tabular-nums; }
 .pk-ov-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 10px; }
 .pk-ov-stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
 .pk-ov-num { font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -8654,7 +8678,7 @@ body.reading .msg .body {
   .pk-split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); grid-template-rows: auto auto auto; align-items: stretch; }
   .pk-split > .pk-vhead, .pk-split > .pk-vlist, .pk-split > .pk-vfoot { grid-column: 1; }
   .pk-split > .pk-detail { grid-column: 2; grid-row: 1 / span 3; border-left: 1px solid var(--border); overflow: auto;
-    max-height: calc(100vh - 120px); position: sticky; top: 8px; }
+    max-height: calc(100vh - 120px); position: sticky; top: 8px; z-index: 1; background: var(--panel); }
   .pk-vlist { height: calc(100vh - 360px); min-height: 280px; }
   .pk-split > .pk-detail .pk-panes { grid-template-columns: minmax(0, 1fr); }
   .pk-split > .pk-detail .pk-side { max-width: none; }
@@ -9224,6 +9248,12 @@ i.pk-lvl {
 .pk-ice-node:hover .pk-ice-rect { fill-opacity: .32; }
 .pk-ice-node.is-selected .pk-ice-rect { fill-opacity: .38; stroke: var(--text); stroke-width: 1.5; }
 .pk-ice-label { fill: var(--text); font-size: 13px; font-family: var(--font-ui); pointer-events: none; }
+/* «Прочее» на схеме — мелкие ветви вместе: штриховая рамка, щелчок раскрывает. */
+.pk-ice-more .pk-ice-rect { fill-opacity: .10; stroke: var(--lvl); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.pk-ice-more .pk-ice-label { font-style: italic; }
+.pk-hier-row.pk-hier-more { color: var(--muted); font-style: italic; cursor: pointer; }
+.pk-hier-row.pk-hier-more:hover { background: var(--accent-soft); }
+.pk-node-more { justify-self: start; margin-top: 4px; }
 .pk-ice-card .pk-tooltip {
     position: absolute;
     z-index: 5;
@@ -9514,24 +9544,24 @@ button.pk-hier-col:hover { color: var(--accent); }
 .stol-ai-toggle svg { width: 14px; height: 14px; }
 .stol-title-actions .stol-ai-toggle.is-on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
 
-/* -- захват с сети ------------------------------------------------------------------ */
-.zahvat .zs-cards tr.is-selected td { background: var(--accent-soft, rgba(80, 120, 200, .08)); }
-.zahvat .zs-cards td { vertical-align: top; }
-.zahvat .zs-busy { color: var(--danger); margin-top: 2px; }
-.zahvat .zs-modes { margin: 4px 0 12px; padding-left: 0; background: transparent; }
-.zahvat .zs-fields { display: grid; gap: 8px; }
-.zahvat .zs-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.zahvat .zs-sub { margin-top: 14px; }
-.zahvat .zs-note { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--border-strong);
+/* -- приём с сети (источник «Сеть» в «Анализе пакетов») ------------------------------ */
+.zs-cards tr.is-selected td { background: var(--accent-soft, rgba(80, 120, 200, .08)); }
+.zs-cards td { vertical-align: top; }
+.zs-busy { color: var(--danger); margin-top: 2px; }
+.zs-modes { margin: 4px 0 12px; padding-left: 0; background: transparent; }
+.zs-fields { display: grid; gap: 8px; }
+.zs-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.zs-sub { margin-top: 14px; }
+.zs-note { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--border-strong);
     background: var(--panel); font-size: var(--fs-sm); color: var(--muted); }
-.zahvat .zs-error { color: var(--danger); font-weight: 500; }
-.zahvat .zs-tiles .tile-value { font-size: 24px; }
-.zahvat .zs-after .row { flex-wrap: wrap; gap: 8px; }
+.zs-error { color: var(--danger); font-weight: 500; }
+.zs-tiles .tile-value { font-size: 24px; }
+.zs-after .row { flex-wrap: wrap; gap: 8px; }
 .zs-dialog .field { display: grid; gap: 4px; }
 /* Плитки счётчиков перерисовываются каждые 0,7 с — вступление плиток сводки здесь мигало бы. */
-.zahvat .zs-tiles > .tile { animation: none; }
-.zahvat .zs-chunks { margin: 10px 0 6px; }
-.zahvat .zs-chunks summary { cursor: pointer; font-weight: 500; }
+.zs-tiles > .tile { animation: none; }
+.zs-chunks { margin: 10px 0 6px; }
+.zs-chunks summary { cursor: pointer; font-weight: 500; }
 
 /* -- прогон захвата и «Декодировать как» ------------------------------------------- */
 .pg-panel { display: grid; gap: 10px; }
@@ -9577,6 +9607,32 @@ button.pk-hier-col:hover { color: var(--accent); }
 .dk-rule-main { display: flex; align-items: center; gap: 8px; flex: 1; }
 .dk-form .field { display: grid; gap: 4px; }
 .dk-hints { flex-wrap: wrap; gap: 4px; }
+.dk-own { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.dk-own[hidden] { display: none; }
+.dk-own input { flex: 1 1 0; min-width: 0; }
+.dk-shift { width: 8em; }
+.dk-rule-add { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Стек протоколов пакета: уровни кнопками — щелчок открывает «убрать / следующий / разобрать иначе». */
+.pk-stack { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); background: var(--panel-2); }
+.pk-stack-lvl { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 2px 8px; font: inherit; font-size: var(--fs-sm);
+    color: inherit; background: var(--panel); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); cursor: pointer; }
+.pk-stack-lvl:hover, .pk-stack-lvl:focus-visible { border-color: var(--accent); background: var(--accent-soft); outline: none; }
+.pk-stack-lvl.is-data { border-style: dashed; color: var(--muted); }
+.pk-stack-caret { font-size: 10px; color: var(--muted); }
+.pk-stack-sep { color: var(--faint); }
+.pk-stack-add { min-height: 28px; padding: 2px 8px; font: inherit; font-size: var(--fs-sm); color: var(--link); background: none;
+    border: 1px dashed var(--accent-line); border-radius: var(--radius-sm); cursor: pointer; }
+.pk-stack-add:hover, .pk-stack-add:focus-visible { background: var(--accent-soft); outline: none; }
+/* Ручной разбор: правила человека плашками над вкладками. */
+.pk-manual { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding-top: 6px; padding-bottom: 6px; }
+.pk-manual.is-stale { border-color: var(--warn); background: var(--warn-soft); }
+.pk-rule-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 2px 2px 8px; border: 1px solid var(--border-strong);
+    border-radius: 999px; background: var(--panel); font-size: var(--fs-sm); max-width: 100%; }
+.pk-rule-chip label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; min-width: 0; }
+.pk-rule-chip label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 52ch; }
+.pk-rule-chip.is-off { opacity: .6; }
+.pk-rule-chip.is-off label span { text-decoration: line-through; }
+.pk-stale { color: var(--warn); font-weight: 500; }
 .pg-port-hints { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 /* Окно «Коды» стола: вкладки как в декодере отдела. */
 .stol-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
@@ -9588,6 +9644,39 @@ button.pk-hier-col:hover { color: var(--accent); }
 .zs-form .zs-start .btn { flex: 0 0 auto; }
 .zs-form .zs-start .muted { flex: 1 1 200px; align-self: center; }
 .zs-cards-box { margin-bottom: 10px; }
+.zs-more { margin: 6px 0 10px; }
+.zs-more > summary { cursor: pointer; font-weight: 500; color: var(--muted); }
+.zs-more[open] > summary { margin-bottom: 8px; }
+.zs-mine { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+/* Полоса приёма над разбором вживую в записи «Анализа пакетов». */
+.zs-in-record { display: grid; gap: 8px; padding-top: 10px; padding-bottom: 10px; }
+.zs-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.zs-bar-gap { flex: 1 1 auto; }
+.zs-bar.is-live .potok-state { animation: zs-pulse 1.6s ease-in-out infinite; }
+@keyframes zs-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .zs-bar.is-live .potok-state { animation: none; } }
+.zs-tiles--compact { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.zs-tiles--compact .tile { padding: 8px 10px; }
+.zs-tiles--compact .tile-value { font-size: 18px; }
+.zs-ports > summary, .zs-in-record .zs-chunks-card > summary { cursor: pointer; font-size: var(--fs-sm); color: var(--muted); }
+.zs-in-record .zs-after { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* «Анализ пакетов»: источник — файл или сеть — крупными вкладками в начале страницы. */
+.pk-start { display: grid; gap: 12px; }
+.pk-source { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.pk-source-btn { display: grid; gap: 2px; text-align: left; padding: 10px 14px; min-height: 52px; font: inherit; color: inherit;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+.pk-source-btn b { font-size: 15px; }
+.pk-source-btn:hover { border-color: var(--accent-line); }
+.pk-source-btn.is-active { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pk-source-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pk-src-panel { display: grid; gap: 10px; }
+.pk-src-panel[hidden] { display: none; }
+.pk-src-panel .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pk-drop { position: relative; padding: 22px 16px; }
+.pk-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.pk-picked:empty { display: none; }
+.pk-back { margin-bottom: 6px; }
 
 /* Обзор файлов сервера (открыть по ссылке). */
 .fs-pick .row { gap: 8px; margin-bottom: 8px; }
