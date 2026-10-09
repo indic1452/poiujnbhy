@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 import unittest
+import urllib.parse
 from functools import partial
 from pathlib import Path
 
@@ -561,6 +562,20 @@ class ПересчётПоВсемуTests(unittest.TestCase):
         self.assertTrue(np.array_equal(1 - self.биты, биты_файла(задания.файл_бит(ид, 1))))
         self.assertEqual([], sorted(п.name for п in (self.папка / ид).glob("*-2.*")))
 
+    def test_удаление_всех_этапов_плана_снимает_ждущий_пересчёт(self):
+        # Удалили этап 1 — пересчитывать нечего: ждущий пересчёт снят сразу, а не стоит в очереди.
+        задания = Задания(self.папка, разборов=1, процессы=False)
+        ид = узел_с_планом(задания, self.папка, self.данные, [ИНВЕРСИЯ, РЕВЕРС])
+        занято = задания.весь.подать(з.спать, 5.0, владелец=1)
+        self.addCleanup(задания.весь.отменить, занято)
+        задания._этапы_по_всему(ид, 1)
+        self.assertEqual(2, задания.удалить_ветку(ид, 1, 1)["этапов"])
+        с = self.кончился(задания, ид, срок=3)
+        self.assertEqual(("готово", [], []), (с["весь_файл"]["состояние"], с["весь_файл"]["план"], с["этапы"]))
+        self.assertIn("пересчитывать по всему файлу нечего — этапы удалены", " ".join(с["журнал"]))
+        with self.assertRaisesRegex(ValueError, "нечего"):
+            задания.пересчитать_по_всему(ид)
+
     def test_удаление_этапа_пока_он_пересчитывается(self):
         # Этап 2 удалили, пока его считали: файл удалённого этапа не воскресает, этап 1 — по всему файлу.
         задания = Задания(self.папка, разборов=1, процессы=False)
@@ -677,6 +692,9 @@ class ПересчётПоВсемуTests(unittest.TestCase):
         с = задания.прочитать(ребёнок)
         self.assertEqual((бит, True), (с["бит"], с["по_выборке"]))
         self.assertIn("по началу файла", с["имя"])
+        # Файл этапа уже подменён целым, а пометка ещё прежняя — длина по файлу, а не по пометке.
+        (self.папка / ид / "этап-1.bin").write_bytes(self.данные)
+        self.assertEqual(len(self.биты), задания.массив(ид, 1).бит)
 
     def test_план_со_снятыми_вручную(self):
         # Слои, снятые вручную при запуске, — первыми этапами плана, за ними — найденные со слоем.
@@ -722,6 +740,43 @@ class ПересчётПоВсемуTests(unittest.TestCase):
         self.assertNotIn("весь_файл", итог)
         self.assertNotIn("по_выборке", итог["этапы"][0])
         self.assertNotIn("по началу файла", итог["этапы"][0]["выход"])
+        self.assertEqual("текст", итог["поток_вид"])
+
+    def test_большой_sig_разбирается_и_пересчитывается_по_телам(self):
+        # .Sig больше памяти: тела пакетов подряд — кусками в «поток.bin»; автомат получает их, а не сырой
+        # файл с заголовками, и пересчёт по всему файлу идёт с них же.
+        x = np.random.default_rng(4).integers(0, 2, ВЫБОРКА_БИТ + 16000, dtype=np.uint8)
+        тела = np.packbits(синтез.скремблировать(x, (3, 20))).tobytes()
+        тела = тела[:len(тела) // 1000 * 1000]
+        папка = self.папка / "x"
+        папка.mkdir(parents=True)
+        (папка / "вход.bin").write_bytes(b"".join(struct.pack(">H", 1000) + тела[i:i + 1000]
+                                                 for i in range(0, len(тела), 1000)))
+        скремблер = Находка("скремблер", "мультипликативный скремблер 1 + x^-3 + x^-20", 0.99, "м",
+                            дальше=x[20:ВЫБОРКА_БИТ], вид_дальше="биты")
+        находки, получено = [скремблер], {}
+
+        def разобрать(*a, **kw):
+            получено.update(kw)
+            поток = Поток("п.sig", "bin", kw["источник"].байты(0, 4096), всего_байт=kw["источник"].байт)
+            return razbor.Разбор(поток=поток, статистика=посчитать(поток.данные), находки=list(находки))
+        прежний = razbor.разобрать
+        razbor.разобрать = разобрать
+        self.addCleanup(setattr, razbor, "разобрать", прежний)
+        (папка / "состояние.json").write_text(json.dumps({"имя": "п.sig", "профиль": "обычно"}), encoding="utf-8")
+        итог = zadaniya.разобрать_задание(папка, ход=lambda строка: None, в_памяти_до=8 * 4096)
+        self.assertEqual(тела, получено["источник"].байты())
+        self.assertEqual(("sig", len(тела) * 8), (итог["поток_вид"], итог["весь_файл"]["поток_бит"]))
+        self.assertIn("большой .Sig", итог["ограничения"][0])
+        (папка / "состояние.json").write_text(json.dumps({"имя": "п.sig", **итог}, ensure_ascii=False), encoding="utf-8")
+        zadaniya.пересчитать_этапы(папка, в_памяти_до=8 * 65536)
+        self.assertEqual(len(тела) * 8 - 20, int((папка / "весь-1.бит").read_text(encoding="utf-8")))
+        self.assertTrue(np.array_equal(x[20:len(тела) * 8], биты_файла(папка / "этап-1.bin", len(тела) * 8 - 20)))
+        # Пересчитывать нечего — копия тел не остаётся.
+        находки.clear()
+        итог = zadaniya.разобрать_задание(папка, ход=lambda строка: None, в_памяти_до=8 * 4096)
+        self.assertNotIn("весь_файл", итог)
+        self.assertFalse((папка / zadaniya.ПОТОК_ФАЙЛ).exists())
 
     def test_притоки_по_выборке_и_все_учтены(self):
 
@@ -765,7 +820,8 @@ class ПересчётЧерезСерверTests(unittest.TestCase):
         ид = узел_с_планом(задания, self.папка, данные, [ИНВЕРСИЯ], весь="ждёт", владелец=self.я)
         for ответ in (к.get(f"/api/potok/{ид}/stage/1"),
                       к.post(f"/api/potok/{ид}/continue", json={"stage": 1}),
-                      к.post(f"/api/potok/{ид}/derive", json={"stage": 1, "steps": []})):
+                      к.post(f"/api/potok/{ид}/derive", json={"stage": 1, "steps": []}),
+                      к.post(f"/api/potok/{ид}/gfp/pakety", json={"stage": 1})):
             self.assertEqual(409, ответ.status_code, ответ.text)
             self.assertIn("пересчитывается по всему файлу", ответ.json()["error"])
         self.assertEqual(200, к.get(f"/api/potok/{ид}/stage/0").status_code)
@@ -816,6 +872,9 @@ class ПересчётЧерезСерверTests(unittest.TestCase):
         self.assertTrue(новый["по_выборке"])
         self.assertIn("по началу файла", новый["имя"])
         self.assertIn("по началу файла", новый["происхождение"][0])
+        скачано = к.get(f"/api/potok/{ид}/stage/1/tributary/0")
+        self.assertEqual(200, скачано.status_code)
+        self.assertIn(urllib.parse.quote("приток 1-начало.bin"), скачано.headers["content-disposition"])
         # Приток PDH, найденный прямо во входе, — заново со всего входа шагом «pdh E2 приток k».
         с["этапы"][0].update(что="PDH E2 (G.742): 4 × E1 со стаффингом согласования скоростей", путь="")
         с["этапы"][0]["притоки"][0]["имя"] = "1"
@@ -826,13 +885,33 @@ class ПересчётЧерезСерверTests(unittest.TestCase):
         self.assertEqual(["pdh E2 приток 1"], [ш["слой"] for ш in новый["шаги"]])
         self.assertNotIn("по_выборке", новый)
         self.assertIn("весь файл", новый["происхождение"][0])
+        # Вход — .Sig или текст «0101…» (автомат читал не его байты): со входа нельзя — приток по началу файла.
+        с["поток_вид"] = "sig"
+        путь.write_text(json.dumps(с, ensure_ascii=False), encoding="utf-8")
+        ответ = к.post(f"/api/potok/{ид}/tributary", json={"stage": 1, "number": 0, "analyze": False})
+        новый = задания.прочитать(ответ.json()["id"])
+        self.assertEqual(([], True), (новый["шаги"], новый["по_выборке"]))
+
+    def test_пакеты_этапа_по_выборке_помечены(self):
+        к, задания = self.к, self.задания
+        ид = узел_с_планом(задания, self.папка, b"\x55" * 512, [ИНВЕРСИЯ], весь="отменено", владелец=self.я)
+        путь = self.папка / ид / "состояние.json"
+        с = json.loads(путь.read_text(encoding="utf-8"))
+        с["этапы"].append({"номер": 2, "уровень": "кадры", "что": "HDLC", "выгрузка": "sig", "по_выборке": True,
+                           "выход": "3 кадра — по началу файла"})
+        путь.write_text(json.dumps(с, ensure_ascii=False), encoding="utf-8")
+        (self.папка / ид / "этап-2.sig").write_bytes(b"".join(struct.pack(">H", 4) + b"\x45\x00\x00\x04" for _ in range(3)))
+        ответ = к.post("/api/pakety/from-potok", json={"job": ид, "stage": 2})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        self.assertIn("по началу файла", к.get(f"/api/pakety/{ответ.json()['id']}").json()["имя"])
 
     def test_интерфейс_пересчёта(self):
         js = (Path(__file__).resolve().parents[1] / "src/reportgen/web/static/app.js").read_text(encoding="utf-8")
         for кусок in ("function этапПересчитывается(э)", "'/whole'", "{ whole: true }", "'Пересчитать по всему файлу'",
                       "if ((data.весь_файл || {}).состояние === 'ждёт') разборПотока.таймер = setTimeout(обновить, 1500);",
                       "этапа ? пересчётПоВсему(у.job, false) : остановитьИлиОтменить(у.job)", "ждётПересчёта(у, о)",
-                      "disabled: пересчёт", "п.по_выборке ? ' — по началу файла' : ''"):
+                      "disabled: пересчёт", "п.по_выборке ? ' — по началу файла' : ''",
+                      "в.состояние === 'идёт' && (в.stage === 0 || целиком.has(в.job))"):
             self.assertIn(кусок, js)
 
 

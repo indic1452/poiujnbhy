@@ -2450,6 +2450,8 @@ def pakety_from_potok(request: Request) -> dict[str, Any]:
                                       от=f"{job_id}#{этап}")
         return {"id": ид}
     имя = f"{Path(состояние['имя']).stem} — этап {этап}{файл.suffix}"
+    if _potok(request).по_выборке(job_id, этап):
+        имя += " (по началу файла)"
     ид = _pakety(request).создать(владелец=user.id, имя=имя, путь=файл, от=f"{job_id}#{этап}")
     return {"id": ид}
 
@@ -4547,6 +4549,7 @@ def potok_gfp_pakety(request: Request, job_id: str) -> dict[str, Any]:
     user = require_user(request)
     тело = _body(request)
     try:
+        _этап_целый(request, job_id, int(тело.get("stage") or 0))   # кадры выборочного этапа — не в узел
         (р, причина), этап = _разбор_gfp(request, user, job_id, тело)
         cid = тело.get("cid")
         cid = None if cid in (None, "") else int(cid)
@@ -4697,6 +4700,8 @@ def potok_tributary_file(request: Request, job_id: str, stage: int, number: int)
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 404) from None
     файл = re.sub(r"[^\w\-. ]", "_", имя)[:80] or f"приток-{number}"
+    if _potok(request).по_выборке(job_id, stage):
+        файл += "-начало"                                    # приток этапа по началу файла
     return Response(данные, media_type="application/octet-stream",
                     headers={"Content-Disposition": f'attachment; filename="tributary-{stage}-{number}.bin"; '
                              "filename*=UTF-8''" + urllib.parse.quote(файл + ".bin")})
