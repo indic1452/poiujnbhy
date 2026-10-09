@@ -465,6 +465,170 @@ class ШагиЦепочкиTests(unittest.TestCase):
         self.assertEqual([], razbor.шаги_цепочки([]))
 
 
+class КадрыПоВсемуTests(unittest.TestCase):
+    """Этапы кадров и пакетов по всему файлу (kadry_ves): кусками с переносом хвоста — то же, что выгрузка
+    этапа, найденного разборщиком над всем рядом в памяти (здесь ряд короче выборки)."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.папка = Path(self._tmp.name)
+        # Маленькие куски — кадры режутся стыками кусков (кусок кратен байту, но не кадрам).
+        self._куски = mock.patch.multiple("reportgen.potok.kadry_ves", КУСОК_БИТ=8 * 1237, КУСОК_БАЙТ=999)
+        self._куски.start()
+
+    def tearDown(self):
+        self._куски.stop()
+        self._tmp.cleanup()
+
+    def по_всему(self, биты, находка, источник=None):
+        from reportgen.potok import kadry_ves  # noqa: PLC0415
+        from reportgen.potok.zadaniya import выгрузка  # noqa: PLC0415
+        self.assertIsNotNone(находка)
+        if источник is None:
+            источник = self.папка / "вход.bin"
+            записать_биты(источник, биты)
+            источник = Источник(источник, бит=len(биты))
+        доли = []
+        итог = kadry_ves.кадры_по_всему(источник, находка.свойства, self.папка / "выход",
+                                        ход=lambda доля, строка: доли.append(доля))
+        ждём, расширение = выгрузка(находка.дальше, находка.вид_дальше)
+        self.assertEqual(расширение, итог["выгрузка"])
+        self.assertEqual(ждём, (self.папка / "выход").read_bytes())
+        self.assertEqual(len(ждём), итог["байт"])
+        self.assertAlmostEqual(1.0, доли[-1])
+        return итог
+
+    def test_hdlc_в_любом_порядке_полярности_fcs_и_nrzi(self):
+        from reportgen.potok import lineynye  # noqa: PLC0415
+        кадры = с.пакеты_ip(400, сид=3)
+        for fcs, порядок, инверсия, nrzi in ((16, "старший", False, False), (32, "младший", True, False),
+                                             (16, "младший", False, True)):
+            with self.subTest(fcs=fcs, порядок=порядок, инверсия=инверсия, nrzi=nrzi):
+                биты = в_биты(b"\x55" * 3 + с.hdlc(кадры, fcs=fcs, порядок=порядок))
+                if инверсия:
+                    биты = (1 - биты).astype(np.uint8)
+                if nrzi:
+                    # Кодер NRZI (1 — без перехода, как у HDLC): декодер lineynye.nrzi даёт инверсный ряд.
+                    биты = np.bitwise_xor.accumulate(1 - биты).astype(np.uint8)
+                    находка = hdlc.найти(lineynye.nrzi(биты))
+                    находка.что = "NRZI → " + находка.что
+                    from reportgen.potok.kadry_ves import слой_находки  # noqa: PLC0415
+                    находка.свойства["кадры_слой"] = слой_находки(находка)
+                else:
+                    находка = hdlc.найти(биты)
+                итог = self.по_всему(биты, находка)
+                self.assertEqual(len(кадры), итог["кадров"])
+                self.assertEqual(f"{len(кадры)} кадров", итог["выход"])
+
+    def test_октетный_стаффинг_ppp_и_slip(self):
+        from reportgen.potok import oktety  # noqa: PLC0415
+        пакеты = с.пакеты_ip(300, сид=4)
+        ppp = [b"\xff\x03\x00\x21" + пакет for пакет in пакеты]
+        for биты in (np.concatenate([np.zeros(5, np.uint8), в_биты(b"\x00" * 3 + с.hdlc_асинхронный(ppp, fcs=32))]),
+                     в_биты(с.hdlc_асинхронный(ppp), "младший"), в_биты(b"\x11" * 3 + с.slip(пакеты))):
+            находка = oktety.найти(биты)
+            with self.subTest(слой=находка.свойства["кадры_слой"]):
+                итог = self.по_всему(биты, находка)
+                self.assertEqual(len(пакеты), итог["кадров"])
+
+    def test_atm_со_скремблером_и_без(self):
+        from reportgen.potok import gfp  # noqa: PLC0415
+        from test_potok_atm import LLC_IP, ip, скремблировать_нагрузки  # noqa: PLC0415
+        ячейки = с.atm([LLC_IP + ip(н % 200) for н in range(300)])
+        for данные in (b"\0" * 7 + ячейки, b"\0" * 3 + скремблировать_нагрузки(ячейки)):
+            биты = np.concatenate([np.zeros(3, np.uint8), в_биты(данные)])
+            with self.subTest(слой=gfp.найти(биты).свойства["кадры_слой"]):
+                self.по_всему(биты, gfp.найти(биты))
+
+    def test_gfp_окнами(self):
+        from reportgen.potok import gfp, kadry_ves  # noqa: PLC0415
+        кадры = [с.ethernet(п) for п in с.пакеты_ip(500, сид=6)]
+        биты = в_биты(b"\x12" * 9 + с.gfp(кадры))
+        находка = gfp.найти(биты)
+        self.assertEqual("gfp маска B6AB31E0 скремблер да порядок старший канал 1 upi 1", находка.свойства["кадры_слой"])
+        # Окна меньше ряда: кадр на стыке окон берётся один раз, прогрев x⁴³ — в запасе перед окном.
+        with mock.patch.multiple(kadry_ves, ОКНО_GFP=1 << 16, КАДР_GFP_БИТ=4096, ЗАПАС_GFP=8 * 4096):
+            итог = self.по_всему(биты, находка)
+        self.assertEqual(len(находка.дальше), итог["кадров"])
+        self.assertGreater(итог["кадров"], len(кадры) - 3)            # первые — в прогреве дескремблера
+
+    def test_bbframe_ts_и_gse(self):
+        from reportgen.potok import dvbs2  # noqa: PLC0415
+        from test_potok_dvbs2 import bbheader, gse_пакет, код, кадры_ts, поток_ts  # noqa: PLC0415
+        к = код("короткий кадр 1/2")
+        биты = кадры_ts(поток_ts(300), к, кадров=40)
+        биты[3 * к.nbch + 11] ^= 1                   # ошибка — исправляется
+        итог = self.по_всему(биты, dvbs2.найти(биты))
+        self.assertEqual("ts", итог["выгрузка"])
+        dfl = к.kbch - 80
+        pdus = [с.udp("10.0.0.1", "10.0.0.2", 1000 + н, 2000, bytes([н]) * (30 + н)) for н in range(120)]
+        поля, текущее = [], b""
+        for pdu in pdus:
+            пакет = gse_пакет(1, 1, 2, b"\x08\x00" + pdu)
+            if len(текущее) + len(пакет) > dfl // 8:
+                поля.append(текущее)
+                текущее = b""
+            текущее += пакет
+        поля.append(текущее)
+        слова = [dvbs2.закодировать(dvbs2.скремблер(np.concatenate([
+            в_биты(bbheader(0b01, 0, dfl, 0, 0)), в_биты(поле + bytes(dfl // 8 - len(поле))),
+            np.zeros(к.kbch - 80 - dfl // 8 * 8, np.uint8)])), к) for поле in поля]
+        биты = np.concatenate(слова)
+        итог = self.по_всему(биты, dvbs2.найти(биты))
+        self.assertEqual(("sig", len(pdus)), (итог["выгрузка"], итог["кадров"]))
+
+    def test_ip_в_кадрах_прежнего_этапа_и_в_pcap(self):
+        from reportgen.potok import kadry_ves, pakety  # noqa: PLC0415
+        from reportgen.potok.zadaniya import выгрузка  # noqa: PLC0415
+        пакеты = с.пакеты_ip(300, сид=8)
+        кадры = [b"\xff\x03\x00\x21" + п if н % 2 else п for н, п in enumerate(пакеты)] + [b"\x01\x02" * 40]
+        sig = self.папка / "этап-1.sig"
+        sig.write_bytes(выгрузка(кадры, "кадры")[0])
+        ip = pakety.найти_в_кадрах(кадры)
+        итог = kadry_ves.кадры_по_всему(sig, "ip", self.папка / "ip.pcap")
+        self.assertEqual(выгрузка(ip.дальше, "пакеты")[0], (self.папка / "ip.pcap").read_bytes())
+        self.assertEqual(f"{len(пакеты)} пакетов", итог["выход"])
+        # Из .pcap прежнего этапа (кадры с типом канала) — так же.
+        from reportgen.potok.kanal import Кадры  # noqa: PLC0415
+        pcap = self.папка / "этап-2.pcap"
+        pcap.write_bytes(выгрузка(Кадры([с.ethernet(п) for п in пакеты], 1), "кадры")[0])
+        kadry_ves.кадры_по_всему(pcap, "ip", self.папка / "ip2.pcap")
+        self.assertEqual(выгрузка(ip.дальше, "пакеты")[0], (self.папка / "ip2.pcap").read_bytes())
+        # Вход — сам захват pcap: пакеты IP из его записей.
+        захват = self.папка / "захват.pcap"
+        захват.write_bytes(выгрузка(Кадры([с.ethernet(п) for п in пакеты], 1), "кадры")[0])
+        kadry_ves.кадры_по_всему(Источник(захват), "pcap", self.папка / "ip3.pcap")
+        self.assertEqual(выгрузка(ip.дальше, "пакеты")[0], (self.папка / "ip3.pcap").read_bytes())
+
+    def test_пункты_плана(self):
+        from reportgen.potok.kadry_ves import пункты_плана  # noqa: PLC0415
+        from reportgen.potok.nahodka import Находка  # noqa: PLC0415
+
+        def н(уровень, путь, вид="", **св):
+            return Находка(уровень=уровень, что=уровень, уверенность=1.0, мера="", путь=путь, вид_дальше=вид,
+                           свойства=св)
+        скр = н("скремблер", "", "биты")
+        кадры = н("канальный", "после снятия скремблера", "кадры", кадры_слой="hdlc fcs 16 порядок старший")
+        ip = н("сетевой", "после снятия скремблера → кадры", "пакеты")
+        список = [{"выгрузка": "bin"}, {"выгрузка": "sig"}, {"выгрузка": "pcap"}]
+        план = [{"номер": 1, "шаги": [{"вид": "слой", "вкл": True, "слой": "скремблер 3,20"}]}]
+        self.assertEqual([{"номер": 2, "шаги": [], "кадры": "hdlc fcs 16 порядок старший"},
+                          {"номер": 3, "шаги": [], "кадры": "ip", "из": 2}], пункты_плана([скр, кадры, ip], список, план))
+        # Кадры — первым этапом: от самого входа (в порядке «младший бит первым» — с переворотом бит).
+        сразу = н("канальный", "младший бит первым", "кадры", кадры_слой="atm сдвиг 0 начало 0 скремблер нет")
+        self.assertEqual([{"номер": 1, "шаги": [{"вид": "слой", "вкл": True, "слой": "реверс 8"}],
+                           "кадры": "atm сдвиг 0 начало 0 скремблер нет"}], пункты_плана([сразу], список[1:], []))
+        # Не за пересчитанным этапом, не в его выходе, без разборщика или уже по всему файлу — нет.
+        self.assertEqual([], пункты_плана([скр, кадры, ip], список, []))
+        self.assertEqual([], пункты_плана([скр, н("канальный", "", "кадры", кадры_слой="slip сдвиг 0 порядок старший")],
+                                          список, план))
+        self.assertEqual([], пункты_плана([скр, н("канальный", "после снятия скремблера", "кадры")], список, план))
+        self.assertEqual([], пункты_плана([н("сетевой", "", "пакеты", кадры_слой="pcap", весь_файл=True)],
+                                          [{"выгрузка": "pcap"}], []))
+        self.assertEqual([{"номер": 1, "шаги": [], "кадры": "pcap"}],
+                         пункты_плана([н("сетевой", "", "пакеты", кадры_слой="pcap")], [{"выгрузка": "pcap"}], []))
+
+
 class УскоренияTests(unittest.TestCase):
     """Ускоренные места дают то же, что прежние."""
 

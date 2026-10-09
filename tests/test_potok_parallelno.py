@@ -332,6 +332,21 @@ class ЗаданияПараллельноTests(unittest.TestCase):
         self.assertGreater(float((весь == x[20:]).mean()), 0.999)               # снят со всего файла
         self.assertEqual([], [д for д in задания.список(1) if д["ид"] != ид])      # отдельного узла нет
         self.assertTrue(any("пересчитан по всему файлу" in строка for строка in состояние["журнал"]))
+        # Кадры HDLC и пакеты IP в них — тоже по всему файлу: как разборщик над всем потоком в памяти.
+        from reportgen.potok import hdlc, pakety
+        from reportgen.potok.zadaniya import выгрузка
+        кадры = hdlc.найти(весь)
+        ip = pakety.найти_в_кадрах(кадры.дальше)
+        второй, третий = состояние["этапы"][1:3]
+        self.assertEqual(("канальный", "готово", "сетевой", "готово"),
+                         (второй["уровень"], второй["весь"], третий["уровень"], третий["весь"]))
+        self.assertEqual(f"{len(кадры.дальше)} кадров — весь файл", второй["выход"])
+        self.assertEqual(f"{len(ip.дальше)} пакетов — весь файл", третий["выход"])
+        self.assertNotIn("по_выборке", второй)
+        self.assertGreater(len(кадры.дальше), 2 * hdlc.ПРОВЕРЯТЬ_КАДРОВ)
+        self.assertEqual(выгрузка(кадры.дальше, "кадры")[0], задания.файл_этапа(ид, 2).read_bytes())
+        self.assertEqual(выгрузка(ip.дальше, "пакеты")[0], задания.файл_этапа(ид, 3).read_bytes())
+        self.assertEqual(len(задания.файл_этапа(ид, 3).read_bytes()), третий["выгрузка_байт"])
 
     def test_метка_стопа_исчерпывает_бюджет(self):
         from reportgen.potok import razbor
