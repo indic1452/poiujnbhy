@@ -515,6 +515,14 @@ class DvbTests(unittest.TestCase):
         pid = set((((пакеты[:, 1] & 0x1F).astype(int) << 8) | пакеты[:, 2]).tolist())
         self.assertEqual({0x100, 0x101, 0x1FFF}, pid)
 
+    def test_пакеты_всей_выборки(self):
+        # Выход этапа — пакеты всей выборки автомата (1 МБ), не первые 4000.
+        from reportgen.potok.razbor import ВЫБОРКА_БИТ  # noqa: PLC0415
+        пакетов = ВЫБОРКА_БИТ // 8 // dvb.ДЛИНА
+        найдено = dvb.найти(с.dvb(пакетов, перемежать=False), 0)
+        self.assertEqual((пакетов, 188), найдено.дальше.shape)
+        self.assertGreater(пакетов, 4000)
+
     def test_не_dvb(self):
         пакеты = b"".join(b"\x47" + bytes(np.random.default_rng(н).integers(0, 256, 203,
                                                                             dtype=np.uint8))
