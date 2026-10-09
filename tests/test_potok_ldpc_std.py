@@ -99,7 +99,7 @@ class Состав(unittest.TestCase):
         self.assertEqual(sum(1 for и in имена if и.startswith("atsc3-")), 24)
         self.assertEqual(sum(1 for и in имена if и.startswith("dtmb-")), 3)
         self.assertEqual(sum(1 for и in имена if и.startswith("fldpc-")), 78)
-        self.assertEqual(len(имена), 486)  # 470 + 16 кодов КНР (ABS-S, CMMB, BeiDou)
+        self.assertEqual(len(имена), 487)  # 470 + 16 кодов КНР (ABS-S, CMMB, BeiDou) + восстановленный «CASC»
         for и in ("nr-bg1-z384", "nr-bg2-z2", "dvb-s2-64800-32400", "dvb-s2-16200-7200",
                   "10gbase-t-2048-1723", "wifi-648-540", "ar4ja-10240-4096", "wimax-2304-1920",
                   "ccsds-c2-8160-7136", "atsc3-64800-8640", "fldpc-k16384-j2-p16",

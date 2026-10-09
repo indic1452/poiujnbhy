@@ -301,3 +301,28 @@ class Снятие(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ВосстановленныйCASCTests(unittest.TestCase):
+    """Код модема «CASC», восстановленный вслепую по записи: QC (8064, 6048), базовая 6 × 24, Z = 336,
+    проверочные блоки вначале — данные с позиции 2016."""
+
+    def test_строение(self):
+        м = ldpc_std.матрица("casc-8064-6048")
+        self.assertEqual((м.n, м.m), (8064, 2016))
+        self.assertEqual((int(м.данные[0]), len(м.данные)), (2016, 6048))
+        веса_строк = {len(с) for с in м.строки}
+        self.assertTrue(веса_строк <= {13, 14, 15}, веса_строк)
+        запись = next(з for з in ldpc_std.список() if з["имя"] == "casc-8064-6048")
+        self.assertEqual((запись["k"], запись["скорость"]), (6048, "3/4"))
+
+    def test_исправляет_ошибки(self):
+        """Нулевое слово (кодовое у линейного кода) с ошибками: декодер возвращает его без ошибок."""
+        сх = ldpc_std.схема("casc-8064-6048")
+        г = np.random.default_rng(3)
+        слова = np.zeros((4, 8064), dtype=np.uint8)
+        for i, число in enumerate((1, 2, 5, 12)):
+            слова[i, г.choice(8064, число, replace=False)] = 1
+        вых, сошлось, исправлено = ldpc.декодировать(слова, сх, вывод="слова")
+        self.assertEqual((сошлось, исправлено), (4, 20))
+        self.assertFalse(np.asarray(вых).any())
