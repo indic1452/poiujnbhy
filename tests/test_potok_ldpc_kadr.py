@@ -8,13 +8,15 @@
 
 from __future__ import annotations
 
+import time
 import unittest
 
 import numpy as np
 
 import _bootstrap  # noqa: F401
 import potok_sintez as с
-from reportgen.potok import gf2, ldpc_kadr, ldpc_vosst, skrembler
+from reportgen.potok import cikl, gf2, ldpc_kadr, ldpc_vosst, skrembler
+from reportgen.potok.razbor import ПРОФИЛИ, Бюджет, Ветвь, _нагрузка_цикла
 
 
 def систематический_по(H: np.ndarray, D: np.ndarray) -> np.ndarray:
@@ -71,6 +73,30 @@ class ПорядокДанныхTests(unittest.TestCase):
         # Скремблер на заполнении (после случайного начала регистр не нулевой) — ЛРП степени 20.
         лрп = с.скремблировать(np.concatenate([с.случайные_биты(64, 3), np.zeros(1 << 16, np.uint8)]), (3, 20))
         self.assertGreater(ldpc_kadr.окна_лрп(лрп), 200)
+
+
+class НагрузкаЦиклаTests(unittest.TestCase):
+    def test_нагрузка_в_порядке_скремблера(self):
+        """Кадр 4096 бит (синхрослово ASM и V.35 над данными), младшим битом байта вперёд: цикл виден в обоих
+        порядках, нагрузка берётся в том, где видна ЛРП скремблера."""
+        г = np.random.default_rng(3)
+        кадр, кадров = 4096, 400
+        синхро = np.unpackbits(np.array([0x1A, 0xCF, 0xFC, 0x1D], dtype=np.uint8))
+        куски, всего, нужно = [], 0, кадров * (кадр - 32)
+        while всего < нужно:
+            длина = int(г.integers(300, 2000))
+            куски.append(np.zeros(длина, np.uint8) if г.random() < 0.5 else г.integers(0, 2, длина, dtype=np.uint8))
+            всего += длина
+        данные = с.скремблировать(np.concatenate(куски)[:нужно], (3, 20))[:нужно].reshape(кадров, кадр - 32)
+        поток = np.concatenate([np.concatenate([синхро, d]) for d in данные])
+        файл = поток.reshape(-1, 8)[:, ::-1].reshape(-1)
+        цикл = cikl.найти(файл)
+        self.assertEqual(кадр, цикл.свойства["длина"])
+        ветвь = Ветвь()
+        б = Бюджет(конец=time.monotonic() + 60, профиль={**ПРОФИЛИ["быстро"], "глубина": 1})
+        _нагрузка_цикла(файл, цикл, ветвь, 0, "", б)
+        self.assertTrue(any("нагрузка цикла (младший бит байта первым)" in о for о in ветвь.ограничения))
+        self.assertTrue(any("в порядке «младший бит байта первым»" in п for п in цикл.подробно))
 
 
 if __name__ == "__main__":
