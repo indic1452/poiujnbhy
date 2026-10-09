@@ -4,6 +4,9 @@
 детекторы на самом потоке не зовутся (слежка за вызовами), а «неизвестно» — ровно прежний разбор.
 """
 
+import json
+import shutil
+import subprocess
 import time
 import unittest
 from unittest import mock
@@ -195,6 +198,45 @@ class СерверTests(unittest.TestCase):
         ответ = self.к.post(f"/api/potok/{ид}/rebuild", json={"steps": []})
         self.assertEqual(200, ответ.status_code, ответ.text)
         self.assertEqual("скремблер", self.дождаться(ответ.json()["id"])["с_уровня"])
+
+
+@unittest.skipUnless(shutil.which("node"), "нужен node")
+class ИнтерфейсTests(unittest.TestCase):
+    """Выбор уровня рядом с профилем: страница «Разбор потока», «Продолжить с этапа», автомат на столе."""
+
+    def test_список_и_подсказка(self):
+        from test_potok_sessii import APP_JS, функции_js  # noqa: PLC0415
+        js = APP_JS.read_text(encoding="utf-8")
+        код = ("function h(tag, attrs, ...kids) { return { tag, attrs: attrs || {}, kids: kids.flat(9) }; }\n"
+               + функции_js(["выборУровня", "сУровня"], ["УРОВНИ_РАЗБОРА", "ПОДСКАЗКА_УРОВНЯ"])
+               + "\nconst в = выборУровня('код');"
+               + "\nprocess.stdout.write(JSON.stringify({ уровни: УРОВНИ_РАЗБОРА, подсказка: ПОДСКАЗКА_УРОВНЯ,"
+               + " значения: в.kids.map((о) => о.attrs.value), выбран: в.kids.filter((о) => о.attrs.selected).map((о) => о.attrs.value),"
+               + " по: выборУровня().kids.filter((о) => о.attrs.selected).map((о) => о.attrs.value),"
+               + " у: сУровня({ с_уровня: 'код' }), нет: сУровня({ с_уровня: 'неизвестно' }) + сУровня({}) }));")
+        готово = subprocess.run(["node", "-e", код], capture_output=True, text=True, timeout=30)
+        self.assertEqual(0, готово.returncode, готово.stderr)
+        итог = json.loads(готово.stdout)
+        self.assertEqual(list(razbor.УРОВНИ_СТАРТА), итог["уровни"])
+        self.assertEqual(итог["уровни"], итог["значения"])
+        self.assertEqual((["код"], ["неизвестно"]), (итог["выбран"], итог["по"]))
+        self.assertEqual((" · с уровня «код»", ""), (итог["у"], итог["нет"]))
+        self.assertLessEqual(len(итог["подсказка"]), 90)            # одной строкой
+        # Автомат на столе: профиль и уровень в окне операции — те же списки, запоминаются у сессии.
+        авто = js[js.index("{ id: 'a-auto'"):js.index("{ id: 'a-config'")]
+        self.assertIn("'Полный автоанализ…'", авто)
+        self.assertIn("выбор: ['быстро', 'обычно', 'глубоко']", авто)
+        self.assertIn("выбор: [" + ", ".join(f"'{у}'" for у in итог["уровни"]) + "]", авто)
+        self.assertIn("подсказка: '" + итог["подсказка"] + "'", авто)
+        for кусок in ("const ключАвтомата = 'stol-avto:' + (sessionId ? 's:' + sessionId : 'j:' + jobId);",
+                      "analyze: true, profile: профиль, level: уровень });",
+                      "сохранитьСтола(ключАвтомата, { профиль, уровень });",
+                      # Страница «Разбор потока» и «Продолжить с этапа» — рядом с профилем.
+                      "form.append('level', уровень.value);", "сохранитьСтола('potok-level', уровень.value);",
+                      "strip: слои.value, profile: профиль.value, level: уровень.value });",
+                      "h('span', {}, 'Начать с уровня'), уровень, h('span', { class: 'muted small' }, ПОДСКАЗКА_УРОВНЯ)"):
+            self.assertIn(кусок, js)
+        self.assertEqual(2, js.count("h('span', {}, 'Начать с уровня'), уровень,"))
 
 
 if __name__ == "__main__":
