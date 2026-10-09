@@ -862,7 +862,8 @@ class _АддитивныйКадр(_Шаг):
 def _сетка(источник: Источник, шаг: dict[str, Any]) -> tuple[int, int, str] | None:
     """Куски по сетке слов или кадров, чтобы стык не рвал слово: (начало сетки, период, слой для кусков после
     первого). У «ldpc … начало N [шаг M] [маска C]» — слова с N через M (маска — через C·M); у «plframe …» —
-    кадры PLFRAME (первый и длина — по заголовкам начала массива). Иначе — None (куски как есть)."""
+    кадры PLFRAME (первый и длина — по заголовкам начала массива); у «рс N K … сдвиг S» — блоки РС с бита S
+    (кускам после первого — «сдвиг 0»). Иначе — None (куски как есть)."""
     слой = str(шаг.get("слой", "")).strip()
     вид = слой.lower().split()[:1]
     if not вид:
@@ -882,6 +883,12 @@ def _сетка(источник: Источник, шаг: dict[str, Any]) -> t
             с = (з.свойства or {}) if з is not None else {}
             if с.get("fec_кадры") is not None and с.get("шаг") and с.get("первый") is not None:
                 return int(с["первый"]), int(с["шаг"]), слой
+        if вид[0] in ("рс", "rs") and re.search(r"сдвиг\s+\d+", слой, re.I) and not re.search(r"вслеп|iess|перемеж", слой, re.I):
+            # «рс N K … сдвиг S [кадр L блоки …]»: блоки с бита S через N·I·m (в кадрах — через L).
+            from . import rs_slepoy  # noqa: PLC0415
+            п = rs_slepoy.разобрать_слой(слой)
+            return (int(п["сдвиг"]), int(п["кадр"] or п["N"] * п["I"] * п["m"]),
+                    re.sub(r"(сдвиг\s+)\d+", r"\g<1>0", слой, count=1, flags=re.I))
     except (ValueError, KeyError, AttributeError):
         return None
     return None

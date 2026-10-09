@@ -162,6 +162,35 @@ class ПотоковыеШагиTests(unittest.TestCase):
                 potokovo.выполнить(ист, rastr.проверить_шаги([{"вид": "слой", "слой": слой}]),
                                    self.папка / "к3.bin", в_памяти_до=1000)
 
+    def test_рс_со_сдвигом_кусками_по_сетке(self):
+        """«рс N K … сдвиг S» на массиве больше предела — куски по сетке блоков: итог как над всем рядом."""
+        from reportgen.potok import rs_bch
+        rng = np.random.default_rng(4)
+        синхро = np.array([int(ч) for ч in format(0x1ACFFC1D, "032b")], dtype=np.uint8)
+
+        def ряд(с_синхро: bool) -> np.ndarray:
+            части = [rng.integers(0, 2, 5).astype(np.uint8)]
+            for _ in range(300):
+                слово = np.array(rs_bch.закодировать_рс(rng.integers(0, 256, 48).tolist(), 0x11D, 0, 16), dtype=np.int64)
+                слово[rng.integers(0, 64, 2)] ^= rng.integers(1, 256, 2)        # две ошибки на слово
+                части += ([синхро] if с_синхро else []) + [((слово[:, None] >> np.arange(7, -1, -1)) & 1).astype(np.uint8).ravel()]
+            return np.concatenate(части + [rng.integers(0, 2, 77).astype(np.uint8)])
+
+        for с_синхро, слой in ((False, "рс 64 48 поле 0x11D fcr 0 шаг 1 глубина 1 сдвиг 5"),
+                               (True, "рс 64 48 поле 0x11D сдвиг 37 кадр 544 блоки 0")):
+            поток = ряд(с_синхро)
+            записать_биты(self.папка / "рс.bin", поток)
+            ист = Источник(self.папка / "рс.bin", бит=len(поток))
+            шаги = rastr.проверить_шаги([{"вид": "слой", "слой": слой}])
+            эталон, описание = rastr.применить(поток.copy(), шаги)
+            self.assertEqual(len(эталон), 300 * 48 * 8)
+            for предел in (20_000, 33_333):
+                with self.subTest(слой=слой, предел=предел):
+                    бит, о = potokovo.выполнить(ист, шаги, self.папка / "рс1.bin", кусок_бит=4096, в_памяти_до=предел)
+                    self.assertTrue(np.array_equal(эталон, Источник(self.папка / "рс1.bin", бит=бит).все()))
+                    self.assertIn("по сетке слов (кадров)", о[-1])
+                    self.assertEqual(описание[0], о[0])
+
     def test_ход_и_отмена(self):
         доли = []
         шаги = rastr.проверить_шаги([{"вид": "слой", "слой": "инверсия"}])
