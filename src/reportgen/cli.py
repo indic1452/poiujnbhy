@@ -653,7 +653,14 @@ def cmd_potok(args: argparse.Namespace) -> int:
     без модели и без ограничения по объёму: для проверки на месте.
     """
     from .potok import разобрать  # noqa: PLC0415 — numpy нужен только здесь
+    from .potok import ldpc  # noqa: PLC0415
 
+    # Папка матриц LDPC отдела — та же, что у сервера: восстановленная по потоку H кладётся туда, и второй
+    # разбор того же потока идёт по ней сразу.
+    try:
+        ldpc.подготовить_каталог(Path(_settings(args).data_dir) / "ldpc")
+    except (OSError, ValueError):
+        pass
     try:
         разбор = разобрать(args.path, глубоко=args.deep, снять=args.strip or (),
                            профиль="быстро" if args.fast else "обычно",
