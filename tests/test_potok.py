@@ -232,6 +232,22 @@ class СкремблерTests(unittest.TestCase):
         self.assertEqual("аддитивная ПСП 1 + x^-14 + x^-15", найдено.что)
         self.assertEqual(1.0, hdlc.найти(найдено.дальше).уверенность)
 
+    def test_псп_удвоением_как_побитно(self):
+        """ПСП блоками (s[n] = ⊕ s[n − t·2^k]) — бит в бит та же, что по определению s[n] = ⊕ s[n − t]."""
+        rng = np.random.default_rng(3)
+        for отводы in ((14, 15), (3, 20), (43,), (1, 2), (5, 5, 9), (2, 7, 11, 23), (1,)):
+            степень = max(отводы)
+            for длина in (0, степень - 1, степень, степень + 1, 1000, 77_777):
+                with self.subTest(отводы=отводы, длина=длина):
+                    начало = rng.integers(0, 2, степень).astype(np.uint8)
+                    эталон = list(начало[:длина]) + [0] * max(0, длина - степень)
+                    for n in range(степень, длина):
+                        эталон[n] = int(np.bitwise_xor.reduce([эталон[n - t] for t in set(отводы)]))
+                    self.assertEqual(эталон, skrembler.псп(отводы, начало, длина).tolist())
+        начало = np.ones(15, dtype=np.uint8)
+        ряд = skrembler.псп((14, 15), начало, 1 << 24)
+        self.assertTrue(np.array_equal(ряд[(1 << 15) - 1:(1 << 15) - 1 + 15], начало))   # период 2^15 − 1
+
     def test_берлекэмп_мэсси(self):
         ряд = skrembler.псп((3, 20), np.ones(20, dtype=np.uint8), 300)
         сложность, полином = skrembler.берлекэмп_мэсси(ряд.tolist())
