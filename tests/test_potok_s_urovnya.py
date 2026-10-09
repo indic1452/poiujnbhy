@@ -139,5 +139,63 @@ class СУровняTests(unittest.TestCase):
             разобрать(данные=b"\x00" * 64, имя="x.bin", с_уровня="линия")
 
 
+class СерверTests(unittest.TestCase):
+    """Уровень — у задания: страница «Разбор потока», продолжение с этапа, автомат с узла, пересборка."""
+
+    def setUp(self):
+        from test_web import WebTestCase  # noqa: PLC0415 — веб грузится только здесь
+
+        class Сеть(WebTestCase):
+            def runTest(себя):
+                pass
+
+        self.сеть = Сеть()
+        self.сеть.setUp()
+        self.addCleanup(self.сеть.tearDown)
+        self.сеть.login("engineer")
+        self.к = self.сеть.client
+
+    def дождаться(self, ид):
+        for _ in range(600):
+            состояние = self.к.get(f"/api/potok/{ид}").json()
+            if состояние["состояние"] not in ("ждёт", "идёт"):
+                return состояние
+            time.sleep(0.2)
+        self.fail("задание не закончилось")
+
+    def test_уровень_у_задания(self):
+        from reportgen.web.api import УРОВНИ_РАЗБОРА  # noqa: PLC0415
+        self.assertEqual(razbor.УРОВНИ_СТАРТА, УРОВНИ_РАЗБОРА)
+        файл = {"file": ("запись.bin", скремблированный_hdlc(), "application/octet-stream")}
+        self.assertEqual(400, self.к.post("/api/potok", data={"profile": "быстро", "level": "линия"},
+                                          files=файл).status_code)
+        ид = self.к.post("/api/potok", data={"profile": "быстро", "level": "скремблер"}, files=файл).json()["id"]
+        состояние = self.дождаться(ид)
+        self.assertEqual("скремблер", состояние["с_уровня"])
+        self.assertEqual(["скремблер", "канальный", "сетевой"], [э["уровень"] for э in состояние["этапы"]])
+        self.assertTrue(состояние["ограничения"][0].startswith("начато с уровня «скремблер»"))
+        self.assertEqual("скремблер", self.к.get("/api/potok").json()["items"][0]["с_уровня"])
+        # Продолжение с этапа (поток после скремблера) — со своим уровнем.
+        ответ = self.к.post(f"/api/potok/{ид}/continue", json={"stage": 1, "profile": "быстро",
+                                                               "level": "кадры данных"})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        дальше = self.дождаться(ответ.json()["id"])
+        self.assertEqual("кадры данных", дальше["с_уровня"])
+        self.assertEqual(["канальный", "сетевой"], [э["уровень"] for э in дальше["этапы"]])
+        self.assertEqual(400, self.к.post(f"/api/potok/{ид}/continue", json={"stage": 1, "level": "x"}).status_code)
+        # Автомат с узла (стол) — уровень в запросе; без него — «неизвестно».
+        ответ = self.к.post(f"/api/potok/{ид}/derive", json={"stage": 0, "steps": [], "analyze": True,
+                                                             "profile": "быстро", "level": "пакеты"})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        автомат = self.дождаться(ответ.json()["id"])
+        self.assertEqual(("пакеты", []), (автомат["с_уровня"], автомат["этапы"]))
+        копия = self.к.post(f"/api/potok/{ид}/derive", json={"stage": 0, "steps": []}).json()["id"]
+        self.assertEqual("неизвестно", self.к.get(f"/api/potok/{копия}").json()["с_уровня"])
+        # Пересборка (ручной разбор) хранит уровень узла.
+        ответ = self.к.post(f"/api/potok/{ид}/rebuild", json={"steps": []})
+        self.assertEqual(200, ответ.status_code, ответ.text)
+        self.assertEqual("скремблер", self.дождаться(ответ.json()["id"])["с_уровня"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3786,6 +3786,16 @@ def _задание_или_404(request: Request, user, ид: str) -> dict[str, A
 
 
 ПРОФИЛИ_РАЗБОРА = ("быстро", "обычно", "глубоко")
+#: С какого уровня автомат начинает разбор — как potok.razbor.УРОВНИ_СТАРТА (тот не грузится ради проверки).
+УРОВНИ_РАЗБОРА = ("неизвестно", "плоскость", "кадр", "код", "скремблер", "кадры данных", "пакеты")
+
+
+def _уровень_разбора(значение: Any) -> str:
+    """Уровень начала разбора из запроса: пусто — «неизвестно» (ищется всё)."""
+    уровень = str(значение or "неизвестно")
+    if уровень not in УРОВНИ_РАЗБОРА:
+        raise ServiceError("неизвестный уровень начала разбора: " + ", ".join(УРОВНИ_РАЗБОРА), 400)
+    return уровень
 
 
 def _слои(значение: str) -> list[str]:
@@ -3795,13 +3805,15 @@ def _слои(значение: str) -> list[str]:
 
 @router.post("/potok")
 def potok_start(request: Request, file: UploadFile = File(...), profile: str = Form("обычно"),
-                strip: str = Form(""), bits: str = Form(""), config: str = Form("")) -> dict[str, Any]:
+                strip: str = Form(""), bits: str = Form(""), config: str = Form(""),
+                level: str = Form("неизвестно")) -> dict[str, Any]:
     """Принять поток и поставить разбор в очередь. Этапы — по /api/potok/{ид}."""
     user = require_user(request)
     settings = _settings(request)
     name = _safe_name(Path(file.filename or "поток.bin").name) or "поток.bin"
     if profile not in ПРОФИЛИ_РАЗБОРА:
         raise ServiceError("неизвестный профиль разбора", 400)
+    уровень = _уровень_разбора(level)
     limit = settings.max_upload_mb * 1024 * 1024
     данные = file.file.read(limit + 1)
     if len(данные) > limit:
@@ -3823,13 +3835,14 @@ def potok_start(request: Request, file: UploadFile = File(...), profile: str = F
         поток = прочитать_поток(данные=данные, имя=name)
         описание = [rastr.описать_шаг(ш) for ш in конфигурация["шаги"] if ш["вкл"]]
         ид = _potok(request).создать(владелец=user.id, имя=f"{name} → «{конфигурация['имя']}»"[:200],
-                                     данные=поток.данные, профиль=profile, шаги=конфигурация["шаги"],
+                                     данные=поток.данные, профиль=profile, с_уровня=уровень,
+                                     шаги=конфигурация["шаги"],
                                      разбирать=True, происхождение=описание)
     else:
         ид = _potok(request).создать(владелец=user.id, имя=name, данные=данные, профиль=profile,
-                                     снять=_слои(strip), символ=символ, фм=фм)
+                                     с_уровня=уровень, снять=_слои(strip), символ=символ, фм=фм)
     _repos(request).audit.log("potok.start", user=user, object_type="potok", object_id=ид,
-                              details={"name": name, "bytes": len(данные), "profile": profile})
+                              details={"name": name, "bytes": len(данные), "profile": profile, "level": уровень})
     return {"id": ид}
 
 
@@ -3890,7 +3903,7 @@ def potok_continue(request: Request, job_id: str) -> dict[str, Any]:
     try:
         ид = _potok(request).продолжить(job_id, int(тело.get("stage") or 0), владелец=user.id,
                                         снять=_слои(str(тело.get("strip") or "")),
-                                        профиль=профиль)
+                                        профиль=профиль, с_уровня=_уровень_разбора(тело.get("level")))
     except ValueError as ошибка:
         raise ServiceError(str(ошибка), 400) from None
     return {"id": ид}
@@ -4075,6 +4088,7 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     профиль = str(тело.get("profile") or "обычно")
     if профиль not in ПРОФИЛИ_РАЗБОРА:
         raise ServiceError("неизвестный профиль разбора", 400)
+    уровень = _уровень_разбора(тело.get("level"))
     шаги = list(тело.get("steps") or [])
     конфигурация = None
     if тело.get("config"):
@@ -4095,7 +4109,7 @@ def potok_derive(request: Request, job_id: str) -> dict[str, Any]:
     имя = f"{состояние['имя']} → " + (f"«{конфигурация['имя']}»" if конфигурация
                                       else "; ".join(описание) or без_шагов)
     ид = _potok(request).создать(владелец=user.id, имя=имя[:200], источник=источник,
-                                 профиль=профиль, от=f"{job_id}#{этап}", шаги=шаги,
+                                 профиль=профиль, с_уровня=уровень, от=f"{job_id}#{этап}", шаги=шаги,
                                  разбирать=bool(тело.get("analyze")), происхождение=описание,
                                  сессия=состояние.get("сессия") or "")
     # Вид (период строки и первый бит) — от родителя, если строка та же (обрезка, инверсия,
@@ -4746,6 +4760,7 @@ def potok_rebuild(request: Request, job_id: str) -> dict[str, Any]:
     профиль = str(тело.get("profile") or состояние.get("профиль") or "обычно")
     if профиль not in ПРОФИЛИ_РАЗБОРА:
         raise ServiceError("неизвестный профиль разбора", 400)
+    уровень = _уровень_разбора(тело.get("level") or состояние.get("с_уровня"))
     основа = состояние["имя"].split(" → ")[0]
     from ..potok.hranenie import ФайлИзменён  # noqa: PLC0415
     try:
@@ -4757,7 +4772,7 @@ def potok_rebuild(request: Request, job_id: str) -> dict[str, Any]:
         описание = [rastr.описать_шаг(ш) for ш in шаги if ш["вкл"]]
         новый = задания.создать(
             владелец=user.id, имя=(f"{основа} → " + ("; ".join(описание) or "копия"))[:200],
-            источник=исходный, профиль=профиль,
+            источник=исходный, профиль=профиль, с_уровня=уровень,
             от=состояние.get("от") or "", шаги=шаги, разбирать=bool(тело.get("analyze")),
             происхождение=описание, сессия=состояние.get("сессия") or "")
     else:
@@ -4765,7 +4780,7 @@ def potok_rebuild(request: Request, job_id: str) -> dict[str, Any]:
             raise ServiceError("у разбора нет маски и разметки — они бывают у производного потока", 400)
         новый = задания.создать(
             владелец=user.id, имя=состояние["имя"], источник=исходный,
-            профиль=профиль, от=состояние.get("от") or "",
+            профиль=профиль, с_уровня=уровень, от=состояние.get("от") or "",
             снять=[ш["слой"] for ш in шаги if ш["вкл"]], символ=состояние.get("символ") or (),
             фм=состояние.get("фм") or (), сессия=состояние.get("сессия") or "")
     if тело.get("replace"):
