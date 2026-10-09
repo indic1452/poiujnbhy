@@ -22168,7 +22168,7 @@
                 низ.querySelector('.pk-vpos').textContent = д.всего ? 'строки ' + fmtNumber(о.видимая + 1) + '–' + fmtNumber(Math.min(д.всего, о.последняя)) + ' из ' + fmtNumber(д.всего) : '';
                 if (!д.всего && !с.живо && д.страницы.size) {
                     clear(строкиУзел);
-                    строкиУзел.appendChild(h('tr', {}, h('td', { colspan: 7, class: 'muted' }, 'Под фильтр не попало ни одного пакета.')));
+                    строкиУзел.appendChild(h('tr', {}, h('td', { colspan: 7, class: 'muted' }, 'Под отбор не попало ни одного пакета — уберите условие, «Назад» или «Сбросить».')));
                 }
                 страницыСписка(о.первая, о.последняя, СТРАНИЦА).forEach((п) => { if (!д.страницы.has(п)) загрузитьСтраницу(п); });
             }
@@ -22475,13 +22475,14 @@
         let меню = null;
         function закрытьМеню() { if (меню) { меню.remove(); меню = null; } }
         // Обработчики документа снимаются, когда страницы захвата уже нет.
-        function щелчокМимо() {
+        function щелчокМимо(event) {
             if (!page.isConnected) { document.removeEventListener('click', щелчокМимо); return; }
             закрытьМеню();
+            if (образцы.open && !образцы.contains(event.target)) образцы.open = false;
         }
         function escМеню(event) {
             if (!page.isConnected) { document.removeEventListener('keydown', escМеню); return; }
-            if (event.key === 'Escape') закрытьМеню();
+            if (event.key === 'Escape') { закрытьМеню(); образцы.open = false; }
         }
         document.addEventListener('click', щелчокМимо);
         document.addEventListener('keydown', escМеню);
@@ -22994,7 +22995,7 @@
 
         function обзор(d) {
             if (!d.пакетов) {
-                тело.appendChild(emptyBox('Под фильтр не попало ни одного пакета', ''));
+                тело.appendChild(emptyBox('Под отбор не попало ни одного пакета', 'Уберите условие, «Назад» или «Сбросить».'));
                 return;
             }
             const строка = (текст, значение, действие, подсказка) => h(действие ? 'button' : 'div', {
