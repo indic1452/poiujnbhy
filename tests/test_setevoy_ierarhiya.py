@@ -54,8 +54,9 @@ class Страница(unittest.TestCase):
 
     def test_схема_дерево_карточка(self):
         for что in ("pk-ice", "role: 'tree'", "role: 'treeitem'", "'aria-expanded'",
-                    "Показать пакеты", "Исключить", "'not ' + свой", "Приблизить на схеме",
-                    "ArrowDown", "ArrowLeft", "Enter", "dblclick"):
+                    "Отобрать пакеты", "Кроме этого протокола", "'not ' + свой", "Приблизить на схеме",
+                    "ArrowDown", "ArrowLeft", "dblclick", "раскладкаДетей(", "строкаПрочего(", "pk-ice-more",
+                    "слитьМелкие(", "Разбор уровня"):
             self.assertIn(что, self.вид, что)
 
     def test_цвет_уровня_из_токенов_обеих_тем(self):

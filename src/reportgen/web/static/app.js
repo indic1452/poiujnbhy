@@ -20576,7 +20576,7 @@
         const строка = цель.closest('[data-dk-proto]');
         if (строка) return { протокол: строка.dataset.dkProto, ниже: строка.dataset.dkParent || '' };
         const ряд = цель.closest('.pk-hier-row');
-        if (ряд && ряд.classList.contains('pk-hier-more')) return null;
+        if (ряд && ряд.matches('.pk-hier-more')) return null;     // «прочее» — не протокол
         if (ряд) {
             const имя = ряд.querySelector('.pk-hier-name');
             const уров = Number(ряд.getAttribute('aria-level')) || 1;
@@ -23151,7 +23151,6 @@
                 д.фокусПрочее = у.прочее ? { родитель: ключ(у.родитель), имена: у.дети.map((р) => р.протокол) } : null;
                 рисоватьСхему();
             }
-            const глубинаПоддерева = (у) => 1 + Math.max(0, ...у.дети.map(глубинаПоддерева));
 
             // -- схема: ширина — доля пакетов (байт) внутри узла-фокуса, ряд — уровень вложенности --
             function рисоватьСхему() {
@@ -23169,10 +23168,9 @@
                 вОписание('протоколы', 'Протоколы', 'Схема вложенности протоколов: щелчок — выбрать, двойной — приблизить; ' +
                     'строка над схемой — путь к выбранному, по нему можно вернуться.');
                 схема.appendChild(крошки);
-                const глубина = глубинаПоддерева(фокус);
                 const Ш = 1000, Р = 30, ЗАЗОР = 2;
+                let рядов = 1;                     // высота схемы — по нарисованным рядам («прочее» — лист)
                 const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                svg.setAttribute('viewBox', '0 0 ' + Ш + ' ' + (глубина * Р));
                 svg.setAttribute('class', 'pk-ice');
                 svg.setAttribute('role', 'img');
                 svg.setAttribute('aria-label', 'Доли протоколов внутри «' + фокус.протокол + '» по ' + (мера() === 'пакетов' ? 'пакетам' : 'байтам'));
@@ -23180,6 +23178,7 @@
                 const всего = Math.max(1, значение(фокус));
                 (function слой(у, x, ш, ряд) {
                     if (ш < 0.5) return;
+                    рядов = Math.max(рядов, ряд + 1);
                     const г = document.createElementNS(svg.namespaceURI, 'g');
                     г.setAttribute('class', 'pk-ice-node pk-lvl--' + у.уровень + (у === выбран ? ' is-selected' : '') + (у.прочее ? ' pk-ice-more' : ''));
                     const y = ряд * Р;
@@ -23236,6 +23235,7 @@
                         else слой(у.дети[к.индексы[0]], x + к.x, к.ш, ряд + 1);
                     });
                 })(фокус, 0, Ш, 0);
+                svg.setAttribute('viewBox', '0 0 ' + Ш + ' ' + (рядов * Р));
                 схема.append(svg, подсказка);
             }
 

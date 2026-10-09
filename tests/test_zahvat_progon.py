@@ -1841,12 +1841,14 @@ class СтраницаTests(unittest.TestCase):
         const р3 = эл('pk-hier-row', {}, null, { 'aria-level': '3' }); р3.дети.push(эл('pk-hier-name', {}, null, {}, 'IPv4'));
         const р4 = эл('pk-hier-row', {}, null, { 'aria-level': '3' }); р4.дети.push(эл('pk-hier-name', {}, null, {}, 'ARP'));
         р2.previousElementSibling = р1; р3.previousElementSibling = р2; р4.previousElementSibling = р3;
-        console.log(JSON.stringify([текст, сводка, безКлюча, eth, строка, корень, р1, р2, р4, эл('div', {})].map(местоДК)));"""
+        const прочее = эл('pk-hier-row pk-hier-more', {}, null, { 'aria-level': '4' }); прочее.дети.push(эл('pk-hier-name', {}, null, {}, 'прочее: 9 протоколов'));
+        прочее.previousElementSibling = р4;
+        console.log(JSON.stringify([текст, сводка, безКлюча, eth, строка, корень, р1, р2, р4, эл('div', {}), прочее].map(местоДК)));"""
         self.assertEqual([
             {"протокол": "UDP", "ниже": "IPv4", "поле": "udp.dstport", "значение": "5004"},
             {"протокол": "UDP", "ниже": "IPv4"}, {"протокол": "UDP", "ниже": "IPv4"}, {"протокол": "Ethernet", "ниже": ""},
             {"протокол": "RTP", "ниже": "UDP"}, None, None, {"протокол": "Ethernet", "ниже": ""},
-            {"протокол": "ARP", "ниже": "Ethernet"}, None], self.выполнить(код))
+            {"протокол": "ARP", "ниже": "Ethernet"}, None, None], self.выполнить(код), "строка «прочее» — не протокол")
 
     def test_переход_по_кускам(self):
         from test_oblik import PRELUDE  # noqa: PLC0415
@@ -1855,7 +1857,7 @@ class СтраницаTests(unittest.TestCase):
         const api = { get: async (п) => { журнал.push('get ' + п); return { total: 5 }; },
                       post: async (п) => { журнал.push('post ' + п); return { id: 'P1' }; } };
         function navigate(к) { журнал.push('go ' + к); } function toastError() {}
-        """ + self.вырезать(self.js, "навигацияКусков") + r"""
+        """ + self.вырезать(self.js, "приёмЗаписи") + "\n" + self.вырезать(self.js, "навигацияКусков") + r"""
         const текст = (у) => typeof у === 'string' ? у : у.textContent !== undefined ? у.textContent
             : у.kids.filter((к) => !к.hidden).map(текст).join(' ');
         const найти = (у, т) => typeof у === 'string' ? null : (текст(у) === т ? у : у.kids.map((к) => найти(к, т)).find(Boolean) || null);
@@ -1868,7 +1870,8 @@ class СтраницаTests(unittest.TestCase):
             const после = узлы.map((у) => у && текст(у));
             await найти(узлы[3], 'следующая часть →').attrs.onclick({ currentTarget: {} });
             await найти(узлы[3], '← предыдущая часть').attrs.onclick({ currentTarget: {} });
-            console.log(JSON.stringify({ сразу, после, журнал, ссылка: найти(узлы[2], 'К приёму').attrs.href }));
+            console.log(JSON.stringify({ сразу, после, журнал, ссылка: найти(узлы[0], 'К приёму').attrs.href,
+                весь: приёмЗаписи({ от: 'zahvat:' + ид + '#весь' }), невесь: [приёмЗаписи({ от: 'zahvat:' + ид + '#0' }), приёмЗаписи({}), приёмЗаписи(null)] }));
         }, 20);"""
         итог = self.выполнить(код)
         ид = "20260930-104359-0b9c8e"
@@ -1876,11 +1879,13 @@ class СтраницаTests(unittest.TestCase):
         после = итог["после"]
         self.assertEqual("Часть 1 из 5 приёма с сети следующая часть → К приёму", после[0])
         self.assertEqual("Часть 5 из 5 приёма с сети ← предыдущая часть К приёму", после[1], "у последнего нет «следующего»")
-        self.assertEqual("Весь приём с сети, все части подряд К приёму", после[2])
+        self.assertIsNone(после[2], "весь приём — полоса приёма над разбором, а не навигация частей")
+        self.assertEqual(ид, итог["весь"])
+        self.assertEqual([None, None, None], итог["невесь"])
         self.assertEqual("Часть 2 из 5 приёма с сети ← предыдущая часть следующая часть → К приёму", после[3])
         self.assertEqual("Часть 4 из 5 приёма с сети ← предыдущая часть следующая часть → К приёму", после[4])
         self.assertEqual([None] * 5, после[5:])
-        self.assertEqual(f"#/zahvat/{ид}", итог["ссылка"])
+        self.assertEqual(f"#/pakety/set/{ид}", итог["ссылка"])
         self.assertEqual([f"get /api/zahvat/{ид}/chunks?offset=0&limit=1"] * 4, итог["журнал"][:4])
         self.assertEqual([f"post /api/zahvat/{ид}/to-pakety?chunk=2", "go #/pakety/P1",
                           f"post /api/zahvat/{ид}/to-pakety?chunk=0", "go #/pakety/P1"], итог["журнал"][4:])
@@ -1897,6 +1902,8 @@ class СтраницаTests(unittest.TestCase):
         self.assertIn("dataset: поле.ключ ? { dkKey: поле.ключ, dkValue: String(поле.текст) } : {}", пакеты)
         захват = self.вырезать(self.js, "рисоватьЗахватСети")
         self.assertIn("панельПрогона({ вид: 'zahvat', ид: capId }", захват)
+        self.assertIn("if (!вЗаписи && !прогон.firstChild", захват, "в полосе приёма записи — без своего проигрывателя")
+        self.assertIn("рисоватьЗахватСети(полоса, приём, { вЗаписи: true, записьИд: capId })", пакеты, "весь приём — полосой над разбором")
         self.assertIn("с.можно_обработать !== false", захват, "чужому — без проигрывателя")
         код = self.вырезать(self.js, "остановитьОпросПрогона") + r"""
         const прогонОпрос = { таймер: setTimeout(() => { console.log('"не снят"'); process.exit(1); }, 50) };
