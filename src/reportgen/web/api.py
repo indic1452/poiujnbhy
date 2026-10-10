@@ -2443,12 +2443,20 @@ def pakety_from_potok(request: Request) -> dict[str, Any]:
         raise ServiceError("у этого этапа нет пакетов или кадров", 400)
     _этап_целый(request, job_id, этап)
     вход = _potok(request).папка / job_id / "вход.bin"
-    if _пакеты_самого_sig(состояние, этап) and вход.exists():
-        # Пакеты самого .sig (первый этап, ничего не снято): в анализ пакетов — весь файл, все кадры и протоколы
-        # (выгрузка этапа — лишь опознанные IP из первых кадров); разбирается пачками, как любой большой файл.
-        ид = _pakety(request).создать(владелец=user.id, имя=Path(состояние["имя"]).name, путь=вход,
-                                      от=f"{job_id}#{этап}")
-        return {"id": ид}
+    if _пакеты_самого_sig(состояние, этап):
+        # Пакеты самого .sig или захвата pcap (первый этап, ничего не снято): в анализ пакетов — весь файл, все
+        # кадры и протоколы (выгрузка этапа — лишь опознанные IP); разбирается пачками, как любой большой файл.
+        ссылка = состояние.get("ссылка") or {}
+        if вход.exists():
+            ид = _pakety(request).создать(владелец=user.id, имя=Path(состояние["имя"]).name, путь=вход,
+                                          от=f"{job_id}#{этап}")
+            return {"id": ид}
+        if ссылка and not ссылка.get("смещение") and not ссылка.get("развернуть") \
+                and ссылка.get("байт") in (None, ссылка.get("размер")):
+            ид = _pakety(request).создать(владелец=user.id, имя=Path(состояние["имя"]).name,
+                                          ссылка=Path(ссылка["путь"]), от=f"{job_id}#{этап}")
+            return {"id": ид}
+    # Выгрузка этапа, ещё не пересчитанного по всему файлу, — из начала файла: так и в имени.
     имя = f"{Path(состояние['имя']).stem} — этап {этап}{файл.suffix}"
     if _potok(request).по_выборке(job_id, этап):
         имя += " (по началу файла)"
@@ -2456,11 +2464,16 @@ def pakety_from_potok(request: Request) -> dict[str, Any]:
     return {"id": ид}
 
 
+#: Захваты, которые анализ пакетов читает сам целиком (вход — первый этап «пакеты»).
+РАСШИРЕНИЯ_ЗАХВАТА = (".pcap", ".pcapng", ".cap")
+
+
 def _пакеты_самого_sig(состояние: dict[str, Any], этап: int) -> bool:
-    """Этап — пакеты самого файла .sig/.dpo (первый, без снятых слоёв и ручных шагов)."""
+    """Этап — пакеты самого файла .sig/.dpo или захвата pcap (первый, без снятых слоёв и ручных шагов)."""
     from ..potok.chtenie import РАСШИРЕНИЯ_SIG  # noqa: PLC0415
     этапы = состояние.get("этапы") or []
-    if этап != 1 or not этапы or Path(состояние.get("имя") or "").suffix.lower() not in РАСШИРЕНИЯ_SIG:
+    if этап != 1 or not этапы or Path(состояние.get("имя") or "").suffix.lower() not in (*РАСШИРЕНИЯ_SIG,
+                                                                                          *РАСШИРЕНИЯ_ЗАХВАТА):
         return False
     if состояние.get("снять") or состояние.get("шаги"):
         return False
@@ -2835,14 +2848,20 @@ def pakety_fields(request: Request, cap_id: str, path: str, format: str = "csv",
     if not стек or format not in ("csv", "json"):
         raise ServiceError("нужен путь узла и формат csv или json", 400)
     отбор = _отбор(request, cap_id, filter)
-    свои = vydacha.номера_узла(отбор, стек, vygruzka.РАЗБОР_ДО)
+    # Все пакеты узла — потоком: разбираются пачками по мере выдачи, память не растёт с их числом.
+    свои = vydacha.номера_узла(отбор, стек)
     захваты = _pakety(request)
-    строки = vygruzka.поля_по_протоколам((захваты.пакет(cap_id, н + 1) for н in свои.tolist()), стек).get(стек[-1], [])
+
+    def строки() -> Iterable[dict[str, Any]]:
+        for от in range(0, len(свои), 512):
+            yield from vygruzka.поля_по_протоколам((захваты.пакет(cap_id, н + 1) for н in свои[от:от + 512].tolist()),
+                                                    стек).get(стек[-1], [])
     настройки = _настройки_выдачи(request)
     имя = f"{Path(состояние['имя']).stem}-поля-{vygruzka.безопасно(стек[-1])}.{format}"
-    данные = vygruzka.csv_байты(строки) if format == "csv" else vygruzka.json_байты(строки, настройки.json_отступ)
-    return Response(данные, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
-                    headers={"Content-Disposition": _имя_в_заголовке(имя, f"fields.{format}")})
+    куски = vygruzka.csv_кусками(строки()) if format == "csv" else vygruzka.json_список_кусками(
+        строки(), настройки.json_отступ)
+    return StreamingResponse(куски, media_type="text/csv; charset=utf-8" if format == "csv" else "application/json",
+                             headers={"Content-Disposition": _имя_в_заголовке(имя, f"fields.{format}")})
 
 
 @router.get("/pakety/{cap_id}/streams.zip")
@@ -3715,7 +3734,7 @@ def _sessii(request: Request):
     return сессии
 
 
-def _посчитать(request: Request, user, функция, *args: Any, срок: float | None = None) -> Any:
+def _посчитать(request: Request, user, функция, *args: Any, срок: float | None = None, **kwargs: Any) -> Any:
     """Тяжёлый расчёт стола — в исполнителе (отдельный процесс), не в процессе сервера.
 
     Пока исполнитель считает, эта нить сервера только ждёт: интерпретатор свободен для
@@ -3724,7 +3743,7 @@ def _посчитать(request: Request, user, функция, *args: Any, ср
     """
     from ..potok import ispolniteli  # noqa: PLC0415
     try:
-        итог = _potok(request).посчитать(функция, *args, владелец=user.id, срок=срок)
+        итог = _potok(request).посчитать(функция, *args, владелец=user.id, срок=срок, **kwargs)
         return _с_частью(request, итог) if isinstance(итог, dict) else итог
     except ispolniteli.СрокВышел as ошибка:
         raise ServiceError(f"расчёт остановлен: {ошибка}", 504) from None
@@ -6329,8 +6348,10 @@ def potok_plane_own(request: Request) -> dict[str, Any]:
     return {"plane": плоскость}
 
 
-#: Вход I/Q: байт массива — не больше.
+#: Облако I/Q (число точек, центры, поворот) оценивается по стольким первым байтам массива; решения — по всему.
 IQ_БАЙТ_ДО = 64 << 20
+#: Срок решений по всей записи в исполнителе, с (сотни мегабайт отсчётов — минуты).
+IQ_СРОК = 4 * 3600.0
 
 
 def _iq(request: Request, user, job_id: str, тело: dict[str, Any]):
@@ -6383,10 +6404,14 @@ def potok_moddecoder_iq(request: Request, job_id: str) -> dict[str, Any]:
 
 @router.post("/potok/{job_id}/moddecoder/iq/decide")
 def potok_moddecoder_iq_decide(request: Request, job_id: str) -> dict[str, Any]:
-    """Жёсткие решения по облаку → новый массив в той же сессии: метки плоскости или номера кластеров."""
+    """Жёсткие решения по облаку → новый массив в той же сессии: метки плоскости или номера кластеров.
+
+    Облако — по началу массива (``IQ_БАЙТ_ДО``), решения — по всей записи кусками в исполнителе стола."""
+    import secrets  # noqa: PLC0415
+
     import numpy as np  # noqa: PLC0415
 
-    from ..potok import iq, moddekoder, razmetka  # noqa: PLC0415
+    from ..potok import iq, moddekoder  # noqa: PLC0415
     user = require_user(request)
     тело = _body(request)
     состояние = _задание_или_404(request, user, job_id)
@@ -6397,8 +6422,8 @@ def potok_moddecoder_iq_decide(request: Request, job_id: str) -> dict[str, Any]:
         raise ServiceError("поворот — градусы", 400) from None
     инверсия = bool(тело.get("инверсия"))
     k = о["точек"].bit_length() - 1
-    приведённые = iq.повернуть((z - о["середина"]) / о["масштаб"], поворот, инверсия)
     имя_плоскости = str(тело.get("плоскость") or "")
+    решать: dict[str, Any] = {}
     if имя_плоскости:
         try:
             с = moddekoder.найти(имя_плоскости)
@@ -6407,19 +6432,32 @@ def potok_moddecoder_iq_decide(request: Request, job_id: str) -> dict[str, Any]:
         if с.M != о["точек"]:
             raise ServiceError(f"плоскость «{с.имя}» — {с.M} точек, а в облаке {о['точек']}", 400)
         п = moddekoder.плоскость(с)
-        метки = iq.по_плоскости(приведённые, _идеал(п), np.array(п.метки))
+        решать = {"идеал": _идеал(п), "метки": np.array(п.метки)}
         как = f"метки плоскости «{с.имя}»"
     else:
-        метки = iq.по_кластерам(приведённые, iq.повернуть(о["центры"], поворот, инверсия))
+        решать = {"центры": iq.повернуть(о["центры"], поворот, инверсия)}
         как = "номера кластеров по порядку чтения (своя разметка — ищите «Разметкой вслепую»)"
-    биты = razmetka.в_биты(метки, k)
-    происхождение = [f"вход I/Q: {описание}; отсчётов {len(z)}", f"созвездие {о['точек']} точек (отделимость "
-                     f"{о['отделимость']:g}); поворот {поворот:g}°" + (", инверсия спектра" if инверсия else ""),
-                     f"жёсткие решения: {как}"]
-    ид = _potok(request).создать(владелец=user.id, имя=f"{состояние['имя']} → решения I/Q ({о['точек']} точек)"[:200],
-                                 данные=np.packbits(биты).tobytes(), профиль="обычно", разбирать=False,
-                                 происхождение=происхождение, сессия=состояние.get("сессия") or "", бит=len(биты))
-    return {"id": ид, "бит": int(len(биты)), "описание": происхождение}
+    этап = _целое(тело, "stage", 0, 0, 10 ** 6)
+    try:
+        источник = _potok(request).источник(job_id, этап)
+    except (ValueError, OSError) as ошибка:
+        raise ServiceError(str(ошибка), 400) from None
+    файл = _potok(request).папка / f".iq-{secrets.token_hex(6)}.bin"
+    try:
+        итог = _посчитать(request, user, iq.решения_по_всему, источник, str(файл), формат=str(тело.get("формат") or "авто"),
+                          порядок=str(тело.get("порядок") or "младший"), каналы=str(тело.get("каналы") or "IQ"),
+                          пропуск=_целое(тело, "пропуск", 0, 0, 1 << 20), развернуть=bool(тело.get("развернуть")),
+                          середина=complex(о["середина"]), масштаб=float(о["масштаб"]), поворот=поворот,
+                          инверсия=инверсия, k=k, срок=IQ_СРОК, **решать)
+        происхождение = [f"вход I/Q: {описание}; отсчётов {итог['отсчётов']} (облако — по первым {len(z)})",
+                         f"созвездие {о['точек']} точек (отделимость {о['отделимость']:g}); поворот {поворот:g}°"
+                         + (", инверсия спектра" if инверсия else ""), f"жёсткие решения: {как}"]
+        ид = _potok(request).создать(владелец=user.id, имя=f"{состояние['имя']} → решения I/Q ({о['точек']} точек)"[:200],
+                                     профиль="обычно", разбирать=False, происхождение=происхождение,
+                                     сессия=состояние.get("сессия") or "", бит=итог["бит"], переместить=файл)
+    finally:
+        файл.unlink(missing_ok=True)
+    return {"id": ид, "бит": итог["бит"], "описание": происхождение}
 
 
 def _приметы_этапа(request: Request, user, job_id: str, stage: int):

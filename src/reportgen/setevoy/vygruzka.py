@@ -26,10 +26,11 @@ import hashlib
 import html
 import io
 import json
+import pickle
 import re
 import tempfile
 import zipfile
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from typing import Any
 
 from . import obekty, statistika
@@ -68,6 +69,32 @@ def csv_байты(строки: Sequence[dict[str, Any]], столбцы: Seque
     for с in строки:
         запись.writerow({к: _ячейка(з) for к, з in с.items()})
     return ("﻿" + буфер.getvalue()).encode("utf-8")
+
+
+def csv_кусками(строки: Iterable[dict[str, Any]], кусок: int = 1 << 16) -> Iterator[bytes]:
+    """CSV байт в байт как csv_байты(list(строки)), но без всех строк в памяти: столбцы известны лишь после
+    последней строки, поэтому строки сперва — во временный файл, затем CSV — кусками."""
+    столбцы: dict[str, None] = {}
+    with tempfile.TemporaryFile() as запас:
+        for с in строки:
+            столбцы.update(dict.fromkeys(с))
+            pickle.dump(с, запас, protocol=pickle.HIGHEST_PROTOCOL)
+        запас.seek(0)
+        буфер = io.StringIO()
+        запись = csv.DictWriter(буфер, fieldnames=list(столбцы), delimiter=";", extrasaction="ignore")
+        буфер.write("\ufeff")
+        запись.writeheader()
+        while True:
+            try:
+                с = pickle.load(запас)
+            except EOFError:
+                break
+            запись.writerow({к: _ячейка(з) for к, з in с.items()})
+            if буфер.tell() >= кусок:
+                yield буфер.getvalue().encode("utf-8")
+                буфер.seek(0)
+                буфер.truncate()
+        yield буфер.getvalue().encode("utf-8")
 
 
 def _ячейка(значение: Any) -> Any:

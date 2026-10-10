@@ -123,6 +123,31 @@ class HdlcTests(unittest.TestCase):
     def test_в_случайном_hdlc_нет(self):
         self.assertIsNone(hdlc.найти(СЛУЧАЙНЫЕ))
 
+    def test_в_выходе_все_кадры_а_не_первые_3000(self):
+        # Доля FCS — по первым ПРОВЕРЯТЬ_КАДРОВ, а этап отдаёт все кадры ряда с верной FCS.
+        кадры = с.пакеты_ip(hdlc.ПРОВЕРЯТЬ_КАДРОВ * 2, сид=7)
+        найдено = hdlc.найти(в_биты(с.hdlc(кадры)))
+        self.assertEqual(кадры, найдено.дальше)
+        self.assertEqual(len(кадры), найдено.свойства["годных"])
+        self.assertIn(f"все кадры ряда с верной FCS: {len(кадры)}", " ".join(найдено.подробно))
+        self.assertEqual("hdlc fcs 16 порядок старший", найдено.свойства["кадры_слой"])
+
+    def test_fcs_как_по_таблице(self):
+        # FCS считается на C (binascii, zlib) — тот же итог, что по таблицам побайтно.
+        rng = np.random.default_rng(5)
+        for длина in (0, 1, 3, 17, 300):
+            данные = rng.bytes(длина)
+            crc16, crc32 = 0xFFFF, 0xFFFFFFFF
+            for байт in данные:
+                crc16 = (crc16 >> 8) ^ hdlc._Т16[(crc16 ^ байт) & 0xFF]
+                crc32 = (crc32 >> 8) ^ hdlc._Т32[(crc32 ^ байт) & 0xFF]
+            self.assertEqual((crc16, crc32), (hdlc.fcs16(данные), hdlc.fcs32(данные)))
+            кадр16 = данные + (crc16 ^ 0xFFFF).to_bytes(2, "little")
+            кадр32 = данные + (crc32 ^ 0xFFFFFFFF).to_bytes(4, "little")
+            self.assertEqual(длина >= 1, hdlc.fcs16_верна(кадр16))
+            self.assertEqual(длина >= 1, hdlc.fcs32_верна(кадр32))
+            self.assertFalse(hdlc.fcs16_верна(кадр16[:-1] + bytes([кадр16[-1] ^ 1])))
+
 
 class ПакетыTests(unittest.TestCase):
     def test_ip_в_кадрах_по_контрольной_сумме(self):
@@ -346,6 +371,16 @@ class ОктетныйСтаффингTests(unittest.TestCase):
         self.assertIn("SLIP", найдено.что)
         self.assertEqual(list(self.ПАКЕТЫ), найдено.дальше)
 
+    def test_в_выходе_все_кадры_а_не_первые_3000(self):
+        пакеты = с.пакеты_ip(oktety.ПРОВЕРЯТЬ_КАДРОВ + 700, сид=9)
+        кадры = [b"\xff\x03\x00\x21" + пакет for пакет in пакеты]
+        найдено = oktety.найти(в_биты(с.hdlc_асинхронный(кадры)))
+        self.assertEqual(кадры, найдено.дальше)
+        self.assertEqual("ppp fcs 16 сдвиг 0 порядок старший", найдено.свойства["кадры_слой"])
+        slip = oktety.найти(в_биты(с.slip(пакеты)))
+        self.assertEqual(пакеты, slip.дальше)
+        self.assertEqual("slip сдвиг 0 порядок старший", slip.свойства["кадры_слой"])
+
     def test_в_случайном_и_в_синхронном_hdlc_нет(self):
         self.assertIsNone(oktety.найти(СЛУЧАЙНЫЕ))
         # Синхронное HDLC — битстаффинг, не октетный: FCS после «снятия 0x7D»
@@ -479,6 +514,14 @@ class DvbTests(unittest.TestCase):
         пакеты = dvb.найти(данные, 0).дальше
         pid = set((((пакеты[:, 1] & 0x1F).astype(int) << 8) | пакеты[:, 2]).tolist())
         self.assertEqual({0x100, 0x101, 0x1FFF}, pid)
+
+    def test_пакеты_всей_выборки(self):
+        # Выход этапа — пакеты всей выборки автомата (1 МБ), не первые 4000.
+        from reportgen.potok.razbor import ВЫБОРКА_БИТ  # noqa: PLC0415
+        пакетов = ВЫБОРКА_БИТ // 8 // dvb.ДЛИНА
+        найдено = dvb.найти(с.dvb(пакетов, перемежать=False), 0)
+        self.assertEqual((пакетов, 188), найдено.дальше.shape)
+        self.assertGreater(пакетов, 4000)
 
     def test_не_dvb(self):
         пакеты = b"".join(b"\x47" + bytes(np.random.default_rng(н).integers(0, 256, 203,
