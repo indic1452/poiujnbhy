@@ -129,6 +129,14 @@ class LdpcTests(unittest.TestCase):
         исправлено, _ = dlinnye.мин_сумма(шумные, полные)
         self.assertGreater(np.mean(np.all(исправлено == self.СЛОВА[:500], axis=1)), 0.98)
 
+    def test_декодируются_все_слова(self):
+        """Слепой LDPC декодирует все слова ряда пачками, а не первые 4000: выход этапа — вся выборка."""
+        данные = np.random.default_rng(7).integers(0, 2, (4200, len(self.G)), dtype=np.uint8)
+        слова = ((данные.astype(np.int32) @ self.G.astype(np.int32)) & 1).astype(np.uint8)
+        найдено = dlinnye.найти(ошибки(слова, 1e-3).reshape(-1), до=700, бюджет=300)
+        self.assertIn("LDPC (648, 324)", найдено.что)
+        self.assertTrue(np.array_equal(данные.reshape(-1), найдено.дальше))
+
     def test_двоичный_образ_кода_рида_соломона(self):
         слова = с.рс(700, 60, 52)
         биты = np.unpackbits(слова.reshape(-1))[37:]
