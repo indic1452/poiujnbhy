@@ -12,3 +12,9 @@ exports/
 *.sqlite
 wheels/
 backups/
+*.egg-info/
+dist/
+.env
+reportgen-offline/
+.pytest_cache/
+.ruff_cache/

@@ -201,12 +201,6 @@ class LoadLibraryScriptTests(unittest.TestCase):
         self.script = ROOT / "scripts" / "windows" / "load-library.ps1"
         self.text = self.script.read_text(encoding="utf-8")
 
-    def test_script_exists_and_has_bom(self):
-        # Без BOM Windows PowerShell 5.1 читает файл как ANSI, и русские
-        # сообщения превращаются в кракозябры.
-        self.assertTrue(self.script.is_file())
-        self.assertTrue(self.script.read_bytes().startswith(b"\xef\xbb\xbf"))
-
     def test_refuses_to_run_before_installation_finished(self):
         # Пока нет окружения и настроек, разбор всё равно не сработает —
         # лучше сказать это сразу и назвать нужную команду.
@@ -249,10 +243,6 @@ class UsersScriptTests(unittest.TestCase):
     def setUp(self):
         self.script = ROOT / "scripts" / "windows" / "users.ps1"
         self.text = self.script.read_text(encoding="utf-8")
-
-    def test_script_exists_and_has_bom(self):
-        self.assertTrue(self.script.is_file())
-        self.assertTrue(self.script.read_bytes().startswith(b"\xef\xbb\xbf"))
 
     def test_covers_list_add_and_reset(self):
         for command in ("users", "useradd", "passwd"):

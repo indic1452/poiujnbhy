@@ -29,7 +29,7 @@ from reportgen.setevoy.chtenie import ЧтецЗахвата, вид_по_нач
 from reportgen.setevoy.hranilishe import Писатель, Ряд, Хранилище, нагрузки, отпечаток_потока
 from reportgen.setevoy.nakopitel import Накопитель, узел_из_снимка
 from reportgen.setevoy.raboty import Диспетчер, Работа
-from reportgen.setevoy.sborka import _для_фильтра, _сводка
+from reportgen.setevoy.sborka import _для_фильтра
 from reportgen.setevoy.zahvaty import Захваты, ОшибкаЗагрузки
 
 

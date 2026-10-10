@@ -175,6 +175,7 @@ class HealthAndConfigTests(WebTestCase):
 class AuthTests(WebTestCase):
     def test_anonymous_is_rejected(self):
         self.client.cookies.clear()
+        # GET не перехватывается middleware — права проверяет сам обработчик.
         self.assertEqual(self.client.get("/api/cases").status_code, 401)
 
     def test_wrong_password(self):
@@ -271,11 +272,6 @@ class RequestGuardTests(WebTestCase):
             "/api/auth/login", json={"login": "admin", "password": "пароль123"}
         )
         self.assertEqual(response.status_code, 200)
-
-    def test_reads_stay_open_to_session_check_in_handler(self):
-        self.client.cookies.clear()
-        # GET не перехватывается middleware — права проверяет сам обработчик.
-        self.assertEqual(self.client.get("/api/cases").status_code, 401)
 
 
 class FilenameTests(WebTestCase):

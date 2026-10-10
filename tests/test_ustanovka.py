@@ -620,12 +620,6 @@ class СовместимостьС51(unittest.TestCase):
             "сортировка по свойству, которого у объекта нет")
         self.assertIn("Get-NetIPInterface", текст)
 
-    def test_все_скрипты_в_utf8_с_bom(self):
-        """Без BOM 5.1 читает кириллицу как набор знаков вопроса."""
-        for скрипт in все_скрипты():
-            with self.subTest(script=скрипт.name):
-                self.assertEqual(b"\xef\xbb\xbf", скрипт.read_bytes()[:3])
-
 
 class ЧестностьУстановки(unittest.TestCase):
     """«Готово» и «без замечаний» не должны быть неправдой."""

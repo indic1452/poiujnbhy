@@ -187,10 +187,3 @@ def закодировать(данные_: np.ndarray, режим: tuple[int, i
     итог[:, D] = d
     return итог.reshape(-1)
 
-
-def в_64к(ir_поток: np.ndarray, w: int = 1, p: int = 0, заполнение: int = 1) -> np.ndarray:
-    """RA2 (для проверок): поток IR 8·w кбит/с → октеты 64 кбит/с, биты p…p+w−1 — данные."""
-    ir_поток = np.asarray(ir_поток[:len(ir_поток) // w * w], dtype=np.uint8).reshape(-1, w)
-    октеты = np.full((len(ir_поток), 8), заполнение, dtype=np.uint8)
-    октеты[:, p:p + w] = ir_поток
-    return октеты.reshape(-1)

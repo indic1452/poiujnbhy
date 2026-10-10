@@ -53,7 +53,6 @@ $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 if (-not $Destination) { $Destination = Join-Path (Get-Location).Path 'reportgen-offline' }
 if (-not $Config) {
     $Config = Join-Path $PSScriptRoot 'bundle.example.json'
-    if (-not (Test-Path $Config)) { $Config = Join-Path $PSScriptRoot 'models.example.json' }
 }
 
 # curl умеет докачку — на многогигабайтных файлах это важнее удобства
