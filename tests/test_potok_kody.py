@@ -461,6 +461,29 @@ class ЛинейныеКодыTests(unittest.TestCase):
         # Срезано 7 бит — первый целый символ после запятой несёт байт 0.
         self.assertEqual(данные[:2000], в_байты(найдено.дальше)[:2000])
 
+    def test_весь_ряд_а_не_выборка(self):
+        """Выравнивание — по выборке начала, данные 4B/5B и 8B/10B — по всему ряду (и кусками декодера)."""
+        from unittest import mock
+        случай = np.random.default_rng(2)
+        полубайты = случай.integers(0, 16, 30_000)
+        символы = np.array([lineynye.ДАННЫЕ_4B5B[x] for x in полубайты])
+        символы[::97] = 0b11111                                      # служебные I — выбрасываются
+        поток = ((символы[:, None] >> np.arange(4, -1, -1)) & 1).astype(np.uint8).reshape(-1)[3:]
+        данные = bytes(случай.integers(0, 256, 6000).tolist())
+        поток8 = lineynye.закодировать_8b10b(данные)[7:]
+        with mock.patch.object(lineynye, "ВЫБОРКА", 20_000), mock.patch.object(lineynye, "СИМВОЛОВ_ЗА_РАЗ", 777):
+            найдено = lineynye.код_4b5b(поток)
+            годные = np.flatnonzero(символы[1:] != 0b11111) + 1
+            ожидалось = np.unpackbits(полубайты[годные].astype(np.uint8)[:, None], axis=1)[:, 4:].reshape(-1)
+            self.assertTrue(np.array_equal(ожидалось, найдено.дальше))
+            self.assertIn(f"I×{len(символы[1:]) - len(годные)}", найдено.подробно[0])
+            self.assertEqual(lineynye.выравнивание(поток, 5), 2)
+            найдено = lineynye.код_8b10b(поток8)
+            from reportgen.potok.bity import в_байты
+            self.assertEqual(данные, в_байты(найдено.дальше))          # срезана только запятая
+            self.assertEqual(lineynye.выравнивание(поток8, 10), 3)
+            self.assertIsNone(lineynye.выравнивание(СЛУЧАЙНЫЕ, 5))
+
     def test_случайный_не_код_в_линии(self):
         self.assertIsNone(lineynye.найти(СЛУЧАЙНЫЕ))
 
